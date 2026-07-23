@@ -4,6 +4,7 @@ import { wsClient } from '../../services/websocket/wsClient';
 import { audioService } from '../../services/audio/AudioService';
 import { CountryCardsModal } from '../cards/CountryCardsModal';
 import { SecretObjectiveModal } from '../objectives/SecretObjectiveModal';
+import { HowToPlayModal } from './HowToPlayModal';
 
 export function TurnPhaseBar() {
   const turn = useGameStore((s) => s.turn);
@@ -31,6 +32,7 @@ export function TurnPhaseBar() {
           <h3 className="text-xs font-semibold tracking-wider text-stone-400">FASE DEL TURNO #{turn.turn_number}</h3>
           <SecretObjectiveModal />
           <CountryCardsModal />
+          <HowToPlayModal />
         </div>
         {myTurn && (
           <button
