@@ -358,7 +358,13 @@ class GameService:
             await self._set_status(game_id, GameStatus.RUNNING)
             await self.emit(
                 game_id, EventType.GAME_STARTED,
-                payload={"turn_order": turn.order, "players": [repo.public_player(p) for p in seated]},
+                payload={
+                    "turn_order": turn.order,
+                    "players": [repo.public_player(p) for p in seated],
+                    "territories": {tid: t.to_dict() for tid, t in engine.territories.items()},
+                    "phase": turn.phase,
+                    "reinforcements_available": turn.reinforcements_available,
+                },
             )
             await self._start_turn(game_id, turn.current_player_id, turn.turn_number)
             return {"status": GameStatus.RUNNING, "turn_order": turn.order}
@@ -366,9 +372,13 @@ class GameService:
     async def _start_turn(self, game_id: str, player_id: str | None, turn_number: int) -> None:
         if player_id is None:
             return
+        game = await repo.get_game(self.db, game_id)
+        engine = await self._engine(game) if game else None
+        phase = engine.turn.phase if engine else "reinforcement"
+        reinf = engine.turn.reinforcements_available if engine else 3
         await self.emit(
             game_id, EventType.TURN_STARTED, actor_id=player_id,
-            payload={"turn_number": turn_number},
+            payload={"turn_number": turn_number, "phase": phase, "reinforcements_available": reinf},
         )
         player = await repo.get_player(self.db, player_id)
         if player and player["role"] == Role.AI_PLAYER:
@@ -566,10 +576,35 @@ class GameService:
             return dice
 
     async def attack(
-        self, game_id: str, player_id: str, target_player_id: str, attacker_dice_count: int
+        self,
+        game_id: str,
+        player_id: str,
+        target_player_id: str | None = None,
+        attacker_dice_count: int = 3,
+        source_territory_id: str | None = None,
+        target_territory_id: str | None = None,
     ) -> dict:
         async with self.lock(game_id):
-            await self._require_running_turn(game_id, player_id)
+            engine = await self._require_running_turn(game_id, player_id)
+
+            src_terr = engine.territories.get(source_territory_id) if source_territory_id else None
+            tgt_terr = engine.territories.get(target_territory_id) if target_territory_id else None
+
+            if src_terr:
+                if src_terr.owner_player_id != player_id:
+                    raise ServiceError(ErrorCode.INVALID_ACTION, "el territorio de origen no te pertenece")
+                if src_terr.armies <= 1:
+                    raise ServiceError(ErrorCode.INVALID_ACTION, "necesitás al menos 2 ejércitos para atacar")
+
+            if tgt_terr:
+                if tgt_terr.owner_player_id == player_id:
+                    raise ServiceError(ErrorCode.INVALID_ACTION, "no podés atacar tu propio territorio")
+                if not target_player_id:
+                    target_player_id = tgt_terr.owner_player_id
+
+            if not target_player_id:
+                raise ServiceError(ErrorCode.INVALID_ACTION, "objetivo inválido")
+
             target = await repo.get_player(self.db, target_player_id)
             if (
                 target is None or target["game_id"] != game_id
@@ -578,18 +613,28 @@ class GameService:
                 raise ServiceError(ErrorCode.INVALID_ACTION, "objetivo inválido")
             if target_player_id == player_id:
                 raise ServiceError(ErrorCode.INVALID_ACTION, "no podés atacarte a vos mismo")
+
+            max_att = min(src_terr.armies - 1, eng.MAX_ATTACK_DICE) if src_terr else eng.MAX_ATTACK_DICE
+            actual_att_dice = min(int(attacker_dice_count), max_att)
+            if actual_att_dice < 1:
+                actual_att_dice = 1
+
             try:
-                attacker_dice = eng.roll_dice(int(attacker_dice_count))
+                attacker_dice = eng.roll_dice(actual_att_dice)
             except (EngineError, ValueError) as exc:
                 raise ServiceError(ErrorCode.INVALID_PAYLOAD, str(exc)) from exc
+
+            def_dice_count = min(tgt_terr.armies, eng.MAX_DEFENSE_DICE) if tgt_terr else eng.MAX_DEFENSE_DICE
+            if def_dice_count < 1:
+                def_dice_count = 1
+            defender_dice = eng.roll_dice(def_dice_count)
+
             await self.emit(
                 game_id, EventType.ATTACK_STARTED, actor_id=player_id,
                 target_id=target_player_id,
                 payload={"attacker_dice_count": len(attacker_dice)},
             )
-            # MVP sin mapa: el defensor tira siempre 3 dados.
-            # TODO(teg-rules): defensor tira min(ejércitos_en_territorio, 3).
-            defender_dice = eng.roll_dice(eng.MAX_DEFENSE_DICE)
+
             result = eng.resolve_combat(attacker_dice, defender_dice)
             payload = {
                 "attacker_dice": result.attacker_dice,
@@ -602,8 +647,52 @@ class GameService:
                 game_id, EventType.ATTACK_RESOLVED, actor_id=player_id,
                 target_id=target_player_id, payload=payload,
             )
-            # TODO(teg-rules): emitir territory.conquered / player.eliminated
-            # cuando exista mapa con ejércitos (domain/map.py).
+
+            if src_terr and tgt_terr:
+                src_terr.armies -= result.attacker_losses
+                tgt_terr.armies -= result.defender_losses
+
+                if tgt_terr.armies <= 0:
+                    old_owner = tgt_terr.owner_player_id
+                    tgt_terr.owner_player_id = player_id
+                    moved = min(actual_att_dice, src_terr.armies - 1)
+                    if moved < 1:
+                        moved = 1
+                    src_terr.armies -= moved
+                    tgt_terr.armies = moved
+
+                    await self.emit(
+                        game_id, EventType.TERRITORY_CONQUERED, actor_id=player_id,
+                        target_id=old_owner,
+                        payload={
+                            "territory": tgt_terr.to_dict(),
+                            "source_territory": src_terr.to_dict(),
+                            "conquered_by": player_id,
+                            "previous_owner": old_owner,
+                        },
+                    )
+
+                    if old_owner:
+                        remaining_owner_terr = [t for t in engine.territories.values() if t.owner_player_id == old_owner]
+                        if not remaining_owner_terr:
+                            await repo.update_player(self.db, old_owner, eliminated=True)
+                            engine.remove_player(old_owner)
+                            await self.emit(
+                                game_id, EventType.PLAYER_ELIMINATED, actor_id=player_id,
+                                target_id=old_owner,
+                                payload={"player_id": old_owner, "eliminated_by": player_id},
+                            )
+
+                    player_terrs = [t for t in engine.territories.values() if t.owner_player_id == player_id]
+                    if len(player_terrs) == len(engine.territories) and len(engine.territories) > 0:
+                        await self.finish_game(game_id, winner_player_id=player_id)
+
+                await self._save_engine(game_id)
+                await self.emit(
+                    game_id, EventType.TERRITORY_UPDATED, actor_id=player_id,
+                    payload={"territory": src_terr.to_dict(), "target_territory": tgt_terr.to_dict()},
+                )
+
             return payload
 
     async def place_reinforcement(self, game_id: str, player_id: str, territory_id: str, count: int = 1) -> dict:

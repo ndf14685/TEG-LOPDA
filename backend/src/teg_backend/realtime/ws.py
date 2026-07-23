@@ -124,8 +124,10 @@ async def _dispatch(
         case "attack":
             await service.attack(
                 game["id"], player["id"],
-                str(payload.get("target_player_id", "")),
-                int(payload.get("attacker_dice", 3)),
+                target_player_id=payload.get("target_player_id"),
+                attacker_dice_count=int(payload.get("attacker_dice", 3)),
+                source_territory_id=payload.get("source_territory_id"),
+                target_territory_id=payload.get("target_territory_id"),
             )
         case "turn.end":
             await service.end_turn(game["id"], player["id"])

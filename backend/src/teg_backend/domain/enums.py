@@ -54,6 +54,7 @@ class EventType(StrEnum):
     DICE_ROLLED = "dice.rolled"
     ATTACK_STARTED = "attack.started"
     ATTACK_RESOLVED = "attack.resolved"
+    TERRITORY_UPDATED = "territory.updated"
     TERRITORY_CONQUERED = "territory.conquered"
 
     CHAT_MESSAGE = "chat.message"

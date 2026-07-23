@@ -59,6 +59,21 @@ export const GameFinishedPayload = z.object({
 });
 export const ErrorPayload = z.object({ code: z.string(), message: z.string() });
 
+export const TerritoryUpdatedPayload = z.object({
+  territory: z.record(z.string(), z.unknown()).optional(),
+  target_territory: z.record(z.string(), z.unknown()).optional(),
+  turn: z.record(z.string(), z.unknown()).optional(),
+});
+export const TerritoryConqueredPayload = z.object({
+  territory: z.record(z.string(), z.unknown()),
+  conquered_by: z.string(),
+  previous_owner: z.string().nullable().optional(),
+});
+export const PlayerEliminatedPayload = z.object({
+  player_id: z.string(),
+  eliminated_by: z.string(),
+});
+
 /**
  * Mapa event_type→schema de payload. El cliente valida contra esto y descarta
  * lo inválido. Eventos sin entrada se aceptan con payload opaco (forward-compat).
@@ -73,6 +88,9 @@ export const EVENT_PAYLOAD_SCHEMAS = {
   'turn.ended': TurnEndedPayload,
   'dice.rolled': DiceRolledPayload,
   'attack.resolved': AttackResolvedPayload,
+  'territory.updated': TerritoryUpdatedPayload,
+  'territory.conquered': TerritoryConqueredPayload,
+  'player.eliminated': PlayerEliminatedPayload,
   'chat.message': ChatMessagePayload,
   'taunt.triggered': TauntTriggeredPayload,
   'ai.comment.generated': AICommentGeneratedPayload,
@@ -92,7 +110,12 @@ export const ClientMessage = z.discriminatedUnion('type', [
   z.object({ type: z.literal('dice.roll'), payload: z.object({ count: z.number().int().min(1).max(3) }) }),
   z.object({
     type: z.literal('attack'),
-    payload: z.object({ target_player_id: z.string(), attacker_dice: z.number().int().min(1).max(3).optional() }),
+    payload: z.object({
+      target_player_id: z.string().optional(),
+      source_territory_id: z.string().optional(),
+      target_territory_id: z.string().optional(),
+      attacker_dice: z.number().int().min(1).max(3).optional(),
+    }),
   }),
   z.object({ type: z.literal('turn.end'), payload: z.object({}).optional() }),
   z.object({
