@@ -13,6 +13,7 @@ export function LandingPage() {
   const [gameName, setGameName] = useState('La Guerra de los Giles');
   const [nickname, setNickname] = useState('');
   const [color, setColor] = useState('red');
+  const [gameMode, setGameMode] = useState('classic_26');
   const [joinUrl, setJoinUrl] = useState('');
   const [error, setError] = useState<string | null>(null);
 
@@ -26,7 +27,10 @@ export function LandingPage() {
     setError(null);
     setCreating(true);
     try {
-      const created = await api.createGame(adminToken, { name: gameName });
+      const created = await api.createGame(adminToken, {
+        name: gameName,
+        config: { game_mode: gameMode },
+      });
       // el organizador también juega: se auto-invita como PLAYER (el rol
       // admin del backend no se sienta a la mesa; organiza vía X-Admin-Token)
       const invite = await api.invitePlayer(adminToken, created.game.id, {
@@ -86,6 +90,14 @@ export function LandingPage() {
           <label className="sm:col-span-2 text-sm">
             <span className="mb-1 block text-stone-400">Nombre de la partida</span>
             <input value={gameName} onChange={(e) => setGameName(e.target.value)} required maxLength={60} className="w-full rounded border border-war-700 bg-war-800 px-3 py-2 outline-none focus:border-gold-500" />
+          </label>
+          <label className="sm:col-span-2 text-sm">
+            <span className="mb-1 block text-stone-400">Mapa</span>
+            <select value={gameMode} onChange={(e) => setGameMode(e.target.value)} data-testid="game-mode" className="w-full rounded border border-war-700 bg-war-800 px-3 py-2 outline-none focus:border-gold-500">
+              <option value="classic_26">Táctico — 26 países (2 a 8 jugadores)</option>
+              <option value="classic_50">Mundo — 50 países (2 a 10 jugadores)</option>
+              <option value="mega_world_100">Mega Mundo — 100 territorios (hasta 20 jugadores)</option>
+            </select>
           </label>
           <label className="text-sm">
             <span className="mb-1 block text-stone-400">Tu apodo de guerra</span>

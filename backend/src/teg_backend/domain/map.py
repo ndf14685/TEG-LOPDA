@@ -1,7 +1,7 @@
 """Modelo de mapa (países, continentes, fronteras, ejércitos).
 
-Todavía sin datos: el MVP juega turnos y dados sin tablero. Este módulo fija
-el contrato para incorporar el mapa real sin tocar el resto del dominio.
+Los datos viven en maps_data.py; acá está el modelo y el registro de mapas
+jugables (tactical-26, world-50, mega-100).
 """
 
 from __future__ import annotations
@@ -65,57 +65,27 @@ class GameMap:
                     raise ValueError(f"frontera no simétrica {t.id} <-> {n}")
 
 
-def load_default_map() -> GameMap:
-    continents = {
-        "south-america": Continent("south-america", "América del Sur", 3),
-        "north-america": Continent("north-america", "América del Norte", 5),
-        "europe": Continent("europe", "Europa", 5),
-        "africa": Continent("africa", "África", 3),
-        "asia": Continent("asia", "Asia", 7),
-        "oceania": Continent("oceania", "Oceanía", 2),
-    }
+from functools import lru_cache
 
-    t_data = [
-        # América del Sur
-        ("territory-south-america-colombia", "Colombia", "south-america", {"territory-south-america-brazil", "territory-south-america-peru", "territory-north-america-mexico"}),
-        ("territory-south-america-peru", "Perú", "south-america", {"territory-south-america-argentina", "territory-south-america-brazil", "territory-south-america-chile", "territory-south-america-colombia"}),
-        ("territory-south-america-brazil", "Brasil", "south-america", {"territory-south-america-argentina", "territory-south-america-colombia", "territory-south-america-peru"}),
-        ("territory-south-america-chile", "Chile", "south-america", {"territory-south-america-argentina", "territory-south-america-peru"}),
-        ("territory-south-america-argentina", "Argentina", "south-america", {"territory-south-america-brazil", "territory-south-america-chile", "territory-south-america-peru"}),
-        # América del Norte
-        ("territory-north-america-mexico", "México", "north-america", {"territory-south-america-colombia", "territory-north-america-usa"}),
-        ("territory-north-america-usa", "EE. UU.", "north-america", {"territory-north-america-mexico", "territory-north-america-canada"}),
-        ("territory-north-america-canada", "Canadá", "north-america", {"territory-north-america-usa", "territory-north-america-alaska", "territory-europe-uk"}),
-        ("territory-north-america-alaska", "Alaska", "north-america", {"territory-north-america-canada", "territory-asia-kamchatka"}),
-        # Europa
-        ("territory-europe-uk", "Reino Unido", "europe", {"territory-north-america-canada", "territory-europe-france", "territory-europe-germany"}),
-        ("territory-europe-france", "Francia", "europe", {"territory-europe-uk", "territory-europe-spain", "territory-europe-germany"}),
-        ("territory-europe-spain", "España", "europe", {"territory-europe-france", "territory-africa-sahara"}),
-        ("territory-europe-germany", "Alemania", "europe", {"territory-europe-france", "territory-europe-uk", "territory-europe-russia"}),
-        ("territory-europe-russia", "Rusia", "europe", {"territory-europe-germany", "territory-asia-middle-east", "territory-asia-siberia"}),
-        # África
-        ("territory-africa-sahara", "Sáhara", "africa", {"territory-europe-spain", "territory-africa-egypt", "territory-africa-congo"}),
-        ("territory-africa-egypt", "Egipto", "africa", {"territory-africa-sahara", "territory-africa-congo", "territory-asia-middle-east"}),
-        ("territory-africa-congo", "Congo", "africa", {"territory-africa-sahara", "territory-africa-egypt", "territory-africa-south-africa"}),
-        ("territory-africa-south-africa", "Sudáfrica", "africa", {"territory-africa-congo"}),
-        # Asia
-        ("territory-asia-middle-east", "Oriente Medio", "asia", {"territory-europe-russia", "territory-africa-egypt", "territory-asia-india"}),
-        ("territory-asia-india", "India", "asia", {"territory-asia-middle-east", "territory-asia-china"}),
-        ("territory-asia-china", "China", "asia", {"territory-asia-india", "territory-asia-siberia", "territory-asia-japan", "territory-australia-western"}),
-        ("territory-asia-siberia", "Siberia", "asia", {"territory-europe-russia", "territory-asia-china", "territory-asia-kamchatka"}),
-        ("territory-asia-kamchatka", "Kamchatka", "asia", {"territory-asia-siberia", "territory-asia-japan", "territory-north-america-alaska"}),
-        ("territory-asia-japan", "Japón", "asia", {"territory-asia-china", "territory-asia-kamchatka"}),
-        # Oceanía
-        ("territory-australia-western", "Australia Occidental", "oceania", {"territory-australia-eastern", "territory-asia-china"}),
-        ("territory-australia-eastern", "Australia Oriental", "oceania", {"territory-australia-western"}),
-    ]
+from .maps_data import MAPS
 
+
+@lru_cache(maxsize=None)
+def load_map(map_id: str) -> GameMap:
+    """Construye y valida el mapa `map_id` ("tactical-26" | "world-50" | "mega-100")."""
+    if map_id not in MAPS:
+        raise ValueError(f"mapa desconocido: {map_id}")
+    continents_raw, territories_raw = MAPS[map_id]
+    continents = {cid: Continent(cid, name, bonus) for cid, (name, bonus) in continents_raw.items()}
     territories = {
-        tid: Territory(tid, name, cid, frozenset(neighbors))
-        for tid, name, cid, neighbors in t_data
+        tid: Territory(tid, name, continent, frozenset(neighbors))
+        for tid, (name, continent, neighbors) in territories_raw.items()
     }
-
     game_map = GameMap(continents=continents, territories=territories)
     game_map.validate()
     return game_map
 
+
+def load_default_map() -> GameMap:
+    """Compatibilidad: el mapa del MVP original."""
+    return load_map("tactical-26")

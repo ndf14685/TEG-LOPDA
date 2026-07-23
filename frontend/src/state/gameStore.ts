@@ -47,6 +47,7 @@ interface GameState {
   territories: Record<string, TerritoryStateData>;
   cards: CountryCard[];
   secretObjective: SecretObjective | null;
+  mapAdjacency: Record<string, string[]>;
   selectedSourceTerritory: string | null;
   selectedTargetTerritory: string | null;
   chat: ChatEntry[];
@@ -64,7 +65,8 @@ interface GameState {
     youId: string,
     players: PublicPlayer[],
     turn: TurnState | null,
-    territories?: Record<string, TerritoryStateData>
+    territories?: Record<string, TerritoryStateData>,
+    mapAdjacency?: Record<string, string[]>
   ) => void;
   upsertPlayer: (player: PublicPlayer) => void;
   patchPlayer: (id: string, patch: Partial<PublicPlayer>) => void;
@@ -98,6 +100,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   territories: {},
   cards: [],
   secretObjective: null,
+  mapAdjacency: {},
   selectedSourceTerritory: null,
   selectedTargetTerritory: null,
   chat: [],
@@ -110,8 +113,12 @@ export const useGameStore = create<GameState>((set, get) => ({
   finished: null,
   lastError: null,
 
-  applySnapshot: (game, youId, players, turn, territories) =>
-    set({ game, youId, players, turn, territories: territories ?? get().territories }),
+  applySnapshot: (game, youId, players, turn, territories, mapAdjacency) =>
+    set({
+      game, youId, players, turn,
+      territories: territories ?? get().territories,
+      mapAdjacency: mapAdjacency ?? get().mapAdjacency,
+    }),
 
   upsertPlayer: (player) =>
     set((s) => {

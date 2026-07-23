@@ -31,7 +31,7 @@ export const TauntsManifest = z.object({
 });
 export type TauntsManifest = z.infer<typeof TauntsManifest>;
 
-export const GameMode = z.enum(['classic_50', 'mega_world_100']);
+export const GameMode = z.enum(['classic_26', 'classic_50', 'mega_world_100']);
 export type GameMode = z.infer<typeof GameMode>;
 
 /** brand/palette/palette.json: tema global + colores de jugador (WCAG AA sobre fondo oscuro). */

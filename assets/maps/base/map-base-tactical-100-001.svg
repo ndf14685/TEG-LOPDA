@@ -1,111 +1,342 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2560 1440" id="map-base-tactical-100-001">
   <defs>
-    <radialGradient id="ocean-100" cx="50%" cy="50%" r="75%">
-      <stop offset="0%" stop-color="#0f172a" />
-      <stop offset="100%" stop-color="#070a0f" />
-    </radialGradient>
-    <pattern id="grid-100" width="100" height="100" patternUnits="userSpaceOnUse">
-      <path d="M 100 0 L 0 0 0 100" fill="none" stroke="#1e293b" stroke-width="1" opacity="0.5" />
-    </pattern>
     <style>
-      .ocean-bg { fill: url(#ocean-100); }
-      .grid-layer { fill: url(#grid-100); }
-      .sea-route { stroke: #38bdf8; stroke-width: 2.5; stroke-dasharray: 6 6; fill: none; opacity: 0.5; pointer-events: none; }
-      .territory { fill: #1e293b; stroke: #475569; stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; cursor: pointer; transition: fill 0.2s, stroke 0.2s; }
-      .territory:hover { fill: #334155; stroke: #38bdf8; filter: drop-shadow(0px 0px 8px rgba(56, 189, 248, 0.6)); }
-      .territory.selected { stroke: #f59e0b; stroke-width: 4; }
-      .territory.attack-source { stroke: #22c55e; stroke-width: 4; }
-      .territory.attack-target { stroke: #ef4444; stroke-width: 4; }
-      .territory-label { font-family: ui-sans-serif, system-ui, sans-serif; font-weight: 700; font-size: 30px; fill: #f1f5f9; paint-order: stroke; stroke: rgba(2, 6, 23, 0.85); stroke-width: 6px; stroke-linejoin: round; pointer-events: none; text-anchor: middle; }
-      .continent-title { font-family: sans-serif; font-weight: 900; font-size: 44px; fill: #94a3b8; opacity: 0.35; pointer-events: none; text-anchor: middle; }
+      .territory {
+        fill: rgba(30, 35, 45, 0.85);
+        stroke: #0b1220;
+        stroke-width: 4;
+        stroke-linejoin: round;
+        cursor: pointer;
+        transition: fill 0.2s ease, stroke 0.2s ease, filter 0.2s ease;
+      }
+      .territory:hover { stroke: #38bdf8; filter: brightness(1.25); }
+      .territory.selected { stroke: #fbbf24; stroke-width: 8; filter: brightness(1.35); }
+      .territory.attack-source { stroke: #38bdf8; stroke-width: 8; }
+      .territory.attack-target { stroke: #ef4444; stroke-width: 8; stroke-dasharray: 14 8; }
+      .territory.attackable { stroke: #22d3ee; stroke-width: 6; stroke-dasharray: 6 6; }
+      .territory-label {
+        fill: #f1f5f9;
+        font-family: ui-sans-serif, system-ui, sans-serif;
+        font-weight: 700;
+        paint-order: stroke;
+        stroke: rgba(2, 6, 23, 0.85);
+        stroke-width: 6px;
+        stroke-linejoin: round;
+        pointer-events: none;
+        text-anchor: middle;
+      }
+      .continent-title {
+        fill: rgba(148, 163, 184, 0.5);
+        font-family: ui-sans-serif, system-ui, sans-serif;
+        font-size: 44px;
+        font-weight: 900;
+        letter-spacing: 4px;
+        pointer-events: none;
+        text-anchor: middle;
+        text-transform: uppercase;
+      }
+      .sea-route {
+        stroke: rgba(125, 211, 252, 0.35);
+        stroke-width: 3;
+        stroke-dasharray: 10 12;
+        fill: none;
+        pointer-events: none;
+      }
     </style>
+    <radialGradient id="ocean-grad" cx="50%" cy="42%" r="75%">
+      <stop offset="0%" stop-color="#0e2a47" />
+      <stop offset="60%" stop-color="#0a1e35" />
+      <stop offset="100%" stop-color="#060f1d" />
+    </radialGradient>
+    <pattern id="ocean-grid" width="120" height="120" patternUnits="userSpaceOnUse">
+      <path d="M 120 0 L 0 0 0 120" fill="none" stroke="rgba(96, 165, 250, 0.06)" stroke-width="1.5" />
+    </pattern>
   </defs>
 
-  <rect width="2560" height="1440" class="ocean-bg" />
-  <rect width="2560" height="1440" class="grid-layer" />
+  <rect x="0" y="0" width="2560" height="1440" fill="url(#ocean-grad)" />
+  <rect x="0" y="0" width="2560" height="1440" fill="url(#ocean-grid)" />
 
   <g id="sea-routes">
-    <path class="sea-route" d="M 680 300 C 820 220, 980 230, 1070 300" />
-    <path class="sea-route" d="M 1100 590 Q 1110 630, 1120 680" />
-    <path class="sea-route" d="M 2010 610 Q 2120 580, 2190 530" />
+    <line x1="322" y1="1108" x2="745" y2="338" class="sea-route" />
+    <line x1="322" y1="1108" x2="595" y2="338" class="sea-route" />
+    <line x1="448" y1="1108" x2="745" y2="338" class="sea-route" />
+    <line x1="448" y1="1108" x2="595" y2="338" class="sea-route" />
+    <line x1="322" y1="952" x2="1318" y2="1028" class="sea-route" />
+    <line x1="322" y1="952" x2="1452" y2="1028" class="sea-route" />
+    <line x1="448" y1="952" x2="1318" y2="1028" class="sea-route" />
+    <line x1="448" y1="952" x2="1452" y2="1028" class="sea-route" />
+    <line x1="572" y1="952" x2="1952" y2="970" class="sea-route" />
+    <line x1="572" y1="952" x2="1798" y2="970" class="sea-route" />
+    <line x1="698" y1="952" x2="1952" y2="970" class="sea-route" />
+    <line x1="698" y1="952" x2="1798" y2="970" class="sea-route" />
+    <line x1="145" y1="212" x2="1978" y2="538" class="sea-route" />
+    <line x1="145" y1="212" x2="2122" y2="538" class="sea-route" />
+    <line x1="295" y1="212" x2="1978" y2="538" class="sea-route" />
+    <line x1="295" y1="212" x2="2122" y2="538" class="sea-route" />
+    <line x1="295" y1="338" x2="1240" y2="308" class="sea-route" />
+    <line x1="295" y1="338" x2="1116" y2="308" class="sea-route" />
+    <line x1="445" y1="338" x2="1240" y2="308" class="sea-route" />
+    <line x1="445" y1="338" x2="1116" y2="308" class="sea-route" />
+    <line x1="992" y1="412" x2="2408" y2="692" class="sea-route" />
+    <line x1="992" y1="412" x2="2265" y2="692" class="sea-route" />
+    <line x1="1116" y1="412" x2="2408" y2="692" class="sea-route" />
+    <line x1="1116" y1="412" x2="2265" y2="692" class="sea-route" />
+    <line x1="1240" y1="412" x2="2122" y2="692" class="sea-route" />
+    <line x1="1240" y1="412" x2="2265" y2="692" class="sea-route" />
+    <line x1="1240" y1="412" x2="1978" y2="228" class="sea-route" />
+    <line x1="1240" y1="412" x2="2408" y2="692" class="sea-route" />
+    <line x1="1240" y1="412" x2="1978" y2="692" class="sea-route" />
+    <line x1="1240" y1="412" x2="2122" y2="228" class="sea-route" />
+    <line x1="1364" y1="412" x2="2122" y2="692" class="sea-route" />
+    <line x1="1364" y1="412" x2="2265" y2="692" class="sea-route" />
+    <line x1="1364" y1="412" x2="1978" y2="228" class="sea-route" />
+    <line x1="1364" y1="412" x2="2408" y2="692" class="sea-route" />
+    <line x1="1364" y1="412" x2="1978" y2="692" class="sea-route" />
+    <line x1="1364" y1="412" x2="2122" y2="228" class="sea-route" />
+    <line x1="1488" y1="412" x2="1318" y2="1028" class="sea-route" />
+    <line x1="1488" y1="412" x2="1452" y2="1028" class="sea-route" />
+    <line x1="992" y1="518" x2="1318" y2="1028" class="sea-route" />
+    <line x1="992" y1="518" x2="1452" y2="1028" class="sea-route" />
+    <line x1="1364" y1="308" x2="1048" y2="718" class="sea-route" />
+    <line x1="1364" y1="308" x2="1182" y2="718" class="sea-route" />
+    <line x1="1488" y1="308" x2="1048" y2="718" class="sea-route" />
+    <line x1="1488" y1="308" x2="1182" y2="718" class="sea-route" />
+    <line x1="1048" y1="718" x2="1692" y2="228" class="sea-route" />
+    <line x1="1048" y1="718" x2="1835" y2="228" class="sea-route" />
+    <line x1="1182" y1="718" x2="1692" y2="228" class="sea-route" />
+    <line x1="1182" y1="718" x2="1835" y2="228" class="sea-route" />
+    <line x1="2265" y1="538" x2="2108" y2="970" class="sea-route" />
+    <line x1="2265" y1="538" x2="2262" y2="970" class="sea-route" />
+    <line x1="2265" y1="538" x2="2108" y2="1170" class="sea-route" />
+    <line x1="2265" y1="538" x2="2262" y2="1170" class="sea-route" />
+    <line x1="2408" y1="538" x2="2108" y2="970" class="sea-route" />
+    <line x1="2408" y1="538" x2="2262" y2="970" class="sea-route" />
+    <line x1="2408" y1="538" x2="2262" y2="1170" class="sea-route" />
+    <line x1="2408" y1="538" x2="2108" y2="1170" class="sea-route" />
   </g>
 
   <g id="continent-south-america">
-    <text x="600" y="810" class="continent-title">AMÉRICA DEL SUR</text>
-    <path id="territory-south-america-colombia" class="territory" d="M 470 730 C 510 715, 560 720, 590 735 C 610 760, 580 800, 550 820 C 510 830, 470 800, 460 760 Z" />
-    <path id="territory-south-america-peru" class="territory" d="M 460 760 C 510 800, 550 820, 550 820 C 540 870, 520 920, 480 950 C 450 910, 440 840, 460 760 Z" />
-    <path id="territory-south-america-brazil" class="territory" d="M 590 735 C 660 740, 740 770, 770 830 C 780 900, 710 970, 640 980 C 580 960, 540 870, 550 820 Z" />
-    <path id="territory-south-america-chile" class="territory" d="M 480 950 C 520 920, 540 940, 540 940 C 530 1050, 510 1150, 480 1240 C 460 1220, 460 1080, 480 950 Z" />
-    <path id="territory-south-america-argentina" class="territory" d="M 540 940 C 640 980, 610 1020, 590 1100 C 570 1180, 540 1260, 480 1240 C 510 1150, 530 1050, 540 940 Z" />
+    <path id="territory-south-america-argentina-north" class="territory" d="M 386 798 Q 366 825 360 843 Q 346 854 322 856 Q 308 847 285 841 Q 285 815 271 798 Q 268 774 279 749 Q 304 742 322 738 Q 346 738 365 755 Q 375 777 386 798 Z" />
+    <path id="territory-south-america-argentina-south" class="territory" d="M 502 798 Q 495 812 492 836 Q 472 846 448 868 Q 419 854 403 844 Q 403 825 392 798 Q 401 785 404 754 Q 425 755 448 738 Q 466 741 480 747 Q 484 764 502 798 Z" />
+    <path id="territory-south-america-bolivia-north" class="territory" d="M 626 798 Q 611 812 610 843 Q 591 854 572 850 Q 554 834 533 835 Q 523 814 521 798 Q 528 772 535 757 Q 550 748 572 745 Q 592 748 612 759 Q 614 772 626 798 Z" />
+    <path id="territory-south-america-bolivia-south" class="territory" d="M 759 798 Q 741 819 732 847 Q 709 853 698 856 Q 686 842 664 847 Q 659 831 647 798 Q 644 773 657 757 Q 683 743 698 745 Q 719 755 730 751 Q 746 772 759 798 Z" />
+    <path id="territory-south-america-brazil-north" class="territory" d="M 379 952 Q 366 984 357 998 Q 338 999 322 1018 Q 298 1004 284 1000 Q 278 968 268 952 Q 268 927 283 910 Q 299 889 322 883 Q 348 902 359 911 Q 367 928 379 952 Z" />
+    <path id="territory-south-america-brazil-south" class="territory" d="M 505 952 Q 488 981 480 1000 Q 462 1011 448 1019 Q 437 1003 413 993 Q 400 974 391 952 Q 398 923 410 910 Q 432 899 448 886 Q 473 900 488 904 Q 495 931 505 952 Z" />
+    <path id="territory-south-america-chile-north" class="territory" d="M 635 952 Q 634 983 617 997 Q 593 1013 572 1022 Q 549 1001 531 996 Q 519 982 520 952 Q 526 928 528 913 Q 555 902 572 895 Q 596 897 607 908 Q 622 930 635 952 Z" />
+    <path id="territory-south-america-chile-south" class="territory" d="M 755 952 Q 750 968 735 995 Q 709 998 698 1008 Q 678 1001 665 994 Q 654 968 634 952 Q 642 928 660 915 Q 683 903 698 895 Q 723 901 736 908 Q 746 932 755 952 Z" />
+    <path id="territory-south-america-colombia-north" class="territory" d="M 377 1108 Q 375 1129 366 1149 Q 348 1152 322 1161 Q 299 1151 279 1156 Q 262 1128 259 1108 Q 270 1091 282 1060 Q 307 1044 322 1038 Q 342 1044 363 1068 Q 369 1095 377 1108 Z" />
+    <path id="territory-south-america-colombia-south" class="territory" d="M 501 1108 Q 492 1130 489 1152 Q 474 1154 448 1168 Q 424 1169 414 1152 Q 398 1139 397 1108 Q 403 1093 403 1063 Q 430 1048 448 1047 Q 468 1060 483 1058 Q 500 1084 501 1108 Z" />
+    <path id="territory-south-america-peru-north" class="territory" d="M 623 1108 Q 620 1119 615 1147 Q 592 1169 572 1177 Q 564 1173 538 1154 Q 533 1139 521 1108 Q 521 1087 529 1063 Q 556 1044 572 1039 Q 596 1055 608 1068 Q 609 1088 623 1108 Z" />
+    <path id="territory-south-america-peru-south" class="territory" d="M 755 1108 Q 745 1134 737 1153 Q 715 1154 698 1166 Q 684 1160 656 1144 Q 648 1132 643 1108 Q 654 1083 655 1063 Q 675 1053 698 1044 Q 717 1051 740 1061 Q 747 1092 755 1108 Z" />
+    <path id="territory-south-america-uruguay-north" class="territory" d="M 377 1262 Q 362 1285 364 1305 Q 339 1310 322 1319 Q 308 1303 289 1300 Q 273 1275 260 1262 Q 268 1245 285 1212 Q 305 1199 322 1194 Q 334 1200 359 1216 Q 366 1240 377 1262 Z" />
+    <path id="territory-south-america-uruguay-south" class="territory" d="M 502 1262 Q 492 1279 488 1305 Q 467 1319 448 1324 Q 433 1323 404 1307 Q 397 1288 400 1262 Q 410 1245 405 1224 Q 425 1216 448 1208 Q 465 1210 488 1218 Q 489 1249 502 1262 Z" />
+    <path id="territory-south-america-venezuela-north" class="territory" d="M 620 1262 Q 621 1276 612 1305 Q 593 1318 572 1320 Q 547 1316 530 1313 Q 534 1296 523 1262 Q 535 1243 533 1215 Q 557 1205 572 1196 Q 586 1212 616 1220 Q 618 1245 620 1262 Z" />
+    <path id="territory-south-america-venezuela-south" class="territory" d="M 757 1262 Q 745 1291 731 1310 Q 707 1318 698 1328 Q 680 1328 653 1311 Q 648 1289 649 1262 Q 662 1248 660 1223 Q 671 1209 698 1198 Q 718 1205 741 1218 Q 744 1249 757 1262 Z" />
   </g>
-
   <g id="continent-north-america">
-    <text x="450" y="220" class="continent-title">AMÉRICA DEL NORTE</text>
-    <path id="territory-north-america-alaska" class="territory" d="M 180 220 C 240 210, 310 230, 320 280 C 290 340, 220 350, 170 320 Z" />
-    <path id="territory-north-america-canada" class="territory" d="M 320 280 C 450 210, 620 220, 680 300 C 660 380, 550 400, 480 380 Z" />
-    <path id="territory-north-america-usa" class="territory" d="M 310 350 C 400 390, 480 380, 660 380 C 650 470, 580 520, 460 520 Z" />
-    <path id="territory-north-america-mexico" class="territory" d="M 360 510 C 460 520, 540 510, 520 580 C 480 640, 440 680, 470 730 Z" />
+    <path id="territory-north-america-alaska-north" class="territory" d="M 203 212 Q 191 237 193 249 Q 174 253 145 265 Q 112 261 98 244 Q 98 233 86 212 Q 98 193 94 182 Q 112 169 145 157 Q 168 166 187 179 Q 192 200 203 212 Z" />
+    <path id="territory-north-america-alaska-south" class="territory" d="M 369 212 Q 357 238 342 252 Q 309 255 295 257 Q 275 254 251 245 Q 237 223 231 212 Q 247 198 253 172 Q 277 171 295 162 Q 327 172 344 172 Q 354 193 369 212 Z" />
+    <path id="territory-north-america-california-north" class="territory" d="M 515 212 Q 503 229 490 245 Q 476 253 445 266 Q 422 255 397 253 Q 386 226 371 212 Q 379 191 402 180 Q 426 172 445 162 Q 466 161 490 173 Q 510 189 515 212 Z" />
+    <path id="territory-north-america-california-south" class="territory" d="M 651 212 Q 653 235 635 245 Q 619 243 595 257 Q 577 254 551 253 Q 542 237 520 212 Q 534 197 546 179 Q 570 175 595 165 Q 616 165 640 178 Q 640 192 651 212 Z" />
+    <path id="territory-north-america-canada-north" class="territory" d="M 817 212 Q 798 237 788 249 Q 765 259 745 267 Q 713 256 692 252 Q 696 229 681 212 Q 694 193 699 174 Q 722 166 745 157 Q 775 167 787 173 Q 807 193 817 212 Z" />
+    <path id="territory-north-america-canada-south" class="territory" d="M 203 338 Q 195 350 192 374 Q 164 385 145 388 Q 119 381 101 373 Q 81 361 71 338 Q 79 329 99 307 Q 117 292 145 285 Q 164 291 193 305 Q 208 316 203 338 Z" />
+    <path id="territory-north-america-greenland-north" class="territory" d="M 369 338 Q 352 352 343 372 Q 316 388 295 395 Q 269 387 250 368 Q 235 349 221 338 Q 237 312 249 298 Q 271 297 295 294 Q 331 305 347 304 Q 356 321 369 338 Z" />
+    <path id="territory-north-america-greenland-south" class="territory" d="M 502 338 Q 490 353 494 372 Q 471 376 445 383 Q 416 371 396 368 Q 396 348 378 338 Q 392 313 396 302 Q 412 293 445 291 Q 472 295 484 304 Q 498 327 502 338 Z" />
+    <path id="territory-north-america-mexico-north" class="territory" d="M 657 338 Q 653 357 637 375 Q 613 378 595 388 Q 571 376 555 371 Q 554 358 536 338 Q 545 327 554 303 Q 569 291 595 287 Q 618 295 645 297 Q 644 321 657 338 Z" />
+    <path id="territory-north-america-mexico-south" class="territory" d="M 814 338 Q 800 362 796 372 Q 774 382 745 396 Q 729 383 702 377 Q 687 359 681 338 Q 692 322 702 301 Q 728 290 745 287 Q 775 296 794 306 Q 807 329 814 338 Z" />
+    <path id="territory-north-america-new-york-north" class="territory" d="M 221 462 Q 206 473 188 499 Q 160 502 145 508 Q 117 495 92 492 Q 86 484 80 462 Q 81 440 101 426 Q 130 422 145 409 Q 165 421 198 425 Q 214 442 221 462 Z" />
+    <path id="territory-north-america-new-york-south" class="territory" d="M 367 462 Q 351 477 343 499 Q 310 510 295 510 Q 277 502 246 502 Q 242 475 233 462 Q 236 444 255 431 Q 280 415 295 410 Q 306 414 336 425 Q 359 451 367 462 Z" />
+    <path id="territory-north-america-newfoundland-north" class="territory" d="M 502 462 Q 504 479 486 501 Q 475 511 445 509 Q 423 497 403 497 Q 383 474 382 462 Q 389 437 402 424 Q 417 421 445 414 Q 474 419 499 432 Q 493 444 502 462 Z" />
+    <path id="territory-north-america-newfoundland-south" class="territory" d="M 653 462 Q 652 480 640 503 Q 614 500 595 506 Q 565 497 541 502 Q 547 487 539 462 Q 551 447 548 427 Q 567 417 595 405 Q 622 416 634 424 Q 651 440 653 462 Z" />
+    <path id="territory-north-america-oregon-north" class="territory" d="M 817 462 Q 799 476 787 499 Q 766 503 745 511 Q 731 502 698 497 Q 683 479 678 462 Q 681 438 700 423 Q 730 426 745 417 Q 774 421 792 423 Q 803 448 817 462 Z" />
+    <path id="territory-north-america-oregon-south" class="territory" d="M 209 588 Q 211 604 195 623 Q 171 632 145 639 Q 130 628 96 622 Q 93 602 73 588 Q 86 576 103 551 Q 118 538 145 538 Q 180 548 195 557 Q 209 565 209 588 Z" />
+    <path id="territory-north-america-yukon-north" class="territory" d="M 360 588 Q 343 600 343 618 Q 313 628 295 631 Q 269 624 243 628 Q 236 607 228 588 Q 247 575 247 549 Q 264 540 295 533 Q 312 533 340 548 Q 351 568 360 588 Z" />
+    <path id="territory-north-america-yukon-south" class="territory" d="M 504 588 Q 497 609 485 627 Q 473 636 445 633 Q 417 626 394 617 Q 396 607 386 588 Q 400 564 400 550 Q 420 541 445 545 Q 478 553 491 557 Q 491 570 504 588 Z" />
   </g>
-
   <g id="continent-europe">
-    <text x="1280" y="270" class="continent-title">EUROPA</text>
-    <path id="territory-europe-uk" class="territory" d="M 1060 290 C 1110 270, 1160 290, 1170 340 C 1150 410, 1090 420, 1050 380 Z" />
-    <path id="territory-europe-spain" class="territory" d="M 1040 500 C 1100 480, 1150 500, 1140 560 C 1110 610, 1040 610, 1020 560 Z" />
-    <path id="territory-europe-france" class="territory" d="M 1120 420 C 1180 400, 1230 420, 1220 490 C 1180 520, 1140 510, 1120 480 Z" />
-    <path id="territory-europe-germany" class="territory" d="M 1220 380 C 1290 360, 1340 380, 1350 450 C 1300 490, 1230 490, 1220 420 Z" />
-    <path id="territory-europe-russia" class="territory" d="M 1340 240 C 1480 220, 1620 250, 1640 350 C 1600 450, 1460 480, 1350 450 Z" />
+    <path id="territory-europe-france-north" class="territory" d="M 1050 202 Q 1045 221 1029 234 Q 1018 246 992 245 Q 968 242 950 237 Q 943 215 944 202 Q 956 191 955 170 Q 975 169 992 167 Q 1007 171 1036 171 Q 1049 188 1050 202 Z" />
+    <path id="territory-europe-france-south" class="territory" d="M 1178 202 Q 1160 217 1154 232 Q 1131 245 1116 246 Q 1093 232 1076 228 Q 1071 220 1054 202 Q 1070 186 1080 173 Q 1094 161 1116 156 Q 1141 162 1156 175 Q 1160 189 1178 202 Z" />
+    <path id="territory-europe-germany-north" class="territory" d="M 1301 202 Q 1285 223 1278 236 Q 1267 241 1240 242 Q 1213 242 1198 236 Q 1193 220 1179 202 Q 1185 189 1204 173 Q 1215 170 1240 160 Q 1252 163 1274 173 Q 1293 185 1301 202 Z" />
+    <path id="territory-europe-germany-south" class="territory" d="M 1410 202 Q 1403 223 1406 231 Q 1384 230 1364 238 Q 1336 234 1323 229 Q 1314 217 1312 202 Q 1315 183 1321 168 Q 1342 164 1364 162 Q 1392 165 1409 177 Q 1401 194 1410 202 Z" />
+    <path id="territory-europe-great-britain-north" class="territory" d="M 1536 202 Q 1528 217 1521 231 Q 1501 240 1488 245 Q 1469 237 1452 232 Q 1440 218 1427 202 Q 1441 187 1443 169 Q 1466 163 1488 167 Q 1509 175 1524 172 Q 1527 190 1536 202 Z" />
+    <path id="territory-europe-great-britain-south" class="territory" d="M 1045 308 Q 1039 324 1034 339 Q 1019 342 992 351 Q 979 348 957 339 Q 945 320 944 308 Q 951 288 959 277 Q 970 269 992 271 Q 1014 275 1028 282 Q 1040 296 1045 308 Z" />
+    <path id="territory-europe-iceland-north" class="territory" d="M 1174 308 Q 1166 328 1155 339 Q 1128 345 1116 349 Q 1091 347 1080 337 Q 1069 321 1066 308 Q 1067 288 1080 280 Q 1093 271 1116 268 Q 1129 278 1153 281 Q 1166 296 1174 308 Z" />
+    <path id="territory-europe-iceland-south" class="territory" d="M 1291 308 Q 1288 327 1276 335 Q 1252 344 1240 346 Q 1231 341 1206 336 Q 1201 328 1186 308 Q 1200 291 1207 278 Q 1217 266 1240 266 Q 1268 274 1281 278 Q 1289 295 1291 308 Z" />
+    <path id="territory-europe-italy-north" class="territory" d="M 1426 308 Q 1413 318 1406 336 Q 1393 342 1364 345 Q 1340 341 1320 336 Q 1312 323 1302 308 Q 1318 292 1320 278 Q 1348 266 1364 265 Q 1378 276 1399 281 Q 1415 291 1426 308 Z" />
+    <path id="territory-europe-italy-south" class="territory" d="M 1548 308 Q 1539 323 1528 335 Q 1501 346 1488 348 Q 1476 340 1454 341 Q 1450 322 1442 308 Q 1440 296 1447 276 Q 1460 270 1488 264 Q 1507 270 1531 273 Q 1545 292 1548 308 Z" />
+    <path id="territory-europe-poland-north" class="territory" d="M 1053 412 Q 1035 432 1031 443 Q 1011 454 992 457 Q 967 445 949 440 Q 941 422 943 412 Q 947 401 955 385 Q 974 378 992 377 Q 1002 378 1024 384 Q 1035 397 1053 412 Z" />
+    <path id="territory-europe-poland-south" class="territory" d="M 1165 412 Q 1155 425 1151 441 Q 1132 450 1116 457 Q 1092 455 1073 439 Q 1062 432 1067 412 Q 1071 398 1072 383 Q 1100 379 1116 373 Q 1132 375 1157 387 Q 1162 406 1165 412 Z" />
+    <path id="territory-europe-russia-north" class="territory" d="M 1302 412 Q 1288 427 1280 444 Q 1266 447 1240 451 Q 1216 442 1197 442 Q 1198 427 1187 412 Q 1200 401 1201 381 Q 1221 368 1240 367 Q 1251 371 1278 387 Q 1296 401 1302 412 Z" />
+    <path id="territory-europe-russia-south" class="territory" d="M 1427 412 Q 1409 433 1404 443 Q 1391 451 1364 449 Q 1335 443 1320 443 Q 1314 431 1311 412 Q 1313 398 1326 383 Q 1352 378 1364 373 Q 1380 372 1401 379 Q 1420 393 1427 412 Z" />
+    <path id="territory-europe-spain-north" class="territory" d="M 1539 412 Q 1540 435 1532 445 Q 1517 449 1488 454 Q 1467 448 1452 444 Q 1440 425 1425 412 Q 1429 403 1446 387 Q 1467 384 1488 370 Q 1503 373 1533 385 Q 1532 397 1539 412 Z" />
+    <path id="territory-europe-spain-south" class="territory" d="M 1047 518 Q 1043 532 1034 546 Q 1020 557 992 565 Q 974 550 958 547 Q 952 532 941 518 Q 944 504 956 489 Q 970 483 992 474 Q 1011 487 1034 490 Q 1034 505 1047 518 Z" />
+    <path id="territory-europe-sweden-north" class="territory" d="M 1169 518 Q 1163 526 1148 546 Q 1127 545 1116 555 Q 1090 555 1075 544 Q 1075 527 1060 518 Q 1068 500 1080 489 Q 1101 484 1116 482 Q 1134 490 1159 485 Q 1170 502 1169 518 Z" />
+    <path id="territory-europe-sweden-south" class="territory" d="M 1296 518 Q 1282 528 1275 546 Q 1252 546 1240 556 Q 1223 549 1200 548 Q 1193 530 1185 518 Q 1192 500 1197 484 Q 1210 479 1240 472 Q 1254 479 1280 489 Q 1293 500 1296 518 Z" />
   </g>
-
   <g id="continent-africa">
-    <text x="1280" y="770" class="continent-title">ÁFRICA</text>
-    <path id="territory-africa-sahara" class="territory" d="M 1020 650 C 1150 630, 1320 630, 1360 690 C 1300 790, 1120 800, 1040 760 Z" />
-    <path id="territory-africa-egypt" class="territory" d="M 1360 630 C 1460 610, 1530 630, 1540 710 C 1480 770, 1380 770, 1360 690 Z" />
-    <path id="territory-africa-congo" class="territory" d="M 1040 760 C 1200 770, 1380 770, 1420 860 C 1380 960, 1180 970, 1120 910 Z" />
-    <path id="territory-africa-south-africa" class="territory" d="M 1120 910 C 1280 920, 1380 920, 1360 1030 C 1320 1120, 1200 1140, 1150 1080 Z" />
+    <path id="territory-africa-egypt-north" class="territory" d="M 1103 718 Q 1100 733 1086 754 Q 1066 773 1048 776 Q 1025 774 1003 757 Q 1000 741 981 718 Q 993 690 1006 672 Q 1035 675 1048 664 Q 1071 668 1089 679 Q 1092 691 1103 718 Z" />
+    <path id="territory-africa-egypt-south" class="territory" d="M 1243 718 Q 1232 739 1222 754 Q 1205 761 1182 775 Q 1170 768 1140 766 Q 1129 740 1119 718 Q 1134 689 1145 676 Q 1157 663 1182 657 Q 1197 670 1229 669 Q 1227 690 1243 718 Z" />
+    <path id="territory-africa-ethiopia-north" class="territory" d="M 1379 718 Q 1371 734 1354 765 Q 1340 765 1318 777 Q 1296 771 1281 762 Q 1269 742 1266 718 Q 1270 690 1277 679 Q 1294 662 1318 654 Q 1344 664 1364 672 Q 1379 687 1379 718 Z" />
+    <path id="territory-africa-ethiopia-south" class="territory" d="M 1510 718 Q 1504 747 1494 759 Q 1481 778 1452 787 Q 1436 770 1412 767 Q 1394 740 1391 718 Q 1398 701 1413 673 Q 1430 665 1452 648 Q 1482 662 1497 669 Q 1496 687 1510 718 Z" />
+    <path id="territory-africa-kenya-north" class="territory" d="M 1116 872 Q 1101 897 1091 912 Q 1075 929 1048 932 Q 1025 921 1000 910 Q 992 893 992 872 Q 991 849 1005 822 Q 1029 815 1048 815 Q 1062 824 1089 822 Q 1098 853 1116 872 Z" />
+    <path id="territory-africa-kenya-south" class="territory" d="M 1238 872 Q 1236 902 1230 918 Q 1204 927 1182 937 Q 1167 938 1141 922 Q 1134 902 1127 872 Q 1137 852 1142 824 Q 1155 813 1182 813 Q 1210 810 1229 822 Q 1238 850 1238 872 Z" />
+    <path id="territory-africa-madagascar-north" class="territory" d="M 1378 872 Q 1372 889 1356 909 Q 1338 919 1318 931 Q 1298 929 1269 911 Q 1252 898 1250 872 Q 1266 854 1282 830 Q 1294 821 1318 801 Q 1350 808 1366 825 Q 1379 844 1378 872 Z" />
+    <path id="territory-africa-madagascar-south" class="territory" d="M 1513 872 Q 1502 886 1499 913 Q 1474 931 1452 939 Q 1430 936 1411 921 Q 1410 892 1400 872 Q 1412 851 1413 826 Q 1428 818 1452 819 Q 1470 825 1494 830 Q 1500 842 1513 872 Z" />
+    <path id="territory-africa-nigeria-north" class="territory" d="M 1113 1028 Q 1110 1055 1090 1074 Q 1072 1085 1048 1085 Q 1023 1076 1011 1077 Q 1004 1060 993 1028 Q 997 1011 1007 986 Q 1035 982 1048 961 Q 1077 973 1090 990 Q 1110 1001 1113 1028 Z" />
+    <path id="territory-africa-nigeria-south" class="territory" d="M 1236 1028 Q 1239 1041 1228 1065 Q 1214 1082 1182 1089 Q 1166 1078 1146 1071 Q 1141 1045 1126 1028 Q 1140 999 1146 988 Q 1166 981 1182 974 Q 1207 972 1224 988 Q 1227 1004 1236 1028 Z" />
+    <path id="territory-africa-sahara-north" class="territory" d="M 1375 1028 Q 1369 1053 1353 1072 Q 1328 1071 1318 1088 Q 1293 1079 1276 1070 Q 1260 1057 1257 1028 Q 1265 1007 1273 983 Q 1300 973 1318 966 Q 1332 986 1355 989 Q 1369 1006 1375 1028 Z" />
+    <path id="territory-africa-sahara-south" class="territory" d="M 1510 1028 Q 1504 1041 1497 1069 Q 1471 1081 1452 1097 Q 1439 1082 1417 1071 Q 1408 1042 1402 1028 Q 1413 999 1411 987 Q 1430 981 1452 959 Q 1477 962 1500 983 Q 1504 998 1510 1028 Z" />
+    <path id="territory-africa-south-africa-north" class="territory" d="M 1112 1182 Q 1105 1204 1088 1224 Q 1071 1237 1048 1240 Q 1029 1227 1002 1225 Q 996 1198 982 1182 Q 992 1153 999 1134 Q 1023 1134 1048 1118 Q 1080 1132 1094 1141 Q 1095 1166 1112 1182 Z" />
+    <path id="territory-africa-south-africa-south" class="territory" d="M 1249 1182 Q 1242 1201 1219 1233 Q 1208 1227 1182 1236 Q 1157 1228 1146 1219 Q 1134 1203 1119 1182 Q 1120 1157 1138 1133 Q 1158 1126 1182 1114 Q 1207 1133 1224 1134 Q 1236 1167 1249 1182 Z" />
+    <path id="territory-africa-zaire-north" class="territory" d="M 1381 1182 Q 1364 1204 1356 1226 Q 1338 1238 1318 1235 Q 1292 1223 1280 1230 Q 1271 1202 1260 1182 Q 1262 1156 1278 1137 Q 1303 1138 1318 1130 Q 1345 1138 1356 1134 Q 1361 1156 1381 1182 Z" />
+    <path id="territory-africa-zaire-south" class="territory" d="M 1518 1182 Q 1510 1199 1495 1230 Q 1480 1246 1452 1250 Q 1427 1244 1410 1232 Q 1404 1204 1390 1182 Q 1406 1161 1407 1134 Q 1428 1117 1452 1112 Q 1468 1123 1497 1137 Q 1502 1151 1518 1182 Z" />
   </g>
-
   <g id="continent-asia">
-    <text x="1950" y="270" class="continent-title">ASIA</text>
-    <path id="territory-asia-middle-east" class="territory" d="M 1540 610 C 1640 580, 1750 600, 1760 680 C 1720 760, 1600 780, 1520 730 Z" />
-    <path id="territory-asia-india" class="territory" d="M 1760 600 C 1850 580, 1920 610, 1930 690 C 1880 780, 1800 820, 1740 780 Z" />
-    <path id="territory-asia-china" class="territory" d="M 1880 460 C 2020 440, 2120 470, 2140 570 C 2080 670, 1940 700, 1860 660 Z" />
-    <path id="territory-asia-siberia" class="territory" d="M 1640 230 C 1850 200, 2100 210, 2150 310 C 2080 420, 1880 460, 1650 380 Z" />
-    <path id="territory-asia-kamchatka" class="territory" d="M 2150 210 C 2280 190, 2420 220, 2400 320 C 2320 390, 2220 380, 2150 310 Z" />
-    <path id="territory-asia-japan" class="territory" d="M 2210 450 C 2270 430, 2330 460, 2320 530 C 2290 600, 2220 600, 2190 540 Z" />
+    <path id="territory-asia-arabia-north" class="territory" d="M 1745 228 Q 1735 251 1729 278 Q 1718 289 1692 287 Q 1660 284 1645 273 Q 1638 250 1631 228 Q 1639 210 1654 177 Q 1678 183 1692 174 Q 1707 179 1735 184 Q 1737 213 1745 228 Z" />
+    <path id="territory-asia-arabia-south" class="territory" d="M 1892 228 Q 1884 244 1877 275 Q 1860 278 1835 295 Q 1807 290 1791 274 Q 1789 259 1778 228 Q 1777 200 1791 180 Q 1804 169 1835 168 Q 1858 177 1885 188 Q 1888 208 1892 228 Z" />
+    <path id="territory-asia-aral-north" class="territory" d="M 2043 228 Q 2031 244 2025 276 Q 1998 285 1978 286 Q 1951 283 1934 277 Q 1936 256 1919 228 Q 1935 215 1935 187 Q 1964 173 1978 161 Q 2006 173 2030 178 Q 2028 212 2043 228 Z" />
+    <path id="territory-asia-aral-south" class="territory" d="M 2193 228 Q 2184 251 2162 266 Q 2142 274 2122 296 Q 2094 283 2082 276 Q 2071 243 2067 228 Q 2077 211 2080 185 Q 2108 175 2122 156 Q 2139 169 2167 188 Q 2173 214 2193 228 Z" />
+    <path id="territory-asia-china-north" class="territory" d="M 2327 228 Q 2311 247 2310 267 Q 2281 272 2265 285 Q 2244 275 2219 266 Q 2208 256 2207 228 Q 2225 206 2227 190 Q 2240 179 2265 166 Q 2284 169 2303 182 Q 2307 209 2327 228 Z" />
+    <path id="territory-asia-china-south" class="territory" d="M 2462 228 Q 2449 258 2448 270 Q 2419 268 2408 283 Q 2384 279 2370 267 Q 2353 250 2335 228 Q 2354 199 2365 181 Q 2381 181 2408 171 Q 2424 183 2450 188 Q 2459 216 2462 228 Z" />
+    <path id="territory-asia-gobi-north" class="territory" d="M 1752 382 Q 1746 399 1731 430 Q 1718 428 1692 444 Q 1674 445 1646 432 Q 1639 411 1620 382 Q 1645 363 1653 332 Q 1680 330 1692 313 Q 1712 318 1740 332 Q 1747 363 1752 382 Z" />
+    <path id="territory-asia-gobi-south" class="territory" d="M 1901 382 Q 1882 405 1878 425 Q 1856 430 1835 441 Q 1814 433 1790 422 Q 1779 404 1768 382 Q 1776 358 1791 338 Q 1816 321 1835 321 Q 1852 335 1881 345 Q 1886 372 1901 382 Z" />
+    <path id="territory-asia-india-north" class="territory" d="M 2045 382 Q 2029 400 2028 429 Q 2008 431 1978 440 Q 1957 433 1934 423 Q 1932 395 1922 382 Q 1928 368 1932 344 Q 1947 336 1978 322 Q 2007 327 2030 342 Q 2044 358 2045 382 Z" />
+    <path id="territory-asia-india-south" class="territory" d="M 2192 382 Q 2179 399 2161 424 Q 2145 431 2122 453 Q 2097 438 2082 428 Q 2068 401 2053 382 Q 2059 359 2081 343 Q 2094 329 2122 318 Q 2142 321 2167 341 Q 2176 354 2192 382 Z" />
+    <path id="territory-asia-iran-north" class="territory" d="M 2331 382 Q 2324 402 2307 421 Q 2290 430 2265 441 Q 2237 432 2219 426 Q 2214 408 2203 382 Q 2213 354 2220 333 Q 2245 330 2265 315 Q 2289 322 2316 342 Q 2327 366 2331 382 Z" />
+    <path id="territory-asia-iran-south" class="territory" d="M 2467 382 Q 2458 410 2458 430 Q 2428 436 2408 453 Q 2397 435 2371 425 Q 2364 402 2345 382 Q 2364 359 2368 334 Q 2395 326 2408 322 Q 2432 335 2449 344 Q 2453 360 2467 382 Z" />
+    <path id="territory-asia-japan-north" class="territory" d="M 1746 538 Q 1736 565 1740 580 Q 1710 589 1692 597 Q 1663 588 1640 580 Q 1632 550 1638 538 Q 1641 508 1644 497 Q 1663 497 1692 480 Q 1710 489 1742 500 Q 1743 525 1746 538 Z" />
+    <path id="territory-asia-japan-south" class="territory" d="M 1896 538 Q 1880 555 1875 578 Q 1854 582 1835 595 Q 1807 599 1785 585 Q 1769 561 1763 538 Q 1784 513 1787 492 Q 1810 482 1835 474 Q 1853 480 1881 490 Q 1881 521 1896 538 Z" />
+    <path id="territory-asia-kamchatka-north" class="territory" d="M 2033 538 Q 2032 571 2021 587 Q 2009 600 1978 597 Q 1951 595 1931 584 Q 1917 564 1920 538 Q 1922 511 1929 493 Q 1961 484 1978 478 Q 1993 487 2017 487 Q 2018 511 2033 538 Z" />
+    <path id="territory-asia-kamchatka-south" class="territory" d="M 2179 538 Q 2179 552 2163 575 Q 2142 583 2122 592 Q 2100 581 2073 586 Q 2061 569 2063 538 Q 2076 509 2074 497 Q 2101 481 2122 475 Q 2137 479 2163 498 Q 2177 517 2179 538 Z" />
+    <path id="territory-asia-malaysia-north" class="territory" d="M 2332 538 Q 2329 552 2315 579 Q 2281 588 2265 590 Q 2240 586 2224 584 Q 2202 565 2197 538 Q 2200 516 2216 488 Q 2243 481 2265 470 Q 2289 477 2316 494 Q 2319 523 2332 538 Z" />
+    <path id="territory-asia-malaysia-south" class="territory" d="M 2479 538 Q 2467 563 2457 588 Q 2431 589 2408 604 Q 2385 602 2361 580 Q 2349 565 2349 538 Q 2358 506 2370 493 Q 2384 477 2408 466 Q 2435 488 2451 495 Q 2462 518 2479 538 Z" />
+    <path id="territory-asia-mongolia-north" class="territory" d="M 1747 692 Q 1736 715 1737 731 Q 1720 739 1692 756 Q 1679 739 1649 735 Q 1631 719 1625 692 Q 1631 673 1646 649 Q 1667 647 1692 628 Q 1710 634 1735 651 Q 1744 675 1747 692 Z" />
+    <path id="territory-asia-mongolia-south" class="territory" d="M 1901 692 Q 1888 712 1886 742 Q 1852 743 1835 750 Q 1808 742 1787 732 Q 1778 705 1776 692 Q 1785 666 1792 651 Q 1810 648 1835 634 Q 1854 643 1881 650 Q 1894 664 1901 692 Z" />
+    <path id="territory-asia-siberia-north" class="territory" d="M 2048 692 Q 2038 716 2021 733 Q 2008 750 1978 757 Q 1961 756 1932 741 Q 1932 715 1913 692 Q 1916 664 1937 649 Q 1958 636 1978 622 Q 2007 632 2025 644 Q 2044 665 2048 692 Z" />
+    <path id="territory-asia-siberia-south" class="territory" d="M 2194 692 Q 2179 708 2168 733 Q 2147 751 2122 753 Q 2092 745 2078 742 Q 2072 722 2059 692 Q 2064 680 2074 655 Q 2104 645 2122 625 Q 2139 644 2160 652 Q 2171 678 2194 692 Z" />
+    <path id="territory-asia-turkey-north" class="territory" d="M 2324 692 Q 2325 707 2316 734 Q 2298 745 2265 748 Q 2251 735 2226 735 Q 2222 716 2206 692 Q 2206 681 2223 654 Q 2236 644 2265 629 Q 2286 642 2309 655 Q 2312 669 2324 692 Z" />
+    <path id="territory-asia-turkey-south" class="territory" d="M 2472 692 Q 2455 716 2447 733 Q 2430 735 2408 747 Q 2388 736 2365 743 Q 2359 713 2354 692 Q 2363 662 2360 646 Q 2380 636 2408 638 Q 2430 634 2452 643 Q 2458 673 2472 692 Z" />
   </g>
-
   <g id="continent-oceania">
-    <text x="2150" y="980" class="continent-title">OCEANÍA</text>
-    <path id="territory-australia-western" class="territory" d="M 1980 1010 C 2080 990, 2140 1010, 2130 1100 C 2110 1200, 2020 1220, 1960 1180 Z" />
-    <path id="territory-australia-eastern" class="territory" d="M 2130 1010 C 2240 990, 2320 1020, 2310 1120 C 2280 1210, 2180 1220, 2130 1180 Z" />
+    <path id="territory-oceania-australia-north" class="territory" d="M 1867 970 Q 1860 986 1839 1022 Q 1816 1041 1798 1043 Q 1781 1037 1747 1019 Q 1728 1000 1719 970 Q 1737 947 1743 922 Q 1766 913 1798 891 Q 1823 889 1852 912 Q 1857 931 1867 970 Z" />
+    <path id="territory-oceania-australia-south" class="territory" d="M 2018 970 Q 2009 992 1996 1018 Q 1972 1033 1952 1046 Q 1934 1044 1905 1034 Q 1887 992 1884 970 Q 1885 941 1902 921 Q 1929 895 1952 891 Q 1986 903 2001 922 Q 2009 937 2018 970 Z" />
+    <path id="territory-oceania-borneo-north" class="territory" d="M 2185 970 Q 2177 993 2159 1028 Q 2131 1042 2108 1054 Q 2088 1045 2063 1020 Q 2054 994 2047 970 Q 2047 937 2067 908 Q 2086 885 2108 879 Q 2122 889 2156 916 Q 2179 943 2185 970 Z" />
+    <path id="territory-oceania-borneo-south" class="territory" d="M 2321 970 Q 2307 988 2311 1022 Q 2294 1039 2262 1054 Q 2240 1027 2208 1020 Q 2209 987 2202 970 Q 2206 946 2214 917 Q 2242 891 2262 882 Q 2274 897 2304 916 Q 2310 934 2321 970 Z" />
+    <path id="territory-oceania-java-north" class="territory" d="M 1870 1170 Q 1865 1183 1851 1219 Q 1831 1224 1798 1247 Q 1768 1238 1745 1223 Q 1747 1195 1736 1170 Q 1747 1152 1748 1113 Q 1776 1093 1798 1089 Q 1824 1089 1851 1105 Q 1870 1133 1870 1170 Z" />
+    <path id="territory-oceania-java-south" class="territory" d="M 2027 1170 Q 2001 1197 1994 1223 Q 1966 1232 1952 1237 Q 1937 1236 1901 1220 Q 1891 1204 1877 1170 Q 1897 1141 1902 1109 Q 1927 1103 1952 1080 Q 1984 1108 2004 1116 Q 2018 1132 2027 1170 Z" />
+    <path id="territory-oceania-sumatra-north" class="territory" d="M 2167 1170 Q 2150 1207 2148 1235 Q 2130 1236 2108 1254 Q 2094 1248 2061 1227 Q 2040 1204 2035 1170 Q 2037 1135 2058 1120 Q 2076 1111 2108 1093 Q 2135 1094 2161 1105 Q 2163 1130 2167 1170 Z" />
+    <path id="territory-oceania-sumatra-south" class="territory" d="M 2325 1170 Q 2320 1182 2310 1219 Q 2281 1236 2262 1250 Q 2239 1239 2210 1227 Q 2211 1191 2196 1170 Q 2209 1150 2210 1109 Q 2229 1102 2262 1099 Q 2288 1109 2318 1114 Q 2321 1143 2325 1170 Z" />
   </g>
 
   <g id="territory-labels">
-    <text x="525" y="750" class="territory-label">Colombia</text>
-    <text x="495" y="800" class="territory-label">Perú</text>
-    <text x="670" y="780" class="territory-label">Brasil</text>
-    <text x="500" y="990" class="territory-label">Chile</text>
-    <text x="560" y="1000" class="territory-label">Argentina</text>
-    <text x="245" y="255" class="territory-label">Alaska</text>
-    <text x="490" y="280" class="territory-label">Canadá</text>
-    <text x="480" y="420" class="territory-label">EE. UU.</text>
-    <text x="440" y="560" class="territory-label">México</text>
-    <text x="1100" y="325" class="territory-label">Reino Unido</text>
-    <text x="1080" y="530" class="territory-label">España</text>
-    <text x="1170" y="445" class="territory-label">Francia</text>
-    <text x="1280" y="410" class="territory-label">Alemania</text>
-    <text x="1480" y="280" class="territory-label">Rusia</text>
-    <text x="1180" y="680" class="territory-label">Sáhara</text>
-    <text x="1450" y="660" class="territory-label">Egipto</text>
-    <text x="1220" y="810" class="territory-label">Congo</text>
-    <text x="1230" y="960" class="territory-label">Sudáfrica</text>
-    <text x="1630" y="640" class="territory-label">Oriente Medio</text>
-    <text x="1830" y="640" class="territory-label">India</text>
-    <text x="1990" y="500" class="territory-label">China</text>
-    <text x="1880" y="260" class="territory-label">Siberia</text>
-    <text x="2275" y="250" class="territory-label">Kamchatka</text>
-    <text x="2255" y="485" class="territory-label">Japón</text>
-    <text x="2035" y="1040" class="territory-label">Aust. Occidental</text>
-    <text x="2210" y="1040" class="territory-label">Aust. Oriental</text>
+    <text x="322" y="770" class="territory-label" font-size="19">Argentina Norte</text>
+    <text x="448" y="770" class="territory-label" font-size="19">Argentina Sur</text>
+    <text x="572" y="770" class="territory-label" font-size="19">Bolivia Norte</text>
+    <text x="698" y="770" class="territory-label" font-size="19">Bolivia Sur</text>
+    <text x="322" y="925" class="territory-label" font-size="19">Brasil Norte</text>
+    <text x="448" y="925" class="territory-label" font-size="19">Brasil Sur</text>
+    <text x="572" y="925" class="territory-label" font-size="19">Chile Norte</text>
+    <text x="698" y="925" class="territory-label" font-size="19">Chile Sur</text>
+    <text x="322" y="1080" class="territory-label" font-size="19">Colombia Norte</text>
+    <text x="448" y="1080" class="territory-label" font-size="19">Colombia Sur</text>
+    <text x="572" y="1080" class="territory-label" font-size="19">Perú Norte</text>
+    <text x="698" y="1080" class="territory-label" font-size="19">Perú Sur</text>
+    <text x="322" y="1235" class="territory-label" font-size="19">Uruguay Norte</text>
+    <text x="448" y="1235" class="territory-label" font-size="19">Uruguay Sur</text>
+    <text x="572" y="1235" class="territory-label" font-size="19">Venezuela Norte</text>
+    <text x="698" y="1235" class="territory-label" font-size="19">Venezuela Sur</text>
+    <text x="145" y="190" class="territory-label" font-size="19">Alaska Norte</text>
+    <text x="295" y="190" class="territory-label" font-size="19">Alaska Sur</text>
+    <text x="445" y="190" class="territory-label" font-size="19">California Norte</text>
+    <text x="595" y="190" class="territory-label" font-size="19">California Sur</text>
+    <text x="745" y="190" class="territory-label" font-size="19">Canadá Norte</text>
+    <text x="145" y="315" class="territory-label" font-size="19">Canadá Sur</text>
+    <text x="295" y="315" class="territory-label" font-size="19">Groenlandia Norte</text>
+    <text x="445" y="315" class="territory-label" font-size="19">Groenlandia Sur</text>
+    <text x="595" y="315" class="territory-label" font-size="19">México Norte</text>
+    <text x="745" y="315" class="territory-label" font-size="19">México Sur</text>
+    <text x="145" y="440" class="territory-label" font-size="19">Nueva York Norte</text>
+    <text x="295" y="440" class="territory-label" font-size="19">Nueva York Sur</text>
+    <text x="445" y="440" class="territory-label" font-size="19">Terranova Norte</text>
+    <text x="595" y="440" class="territory-label" font-size="19">Terranova Sur</text>
+    <text x="745" y="440" class="territory-label" font-size="19">Oregón Norte</text>
+    <text x="145" y="565" class="territory-label" font-size="19">Oregón Sur</text>
+    <text x="295" y="565" class="territory-label" font-size="19">Yukón Norte</text>
+    <text x="445" y="565" class="territory-label" font-size="19">Yukón Sur</text>
+    <text x="992" y="184" class="territory-label" font-size="19">Francia Norte</text>
+    <text x="1116" y="184" class="territory-label" font-size="19">Francia Sur</text>
+    <text x="1240" y="184" class="territory-label" font-size="19">Alemania Norte</text>
+    <text x="1364" y="184" class="territory-label" font-size="19">Alemania Sur</text>
+    <text x="1488" y="184" class="territory-label" font-size="19">Gran Bretaña Norte</text>
+    <text x="992" y="289" class="territory-label" font-size="19">Gran Bretaña Sur</text>
+    <text x="1116" y="289" class="territory-label" font-size="19">Islandia Norte</text>
+    <text x="1240" y="289" class="territory-label" font-size="19">Islandia Sur</text>
+    <text x="1364" y="289" class="territory-label" font-size="19">Italia Norte</text>
+    <text x="1488" y="289" class="territory-label" font-size="19">Italia Sur</text>
+    <text x="992" y="394" class="territory-label" font-size="19">Polonia Norte</text>
+    <text x="1116" y="394" class="territory-label" font-size="19">Polonia Sur</text>
+    <text x="1240" y="394" class="territory-label" font-size="19">Rusia Norte</text>
+    <text x="1364" y="394" class="territory-label" font-size="19">Rusia Sur</text>
+    <text x="1488" y="394" class="territory-label" font-size="19">España Norte</text>
+    <text x="992" y="499" class="territory-label" font-size="19">España Sur</text>
+    <text x="1116" y="499" class="territory-label" font-size="19">Suecia Norte</text>
+    <text x="1240" y="499" class="territory-label" font-size="19">Suecia Sur</text>
+    <text x="1048" y="690" class="territory-label" font-size="19">Egipto Norte</text>
+    <text x="1182" y="690" class="territory-label" font-size="19">Egipto Sur</text>
+    <text x="1318" y="690" class="territory-label" font-size="19">Etiopía Norte</text>
+    <text x="1452" y="690" class="territory-label" font-size="19">Etiopía Sur</text>
+    <text x="1048" y="845" class="territory-label" font-size="19">Kenia Norte</text>
+    <text x="1182" y="845" class="territory-label" font-size="19">Kenia Sur</text>
+    <text x="1318" y="845" class="territory-label" font-size="19">Madagascar Norte</text>
+    <text x="1452" y="845" class="territory-label" font-size="19">Madagascar Sur</text>
+    <text x="1048" y="1000" class="territory-label" font-size="19">Nigeria Norte</text>
+    <text x="1182" y="1000" class="territory-label" font-size="19">Nigeria Sur</text>
+    <text x="1318" y="1000" class="territory-label" font-size="19">Sáhara Norte</text>
+    <text x="1452" y="1000" class="territory-label" font-size="19">Sáhara Sur</text>
+    <text x="1048" y="1155" class="territory-label" font-size="19">Sudáfrica Norte</text>
+    <text x="1182" y="1155" class="territory-label" font-size="19">Sudáfrica Sur</text>
+    <text x="1318" y="1155" class="territory-label" font-size="19">Zaire Norte</text>
+    <text x="1452" y="1155" class="territory-label" font-size="19">Zaire Sur</text>
+    <text x="1692" y="200" class="territory-label" font-size="19">Arabia Norte</text>
+    <text x="1835" y="200" class="territory-label" font-size="19">Arabia Sur</text>
+    <text x="1978" y="200" class="territory-label" font-size="19">Aral Norte</text>
+    <text x="2122" y="200" class="territory-label" font-size="19">Aral Sur</text>
+    <text x="2265" y="200" class="territory-label" font-size="19">China Norte</text>
+    <text x="2408" y="200" class="territory-label" font-size="19">China Sur</text>
+    <text x="1692" y="355" class="territory-label" font-size="19">Gobi Norte</text>
+    <text x="1835" y="355" class="territory-label" font-size="19">Gobi Sur</text>
+    <text x="1978" y="355" class="territory-label" font-size="19">India Norte</text>
+    <text x="2122" y="355" class="territory-label" font-size="19">India Sur</text>
+    <text x="2265" y="355" class="territory-label" font-size="19">Irán Norte</text>
+    <text x="2408" y="355" class="territory-label" font-size="19">Irán Sur</text>
+    <text x="1692" y="510" class="territory-label" font-size="19">Japón Norte</text>
+    <text x="1835" y="510" class="territory-label" font-size="19">Japón Sur</text>
+    <text x="1978" y="510" class="territory-label" font-size="19">Kamchatka Norte</text>
+    <text x="2122" y="510" class="territory-label" font-size="19">Kamchatka Sur</text>
+    <text x="2265" y="510" class="territory-label" font-size="19">Malasia Norte</text>
+    <text x="2408" y="510" class="territory-label" font-size="19">Malasia Sur</text>
+    <text x="1692" y="665" class="territory-label" font-size="19">Mongolia Norte</text>
+    <text x="1835" y="665" class="territory-label" font-size="19">Mongolia Sur</text>
+    <text x="1978" y="665" class="territory-label" font-size="19">Siberia Norte</text>
+    <text x="2122" y="665" class="territory-label" font-size="19">Siberia Sur</text>
+    <text x="2265" y="665" class="territory-label" font-size="19">Turquía Norte</text>
+    <text x="2408" y="665" class="territory-label" font-size="19">Turquía Sur</text>
+    <text x="1798" y="934" class="territory-label" font-size="19">Australia Norte</text>
+    <text x="1952" y="934" class="territory-label" font-size="19">Australia Sur</text>
+    <text x="2108" y="934" class="territory-label" font-size="19">Borneo Norte</text>
+    <text x="2262" y="934" class="territory-label" font-size="19">Borneo Sur</text>
+    <text x="1798" y="1134" class="territory-label" font-size="19">Java Norte</text>
+    <text x="1952" y="1134" class="territory-label" font-size="19">Java Sur</text>
+    <text x="2108" y="1134" class="territory-label" font-size="19">Sumatra Norte</text>
+    <text x="2262" y="1134" class="territory-label" font-size="19">Sumatra Sur</text>
+  </g>
+
+  <g id="continent-titles">
+    <text x="510" y="700" class="continent-title">América del Sur</text>
+    <text x="445" y="130" class="continent-title">América del Norte</text>
+    <text x="1240" y="130" class="continent-title">Europa</text>
+    <text x="1250" y="622" class="continent-title">África</text>
+    <text x="2050" y="130" class="continent-title">Asia</text>
+    <text x="2030" y="850" class="continent-title">Oceanía</text>
   </g>
 </svg>

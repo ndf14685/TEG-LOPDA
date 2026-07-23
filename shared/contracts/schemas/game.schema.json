@@ -3,35 +3,86 @@
   "$id": "teg/schemas/game",
   "title": "Game",
   "type": "object",
-  "required": ["id", "code", "name", "status"],
+  "required": [
+    "id",
+    "code",
+    "name",
+    "status"
+  ],
   "properties": {
-    "id": { "type": "string", "format": "uuid" },
-    "code": { "type": "string", "pattern": "^[a-z0-9]{6,12}$" },
-    "name": { "type": "string", "maxLength": 60 },
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "code": {
+      "type": "string",
+      "pattern": "^[a-z0-9]{6,12}$"
+    },
+    "name": {
+      "type": "string",
+      "maxLength": 60
+    },
     "status": {
-      "enum": ["draft", "lobby", "ready", "running", "paused", "finished", "cancelled"]
+      "enum": [
+        "draft",
+        "lobby",
+        "ready",
+        "running",
+        "paused",
+        "finished",
+        "cancelled"
+      ]
     },
     "game_mode": {
-      "enum": ["classic_50", "mega_world_100"],
+      "enum": [
+        "classic_26",
+        "classic_50",
+        "mega_world_100"
+      ],
       "description": "Ver assets/contracts/game-init-schema.json"
     },
     "map_assets": {
       "type": "object",
       "properties": {
-        "base_svg": { "type": "string" },
-        "static_background_webp": { "type": ["string", "null"] }
+        "base_svg": {
+          "type": "string"
+        },
+        "static_background_webp": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
       }
     },
     "config": {
       "type": "object",
       "properties": {
-        "commentator_enabled": { "type": "boolean" },
-        "humor_level": { "type": "integer", "minimum": 0, "maximum": 4 },
-        "nickname_editable_default": { "type": "boolean" },
-        "game_mode": { "enum": ["classic_50", "mega_world_100"] }
+        "commentator_enabled": {
+          "type": "boolean"
+        },
+        "humor_level": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4
+        },
+        "nickname_editable_default": {
+          "type": "boolean"
+        },
+        "game_mode": {
+          "enum": [
+            "classic_26",
+            "classic_50",
+            "mega_world_100"
+          ]
+        }
       }
     },
-    "created_at": { "type": "string" },
-    "updated_at": { "type": "string" }
+    "created_at": {
+      "type": "string"
+    },
+    "updated_at": {
+      "type": "string"
+    }
   }
 }

@@ -1,6 +1,10 @@
 {
   "schema_version": "1.0",
   "maps": {
+    "classic_26": {
+      "id": "map.tactical.26",
+      "path": "maps/base/map-base-tactical-26-001.svg"
+    },
     "classic_50": {
       "id": "map.tactical.50",
       "path": "maps/base/map-base-tactical-50-001.svg"

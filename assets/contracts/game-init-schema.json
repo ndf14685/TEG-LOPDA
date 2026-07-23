@@ -4,25 +4,34 @@
   "description": "Contrato entre Dirección de Arte, Backend y Frontend para definir el modo de juego y los assets del mapa a cargar.",
   "type": "object",
   "properties": {
-    "game_mode": { 
-      "type": "string", 
-      "enum": ["classic_50", "mega_world_100"],
-      "description": "classic_50 (2-10 jugs, mapa estándar) | mega_world_100 (10-20 jugs, mapa extendido)"
+    "game_mode": {
+      "type": "string",
+      "enum": [
+        "classic_26",
+        "classic_50",
+        "mega_world_100"
+      ],
+      "description": "classic_26 (2-8 jugs, mapa tactico) | classic_50 (2-10, mundo) | mega_world_100 (hasta 20, mega mundo)"
     },
     "map_assets": {
       "type": "object",
       "properties": {
-        "base_svg": { 
+        "base_svg": {
           "type": "string",
-          "description": "Ruta relativa a assets/maps/base/... .svg" 
+          "description": "Ruta relativa a assets/maps/base/... .svg"
         },
-        "static_background_webp": { 
+        "static_background_webp": {
           "type": "string",
           "description": "Ruta relativa a la imagen ilustrada de fondo (capa 1)."
         }
       },
-      "required": ["base_svg"]
+      "required": [
+        "base_svg"
+      ]
     }
   },
-  "required": ["game_mode", "map_assets"]
+  "required": [
+    "game_mode",
+    "map_assets"
+  ]
 }

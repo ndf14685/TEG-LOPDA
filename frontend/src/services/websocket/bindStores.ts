@@ -39,7 +39,7 @@ export function bindWsToStores(): void {
 
   wsClient.on('game.snapshot', (p) => {
     const snap = p as z.infer<typeof SnapshotPayload> & { territories?: Record<string, any> };
-    game().applySnapshot(snap.game, snap.you, snap.players, snap.turn, snap.territories);
+    game().applySnapshot(snap.game, snap.you, snap.players, snap.turn, snap.territories, snap.map_adjacency);
     if (snap.territories) game().setTerritories(snap.territories);
     // el historial reciente rehidrata chat y comentarios tras una reconexión
     for (const raw of snap.recent_events) {

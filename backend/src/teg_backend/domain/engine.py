@@ -90,7 +90,9 @@ class TurnState:
         )
 
 
-from teg_backend.domain.map import TerritoryState, load_default_map
+from teg_backend.domain.map import GameMap, TerritoryState, load_map
+
+DEFAULT_MAP_ID = "tactical-26"
 
 
 class GameEngine:
@@ -101,9 +103,19 @@ class GameEngine:
         self,
         turn: TurnState | None = None,
         territories: dict[str, TerritoryState] | None = None,
+        map_id: str = DEFAULT_MAP_ID,
     ) -> None:
         self.turn = turn or TurnState()
         self.territories = territories or {}
+        self.map_id = map_id
+
+    @property
+    def map(self) -> GameMap:
+        return load_map(self.map_id)
+
+    def are_neighbors(self, a: str, b: str) -> bool:
+        terr = self.map.territories.get(a)
+        return terr is not None and b in terr.neighbor_ids
 
     def calculate_reinforcements(self, player_id: str | None) -> int:
         if not player_id or not self.territories:
@@ -113,7 +125,7 @@ class GameEngine:
 
         # Bonus por continentes completos
         try:
-            gmap = load_default_map()
+            gmap = self.map
             for cid, continent in gmap.continents.items():
                 c_territories = [t for t in gmap.territories.values() if t.continent_id == cid]
                 if c_territories and all(
@@ -134,19 +146,15 @@ class GameEngine:
         self.turn = TurnState(order=order, index=0, turn_number=1, phase="reinforcement")
 
         # Reparto inicial de territorios entre los jugadores sentados
-        try:
-            game_map = load_default_map()
-            t_ids = list(game_map.territories.keys())
-            _rng.shuffle(t_ids)
-            self.territories = {}
-            for idx, tid in enumerate(t_ids):
-                owner = order[idx % len(order)]
-                armies = _rng.randint(2, 4)
-                self.territories[tid] = TerritoryState(
-                    territory_id=tid, owner_player_id=owner, armies=armies
-                )
-        except Exception:
-            self.territories = {}
+        t_ids = list(self.map.territories.keys())
+        _rng.shuffle(t_ids)
+        self.territories = {}
+        for idx, tid in enumerate(t_ids):
+            owner = order[idx % len(order)]
+            armies = _rng.randint(2, 4)
+            self.territories[tid] = TerritoryState(
+                territory_id=tid, owner_player_id=owner, armies=armies
+            )
 
         self.turn.reinforcements_available = self.calculate_reinforcements(self.turn.current_player_id)
         return self.turn
@@ -183,6 +191,8 @@ class GameEngine:
         tgt = self.territories[target_id]
         if src.owner_player_id != player_id or tgt.owner_player_id != player_id:
             raise EngineError("ambos territorios deben ser tuyos")
+        if not self.are_neighbors(source_id, target_id):
+            raise EngineError("solo se reagrupa entre territorios limítrofes")
         if count >= src.armies:
             raise EngineError("debes dejar al menos 1 ejército en el origen")
 
@@ -225,19 +235,26 @@ class GameEngine:
 
     def to_dict(self) -> dict[str, Any]:
         return {
+            "map_id": self.map_id,
             "turn": self.turn.to_dict(),
             "territories": {tid: t.to_dict() for tid, t in self.territories.items()},
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "GameEngine":
+    def from_dict(cls, data: dict[str, Any], default_map_id: str = DEFAULT_MAP_ID) -> "GameEngine":
         raw_terr = data.get("territories", {})
         territories = {
             tid: TerritoryState.from_dict(tdata) for tid, tdata in raw_terr.items()
         }
+        map_id = data.get("map_id")
+        if not map_id:
+            # partidas anteriores a los modos no guardaban map_id: si ya hay
+            # territorios repartidos son del mapa 26; si no, es partida nueva
+            map_id = DEFAULT_MAP_ID if territories else default_map_id
         return cls(
             turn=TurnState.from_dict(data.get("turn", {})),
             territories=territories,
+            map_id=map_id,
         )
 
 

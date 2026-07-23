@@ -11,6 +11,15 @@ export const GameRef = z.object({
   code: z.string(),
   name: z.string(),
   status: GameStatus,
+  // qué mapa juega esta partida (classic_26 | classic_50 | mega_world_100)
+  game_mode: z.string().optional(),
+  map_assets: z
+    .object({
+      base_svg: z.string(),
+      static_background_webp: z.string().nullable().optional(),
+    })
+    .nullable()
+    .optional(),
 });
 export type GameRef = z.infer<typeof GameRef>;
 
@@ -62,6 +71,9 @@ export const SnapshotPayload = z.object({
   // estado completo de territorios; sin este campo zod lo descartaría del
   // payload y el mapa quedaría sin datos (no interactivo)
   territories: z.record(z.string(), TerritoryState).optional(),
+  // adyacencia del mapa activo (territorio -> vecinos): permite resaltar
+  // objetivos atacables; zod descartaría el campo si no está declarado
+  map_adjacency: z.record(z.string(), z.array(z.string())).optional(),
   recent_events: z.array(z.unknown()),
   cards: z.array(CountryCard).optional(),
   secret_objective: SecretObjective.nullable().optional(),

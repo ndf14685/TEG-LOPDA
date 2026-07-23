@@ -3,9 +3,14 @@
 from conftest import ADMIN, create_game
 
 
-def test_default_mode_is_classic_50(client):
+def test_default_mode_is_classic_26(client):
     game = create_game(client)
-    assert game["config"]["game_mode"] == "classic_50"
+    assert game["config"]["game_mode"] == "classic_26"
+    assert game["config"]["map_assets"]["base_svg"] == "maps/base/map-base-tactical-26-001.svg"
+
+
+def test_classic_50_mode(client):
+    game = create_game(client, config={"game_mode": "classic_50"})
     assert game["config"]["map_assets"]["base_svg"] == "maps/base/map-base-tactical-50-001.svg"
 
 
@@ -30,7 +35,7 @@ def test_join_exposes_game_mode(client):
     inv = invite(client, game["id"], "Nessi")
     resp = client.get(f"/api/join/{game['code']}/{inv['token']}")
     body = resp.json()
-    assert body["game"]["game_mode"] == "classic_50"
+    assert body["game"]["game_mode"] == "classic_26"
     assert body["game"]["map_assets"]["base_svg"].startswith("maps/base/")
 
 

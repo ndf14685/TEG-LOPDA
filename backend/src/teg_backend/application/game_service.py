@@ -76,7 +76,12 @@ class GameService:
     async def _engine(self, game: dict) -> GameEngine:
         game_id = game["id"]
         if game_id not in self._engines:
-            self._engines[game_id] = GameEngine.from_dict(game.get("state") or {})
+            mode = GAME_MODES.get(
+                game.get("config", {}).get("game_mode", DEFAULT_MODE), GAME_MODES[DEFAULT_MODE]
+            )
+            self._engines[game_id] = GameEngine.from_dict(
+                game.get("state") or {}, default_map_id=mode["map_id"]
+            )
         return self._engines[game_id]
 
     async def _save_engine(self, game_id: str) -> None:
@@ -349,6 +354,11 @@ class GameService:
                     ErrorCode.INVALID_ACTION,
                     f"máximo {mode['max_players']} jugadores para este modo",
                 )
+            if len(seated) < mode["min_players"]:
+                raise ServiceError(
+                    ErrorCode.INVALID_ACTION,
+                    f"mínimo {mode['min_players']} jugadores para este modo",
+                )
             engine = await self._engine(game)
             try:
                 turn = engine.start([p["id"] for p in seated])
@@ -473,6 +483,10 @@ class GameService:
             ],
             "turn": engine.turn.to_dict() if game["status"] in (GameStatus.RUNNING, GameStatus.PAUSED) else None,
             "territories": {tid: t.to_dict() for tid, t in engine.territories.items()} if game["status"] in (GameStatus.RUNNING, GameStatus.PAUSED) else {},
+            # adyacencia del mapa activo: el frontend resalta vecinos atacables
+            "map_adjacency": {
+                tid: sorted(t.neighbor_ids) for tid, t in engine.map.territories.items()
+            },
             "recent_events": recent[-50:],
         }
 
@@ -612,6 +626,11 @@ class GameService:
                     raise ServiceError(ErrorCode.INVALID_ACTION, "no podés atacar tu propio territorio")
                 if not target_player_id:
                     target_player_id = tgt_terr.owner_player_id
+
+            if src_terr and tgt_terr and not engine.are_neighbors(
+                src_terr.territory_id, tgt_terr.territory_id
+            ):
+                raise ServiceError(ErrorCode.INVALID_ACTION, "esos territorios no son limítrofes")
 
             if not target_player_id:
                 raise ServiceError(ErrorCode.INVALID_ACTION, "objetivo inválido")

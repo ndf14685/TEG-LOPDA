@@ -6,11 +6,18 @@ import { colorValue } from '../../utils/playerColors';
 import { wsClient } from '../../services/websocket/wsClient';
 import { FloatingEmotes } from '../chat/FloatingEmotes';
 
-export function MapPanel({ mode = 'classic_50' }: { mode?: GameMode }) {
+const RUNTIME_STYLE = `
+  .territory.attackable { stroke: #22d3ee; stroke-width: 6; stroke-dasharray: 6 6; }
+`;
+
+export function MapPanel({ mode }: { mode?: GameMode }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [state, setState] = useState<'loading' | 'ready' | 'missing'>('loading');
 
+  const gameMode = useGameStore((s) => s.game?.game_mode);
+  const effectiveMode = (mode ?? gameMode ?? 'classic_26') as GameMode;
   const turn = useGameStore((s) => s.turn);
+  const mapAdjacency = useGameStore((s) => s.mapAdjacency);
   const territories = useGameStore((s) => s.territories);
   const players = useGameStore((s) => s.players);
   const youId = useGameStore((s) => s.youId);
@@ -23,7 +30,7 @@ export function MapPanel({ mode = 'classic_50' }: { mode?: GameMode }) {
   // Carga del SVG en el DOM
   useEffect(() => {
     let cancelled = false;
-    const url = assetRegistry.mapUrl(mode);
+    const url = assetRegistry.mapUrl(effectiveMode);
     if (!url) {
       setState('missing');
       return;
@@ -42,6 +49,10 @@ export function MapPanel({ mode = 'classic_50' }: { mode?: GameMode }) {
             svg.setAttribute('height', '100%');
             svg.setAttribute('role', 'group');
             svg.setAttribute('aria-label', 'Mapa del juego');
+            // estilos de runtime (p. ej. .attackable) para cualquier malla
+            const style = document.createElementNS('http://www.w3.org/2000/svg', 'style');
+            style.textContent = RUNTIME_STYLE;
+            svg.appendChild(style);
           }
         }
         setState('ready');
@@ -52,7 +63,7 @@ export function MapPanel({ mode = 'classic_50' }: { mode?: GameMode }) {
     return () => {
       cancelled = true;
     };
-  }, [mode]);
+  }, [effectiveMode]);
 
   // Actualización táctica: Colores, click listeners, medallas de ejércitos y línea de ataque
   useEffect(() => {
@@ -90,12 +101,20 @@ export function MapPanel({ mode = 'classic_50' }: { mode?: GameMode }) {
         path.style.fillOpacity = '0.85';
       }
 
-      // 2. Estado de Selección
-      path.classList.remove('selected', 'attack-source', 'attack-target');
+      // 2. Estado de Selección + vecinos atacables del origen elegido
+      path.classList.remove('selected', 'attack-source', 'attack-target', 'attackable');
       if (id === selectedSource) {
         path.classList.add('attack-source', 'selected');
       } else if (id === selectedTarget) {
         path.classList.add('attack-target');
+      } else if (
+        selectedSource &&
+        turn?.phase === 'attack' &&
+        (mapAdjacency[selectedSource] ?? []).includes(id) &&
+        tState &&
+        tState.owner_player_id !== youId
+      ) {
+        path.classList.add('attackable');
       }
 
       // 3. Event Listener para interacción según Fase del Turno
@@ -198,7 +217,7 @@ export function MapPanel({ mode = 'classic_50' }: { mode?: GameMode }) {
       line.setAttribute('pointer-events', 'none');
       overlayGroup.appendChild(line);
     }
-  }, [state, territories, players, youId, playerById, selectedSource, selectedTarget, setSelectedSource, setSelectedTarget]);
+  }, [state, territories, players, youId, playerById, selectedSource, selectedTarget, setSelectedSource, setSelectedTarget, turn, mapAdjacency]);
 
   return (
     <div
