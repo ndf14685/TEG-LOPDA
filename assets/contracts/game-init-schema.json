@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TEG-LOPDA Game Initialization Contract",
+  "description": "Contrato entre Dirección de Arte, Backend y Frontend para definir el modo de juego y los assets del mapa a cargar.",
+  "type": "object",
+  "properties": {
+    "game_mode": { 
+      "type": "string", 
+      "enum": ["classic_50", "mega_world_100"],
+      "description": "classic_50 (2-10 jugs, mapa estándar) | mega_world_100 (10-20 jugs, mapa extendido)"
+    },
+    "map_assets": {
+      "type": "object",
+      "properties": {
+        "base_svg": { 
+          "type": "string",
+          "description": "Ruta relativa a assets/maps/base/... .svg" 
+        },
+        "static_background_webp": { 
+          "type": "string",
+          "description": "Ruta relativa a la imagen ilustrada de fondo (capa 1)."
+        }
+      },
+      "required": ["base_svg"]
+    }
+  },
+  "required": ["game_mode", "map_assets"]
+}

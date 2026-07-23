@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 60" width="240" height="60" id="button-action-attack-001">
+  <defs>
+    <linearGradient id="grad-danger" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FF4D4D"/>
+      <stop offset="100%" stop-color="#DA3633"/>
+    </linearGradient>
+  </defs>
+  <rect width="236" height="56" x="2" y="2" rx="8" fill="url(#grad-danger)" stroke="#F0F6FC" stroke-width="2"/>
+  <text x="120" y="38" font-family="sans-serif" font-weight="bold" font-size="24" fill="#FFFFFF" text-anchor="middle" letter-spacing="2">¡ATACAR!</text>
+</svg>

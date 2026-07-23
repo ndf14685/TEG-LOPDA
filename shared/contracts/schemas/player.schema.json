@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "teg/schemas/player",
+  "title": "PlayerPublic",
+  "description": "Vista pública de jugador. El token jamás aparece en esta vista.",
+  "type": "object",
+  "required": ["id", "nickname", "role"],
+  "properties": {
+    "id": { "type": "string", "format": "uuid" },
+    "nickname": { "type": "string", "maxLength": 24 },
+    "role": { "enum": ["admin", "player", "spectator", "ai_commentator", "ai_player"] },
+    "color": { "type": ["string", "null"] },
+    "avatar_asset_id": { "type": ["string", "null"] },
+    "is_ready": { "type": "boolean" },
+    "eliminated": { "type": "boolean" },
+    "joined": { "type": "boolean" },
+    "presence": { "enum": ["online", "reconnecting", "offline"] }
+  }
+}

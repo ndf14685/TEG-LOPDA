@@ -95,5 +95,22 @@ export const ClientMessage = z.discriminatedUnion('type', [
     payload: z.object({ target_player_id: z.string(), attacker_dice: z.number().int().min(1).max(3).optional() }),
   }),
   z.object({ type: z.literal('turn.end'), payload: z.object({}).optional() }),
+  z.object({
+    type: z.literal('turn.place_reinforcement'),
+    payload: z.object({ territory_id: z.string(), count: z.number().int().min(1).default(1) }),
+  }),
+  z.object({
+    type: z.literal('turn.fortify'),
+    payload: z.object({
+      source_territory_id: z.string(),
+      target_territory_id: z.string(),
+      count: z.number().int().min(1),
+    }),
+  }),
+  z.object({ type: z.literal('turn.next_phase'), payload: z.object({}).optional() }),
+  z.object({
+    type: z.literal('cards.trade'),
+    payload: z.object({ card_ids: z.array(z.string()).length(3) }),
+  }),
 ]);
 export type ClientMessage = z.infer<typeof ClientMessage>;

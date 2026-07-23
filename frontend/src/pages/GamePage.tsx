@@ -6,6 +6,7 @@ import { useSessionStore } from '../state/sessionStore';
 import { useGameStore } from '../state/gameStore';
 import { useConnectionStore } from '../state/connectionStore';
 import { MapPanel } from '../components/map/MapPanel';
+import { TurnPhaseBar } from '../components/game/TurnPhaseBar';
 import { AICommentatorPanel } from '../components/ai-commentator/AICommentatorPanel';
 import { ChatPanel } from '../components/chat/ChatPanel';
 import { SoundboardBar } from '../components/audio/SoundboardBar';
@@ -13,6 +14,9 @@ import { ConnectionBanner } from '../components/ConnectionBanner';
 import { PlayerAvatar } from '../components/players/PlayerAvatar';
 import { colorValue } from '../utils/playerColors';
 import { audioService } from '../services/audio/AudioService';
+import { CombatOverlay } from '../components/dice/CombatOverlay';
+import { Dice3D } from '../components/dice/Dice3D';
+import { PostGameModal } from '../components/game/PostGameModal';
 
 export function GamePage() {
   const { code = '' } = useParams();
@@ -29,7 +33,16 @@ export function GamePage() {
   const playerById = useGameStore((s) => s.playerById);
   const currentPlayerId = useGameStore((s) => s.currentPlayerId);
   const syncState = useConnectionStore((s) => s.syncState);
+  const selectedSource = useGameStore((s) => s.selectedSourceTerritory);
+  const selectedTarget = useGameStore((s) => s.selectedTargetTerritory);
+  const territories = useGameStore((s) => s.territories);
   const [attackTarget, setAttackTarget] = useState('');
+
+  useEffect(() => {
+    if (selectedTarget && territories[selectedTarget]?.owner_player_id) {
+      setAttackTarget(territories[selectedTarget].owner_player_id!);
+    }
+  }, [selectedTarget, territories]);
 
   useEffect(() => {
     if ((!session || session.code !== code) && !restore(code)) navigate('/');
@@ -78,19 +91,22 @@ export function GamePage() {
           ))}
         </aside>
 
-        {/* centro: mapa */}
-        <section className="relative min-h-0 rounded-xl border border-war-700 bg-war-900">
-          <MapPanel />
-          {actionsBlocked && game?.status === 'paused' && (
-            <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-war-950/70">
-              <p className="rounded-lg bg-war-800 px-4 py-2 text-sm">⏸️ Partida pausada por el admin</p>
-            </div>
-          )}
-          {syncState !== 'synced' && (
-            <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-war-950/70">
-              <p className="rounded-lg bg-war-800 px-4 py-2 text-sm">⏳ Sincronizando — acciones bloqueadas</p>
-            </div>
-          )}
+        {/* centro: mapa y barra de fases */}
+        <section className="relative flex min-h-0 flex-col gap-2">
+          <TurnPhaseBar />
+          <div className="relative min-h-0 flex-1 rounded-xl border border-war-700 bg-war-900 overflow-hidden">
+            <MapPanel />
+            {actionsBlocked && game?.status === 'paused' && (
+              <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-war-950/70">
+                <p className="rounded-lg bg-war-800 px-4 py-2 text-sm">⏸️ Partida pausada por el admin</p>
+              </div>
+            )}
+            {syncState !== 'synced' && (
+              <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-war-950/70">
+                <p className="rounded-lg bg-war-800 px-4 py-2 text-sm">⏳ Sincronizando — acciones bloqueadas</p>
+              </div>
+            )}
+          </div>
         </section>
 
         {/* derecha: turno, acciones, resultados, IA */}
@@ -119,6 +135,18 @@ export function GamePage() {
                 >
                   🎲 Tirar dados
                 </button>
+
+                {/* Resumen táctico del ataque desde el mapa */}
+                {selectedSource && selectedTarget && (
+                  <div className="rounded-md border border-red-900/50 bg-red-950/40 p-2 text-xs">
+                    <p className="font-semibold text-red-300">⚔️ Ataque Táctico Map:</p>
+                    <p className="text-stone-300 truncate">
+                      {selectedSource.replace('territory-', '').replaceAll('-', ' ')} →{' '}
+                      <span className="font-bold text-gold-400">{selectedTarget.replace('territory-', '').replaceAll('-', ' ')}</span>
+                    </p>
+                  </div>
+                )}
+
                 <div className="flex gap-2">
                   <select
                     value={attackTarget}
@@ -155,26 +183,43 @@ export function GamePage() {
 
           {lastDice && (
             <div className="rounded-lg border border-war-700 bg-war-900 p-3" data-testid="dice-result">
-              <h2 className="mb-1 text-xs font-semibold tracking-wider text-stone-400">DADOS</h2>
-              <p className="text-sm">
-                <span style={{ color: colorValue(diceRoller?.color) }}>{diceRoller?.nickname ?? '???'}</span>{' '}
-                sacó <strong className="text-lg tracking-widest text-gold-400">{lastDice.dice.join(' · ')}</strong>
+              <h2 className="mb-2 text-xs font-semibold tracking-wider text-stone-400">DADOS DE TIRADA</h2>
+              <p className="mb-2 text-xs">
+                <span style={{ color: colorValue(diceRoller?.color) }}>{diceRoller?.nickname ?? '???'}</span> sacó:
               </p>
+              <div className="flex gap-2 justify-center">
+                {lastDice.dice.map((d, i) => (
+                  <Dice3D key={i} value={d} variant="attacker" size="sm" />
+                ))}
+              </div>
             </div>
           )}
 
           {lastAttack && (
             <div className="rounded-lg border border-war-700 bg-war-900 p-3" data-testid="attack-result">
-              <h2 className="mb-1 text-xs font-semibold tracking-wider text-stone-400">ÚLTIMA BATALLA</h2>
-              <p className="text-sm">
-                <span style={{ color: colorValue(playerById(lastAttack.attackerId)?.color) }}>{playerById(lastAttack.attackerId)?.nickname ?? '???'}</span>
-                {' '}[{lastAttack.attackerDice.join(',')}] vs{' '}
-                <span style={{ color: colorValue(playerById(lastAttack.defenderId)?.color) }}>{playerById(lastAttack.defenderId)?.nickname ?? '???'}</span>
-                {' '}[{lastAttack.defenderDice.join(',')}]
-              </p>
-              <p className="text-xs text-stone-400">
-                Bajas: atacante −{lastAttack.attackerLosses} · defensor −{lastAttack.defenderLosses}
-              </p>
+              <h2 className="mb-2 text-xs font-semibold tracking-wider text-stone-400">ÚLTIMA BATALLA</h2>
+              <div className="flex items-center justify-between text-xs mb-2">
+                <span style={{ color: colorValue(playerById(lastAttack.attackerId)?.color) }}>
+                  {playerById(lastAttack.attackerId)?.nickname ?? '???'} (−{lastAttack.attackerLosses})
+                </span>
+                <span className="text-red-400 font-bold">VS</span>
+                <span style={{ color: colorValue(playerById(lastAttack.defenderId)?.color) }}>
+                  {playerById(lastAttack.defenderId)?.nickname ?? '???'} (−{lastAttack.defenderLosses})
+                </span>
+              </div>
+              <div className="flex justify-around items-center pt-1">
+                <div className="flex gap-1">
+                  {lastAttack.attackerDice.map((d, i) => (
+                    <Dice3D key={i} value={d} variant="attacker" size="sm" />
+                  ))}
+                </div>
+                <span className="text-stone-500 font-bold">:</span>
+                <div className="flex gap-1">
+                  {lastAttack.defenderDice.map((d, i) => (
+                    <Dice3D key={i} value={d} variant="defender" size="sm" />
+                  ))}
+                </div>
+              </div>
             </div>
           )}
 
@@ -182,15 +227,11 @@ export function GamePage() {
         </aside>
       </div>
 
-      {finished && (
-        <div className="fixed inset-0 z-40 flex flex-col items-center justify-center gap-4 bg-war-950/95">
-          <span className="text-7xl">🏆</span>
-          <h2 className="font-display text-4xl font-bold text-gold-400">
-            {finished.winnerPlayerId ? `Ganó ${playerById(finished.winnerPlayerId)?.nickname ?? '???'}` : 'Se terminó la guerra'}
-          </h2>
-          <p className="text-stone-400">{finished.turnsPlayed} turnos de puro bardo.</p>
-        </div>
-      )}
+      {/* Overlay modal de batalla táctica 3D */}
+      <CombatOverlay />
+
+      {/* Modal Infografía de Trofeos Post-Partida */}
+      <PostGameModal />
 
       <footer className="grid gap-3 border-t border-war-700 bg-war-900/60 p-3 lg:grid-cols-[1fr_380px]">
         <div>

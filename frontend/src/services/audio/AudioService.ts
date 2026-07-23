@@ -109,6 +109,27 @@ class AudioService {
       setTimeout(resolve, freqs.length * noteSeconds * 1000 + 50);
     });
   }
+
+  /** Locución por síntesis de voz (TTS) para el relator IA. */
+  speakText(text: string): void {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    if (this.isMuted('ai')) return;
+    try {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      const voices = window.speechSynthesis.getVoices();
+      const esVoice = voices.find(
+        (v) => v.lang.includes('es-AR') || v.lang.includes('es-MX') || v.lang.startsWith('es')
+      );
+      if (esVoice) utterance.voice = esVoice;
+      utterance.rate = 1.1;
+      utterance.pitch = 1.05;
+      utterance.volume = this.gainFor('ai');
+      window.speechSynthesis.speak(utterance);
+    } catch {
+      // fallback silencioso
+    }
+  }
 }
 
 export const audioService = new AudioService();

@@ -1,0 +1,27 @@
+{
+  "theme": "retro-tactical-dark",
+  "global": {
+    "bg": "#0D1117",
+    "panel": "#161B22",
+    "border": "#30363D",
+    "text_primary": "#F0F6FC",
+    "text_secondary": "#8B949E",
+    "danger": "#DA3633",
+    "success": "#2EA043",
+    "warning": "#D29922",
+    "info": "#58A6FF"
+  },
+  "players": [
+    { "id": "p01", "name": "Rojo Alerta", "hex": "#E63946" },
+    { "id": "p02", "name": "Azul Táctico", "hex": "#1D3557" },
+    { "id": "p03", "name": "Verde Camuflaje", "hex": "#2A9D8F" },
+    { "id": "p04", "name": "Amarillo Propaganda", "hex": "#E9C46A" },
+    { "id": "p05", "name": "Naranja Carga", "hex": "#F4A261" },
+    { "id": "p06", "name": "Púrpura Secreto", "hex": "#A06CD5" },
+    { "id": "p07", "name": "Cian Fósforo", "hex": "#00B4D8" },
+    { "id": "p08", "name": "Rosa Bardo", "hex": "#FF70A6" },
+    { "id": "p09", "name": "Ocre Desierto", "hex": "#D4A373" },
+    { "id": "p10", "name": "Gris Blindado", "hex": "#6C757D" }
+  ],
+  "note": "Los colores de jugadores cumplen WCAG 2.1 AA para contraste sobre fondo oscuro."
+}

@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2560 1440" id="map-base-tactical-100-001">
+  <defs>
+    <style>
+      .territory {
+        fill: rgba(22, 27, 34, 0.7);
+        stroke: #30363d;
+        stroke-width: 1.5;
+        stroke-linejoin: round;
+        cursor: pointer;
+        transition: fill 0.15s ease;
+      }
+      .territory:hover {
+        stroke: #00b4d8; /* Cian Fósforo al hover */
+      }
+    </style>
+  </defs>
+  <!-- Ejemplo de subdivisiones -->
+  <g id="continent-south-america-extended">
+    <path id="territory-south-america-patagonia" class="territory" d="M 530 1200 L 580 1190 L 560 1280 L 510 1270 Z" />
+    <path id="territory-south-america-argentina-norte" class="territory" d="M 540 1100 L 610 1080 L 600 1190 L 530 1200 Z" />
+  </g>
+</svg>

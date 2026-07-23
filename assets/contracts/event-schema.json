@@ -1,0 +1,27 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TEG-LOPDA Gameplay Event Contract",
+  "description": "Definición de eventos WebSocket que el Backend emite y el Frontend debe representar visualmente.",
+  "type": "object",
+  "properties": {
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "TERRITORY_CONQUERED",
+        "ATTACK_FAILED",
+        "ALLIANCE_BROKEN",
+        "PLAYER_ELIMINATED",
+        "DICE_ROLL_RESULT"
+      ]
+    },
+    "visual_data": {
+      "type": "object",
+      "properties": {
+        "territory_id": { "type": "string", "description": "ID estricto del SVG, ej: territory-europe-spain" },
+        "player_id": { "type": "string", "description": "p01, p02, etc." },
+        "taunt_id": { "type": "string", "description": "ID opcional definido en taunts-manifest.json" }
+      }
+    }
+  },
+  "required": ["event_type"]
+}

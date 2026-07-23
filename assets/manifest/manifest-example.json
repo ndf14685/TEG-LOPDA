@@ -1,0 +1,27 @@
+{
+  "schema_version": "1.0.0",
+  "assets": [
+    {
+      "id": "audio/taunts/player-nessi/to-player-daro/territory-conquered-001.ogg",
+      "kind": "taunt-audio",
+      "mime_type": "audio/ogg",
+      "max_duration_seconds": 10,
+      "max_bytes": 1048576,
+      "owner_player_id": null,
+      "target_player_id": null,
+      "event_type": "territory.conquered"
+    },
+    {
+      "id": "avatar/player-daro-001.webp",
+      "kind": "avatar",
+      "mime_type": "image/webp",
+      "max_bytes": 262144
+    },
+    {
+      "id": "background/lobby-main.webp",
+      "kind": "background",
+      "mime_type": "image/webp",
+      "max_bytes": 1048576
+    }
+  ]
+}

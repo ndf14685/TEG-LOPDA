@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TEG LOPDA — lobby de prueba</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 1rem; background: #12141a; color: #e6e6e6; }
+  h1 { font-size: 1.1rem; }
+  fieldset { border: 1px solid #333; margin-bottom: 1rem; }
+  input, button, select { padding: .4rem; margin: .15rem; background: #1e222b; color: #eee; border: 1px solid #444; border-radius: 4px; }
+  button { cursor: pointer; }
+  #layout { display: flex; gap: 1rem; flex-wrap: wrap; }
+  .panel { flex: 1; min-width: 280px; }
+  ul { padding-left: 1.2rem; }
+  #log { height: 320px; overflow-y: auto; background: #0b0d11; border: 1px solid #333; padding: .5rem; font-size: .82rem; font-family: monospace; }
+  .ev-chat { color: #8fd3ff; } .ev-ai { color: #ffd479; } .ev-dice { color: #a6e3a1; }
+  .ev-err { color: #ff7b72; } .ev-sys { color: #999; }
+  .online { color: #a6e3a1; } .reconnecting { color: #ffd479; } .offline { color: #ff7b72; }
+</style>
+</head>
+<body>
+<h1>TEG LOPDA — lobby de prueba (solo desarrollo)</h1>
+
+<fieldset id="join-box">
+  <legend>1. Entrar con tu link</legend>
+  <input id="join-url" size="60" placeholder="Pegá tu link: https://.../join/CODIGO/TOKEN">
+  <button onclick="resolveJoin()">Ver invitación</button>
+  <div id="invite-info"></div>
+</fieldset>
+
+<div id="layout" style="display:none">
+  <div class="panel">
+    <fieldset>
+      <legend>Jugadores</legend>
+      <ul id="players"></ul>
+      <button id="btn-ready" onclick="toggleReady()">Estoy listo</button>
+      <button onclick="send('dice.roll',{count:3})">Tirar 3 dados</button>
+      <button onclick="send('turn.end',{})">Terminar turno</button>
+      <div>
+        Atacar a: <select id="attack-target"></select>
+        <button onclick="attack()">Atacar (3 dados)</button>
+      </div>
+      <div id="turn-info"></div>
+    </fieldset>
+    <fieldset>
+      <legend>Chat</legend>
+      <input id="chat-text" size="30" placeholder="mensaje">
+      <select id="chat-target"><option value="">(todos)</option></select>
+      <button onclick="sendChat()">Enviar</button>
+    </fieldset>
+  </div>
+  <div class="panel">
+    <fieldset><legend>Eventos</legend><div id="log"></div></fieldset>
+  </div>
+</div>
+
+<script>
+let ws = null, me = null, code = null, token = null, ready = false, players = [];
+
+function parseUrl() {
+  const raw = document.getElementById('join-url').value.trim();
+  const m = raw.match(/join\/([a-z0-9]+)\/([A-Za-z0-9_-]+)/);
+  if (!m) { alert('Link inválido'); return false; }
+  code = m[1]; token = m[2]; return true;
+}
+
+async function resolveJoin() {
+  if (!parseUrl()) return;
+  const r = await fetch(`/api/join/${code}/${token}`);
+  if (!r.ok) { alert('Invitación inválida o revocada'); return; }
+  const data = await r.json();
+  const p = data.player;
+  document.getElementById('invite-info').innerHTML =
+    `Partida: <b>${esc(data.game.name)}</b> (${data.game.status}) — sos <b>${esc(p.nickname)}</b> (${p.role})<br>` +
+    (p.nickname_editable ? `<input id="nick" value="${esc(p.nickname)}" maxlength="24"> ` : '') +
+    `<button onclick="confirmJoin()">Entrar a la sala</button>`;
+}
+
+async function confirmJoin() {
+  const nickInput = document.getElementById('nick');
+  const body = nickInput ? { nickname: nickInput.value } : {};
+  const r = await fetch(`/api/join/${code}/${token}`, {
+    method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)
+  });
+  if (!r.ok) { alert('No se pudo entrar'); return; }
+  const data = await r.json();
+  me = data.player.id;
+  connect(data.ws_path);
+}
+
+function connect(path) {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  ws = new WebSocket(`${proto}://${location.host}${path}?token=${encodeURIComponent(token)}`);
+  ws.onopen = () => { logLine('conectado', 'ev-sys'); document.getElementById('layout').style.display = 'flex'; };
+  ws.onclose = (e) => logLine(`desconectado (${e.code})`, 'ev-err');
+  ws.onmessage = (m) => handle(JSON.parse(m.data));
+}
+
+function send(type, payload) { if (ws) ws.send(JSON.stringify({type, payload})); }
+function toggleReady() {
+  ready = !ready; send('ready.set', {ready});
+  document.getElementById('btn-ready').textContent = ready ? 'No estoy listo' : 'Estoy listo';
+}
+function sendChat() {
+  const text = document.getElementById('chat-text').value;
+  const target = document.getElementById('chat-target').value || null;
+  if (text.trim()) send('chat.send', {text, target_player_id: target});
+  document.getElementById('chat-text').value = '';
+}
+function attack() {
+  const target = document.getElementById('attack-target').value;
+  if (target) send('attack', {target_player_id: target, attacker_dice: 3});
+}
+
+function handle(ev) {
+  if (ev.type === 'pong') return;
+  switch (ev.event_type) {
+    case 'game.snapshot':
+      players = ev.payload.players; renderPlayers();
+      if (ev.payload.turn) turnInfo(ev.payload.turn.order[ev.payload.turn.index], ev.payload.turn.turn_number);
+      (ev.payload.recent_events || []).forEach(logEvent);
+      logLine('— snapshot recibido —', 'ev-sys');
+      return;
+    case 'presence.changed': case 'player.joined': case 'player.ready':
+    case 'player.kicked': case 'player.disconnected':
+      refreshFromEvent(ev); break;
+    case 'turn.started':
+      turnInfo(ev.actor_id, ev.payload.turn_number); break;
+  }
+  logEvent(ev);
+}
+
+function refreshFromEvent(ev) {
+  const p = players.find(x => x.id === ev.actor_id || x.id === ev.target_id);
+  if (ev.event_type === 'player.joined' && !players.find(x => x.id === ev.actor_id)) {
+    players.push(ev.payload.player);
+  }
+  if (p) {
+    if (ev.event_type === 'presence.changed') p.presence = ev.payload.presence;
+    if (ev.event_type === 'player.disconnected') p.presence = 'offline';
+    if (ev.event_type === 'player.ready') p.is_ready = ev.payload.ready;
+    if (ev.event_type === 'player.joined') { p.joined = true; p.presence = 'online'; }
+  }
+  renderPlayers();
+}
+
+function renderPlayers() {
+  const ul = document.getElementById('players'); ul.innerHTML = '';
+  const selA = document.getElementById('attack-target'); selA.innerHTML = '';
+  const selC = document.getElementById('chat-target'); selC.innerHTML = '<option value="">(todos)</option>';
+  for (const p of players) {
+    const li = document.createElement('li');
+    li.innerHTML = `${esc(p.nickname)} <small>(${p.role})</small> ` +
+      `<span class="${p.presence || 'offline'}">${p.presence || 'offline'}</span>` +
+      (p.is_ready ? ' ✅' : '') + (p.id === me ? ' ← vos' : '');
+    ul.appendChild(li);
+    if (p.id !== me && (p.role === 'player' || p.role === 'ai_player')) {
+      selA.add(new Option(p.nickname, p.id));
+    }
+    if (p.id !== me) selC.add(new Option(p.nickname, p.id));
+  }
+}
+
+function turnInfo(pid, n) {
+  const p = players.find(x => x.id === pid);
+  document.getElementById('turn-info').innerHTML =
+    `Turno ${n}: <b>${esc(p ? p.nickname : pid)}</b>` + (pid === me ? ' — ¡te toca!' : '');
+}
+
+function nick(id) { const p = players.find(x => x.id === id); return p ? p.nickname : (id || ''); }
+
+function logEvent(ev) {
+  let cls = 'ev-sys', text = ev.event_type;
+  const pl = ev.payload || {};
+  if (ev.event_type === 'chat.message') { cls = 'ev-chat'; text = `${nick(ev.actor_id)}: ${pl.text}` + (ev.visibility === 'private' ? ' (privado)' : ''); }
+  else if (ev.event_type === 'ai.comment.generated') { cls = 'ev-ai'; text = `🎙️ ${pl.text}`; }
+  else if (ev.event_type === 'dice.rolled') { cls = 'ev-dice'; text = `${nick(ev.actor_id)} tiró ${JSON.stringify(pl.dice)}`; }
+  else if (ev.event_type === 'attack.resolved') { cls = 'ev-dice'; text = `${nick(ev.actor_id)} atacó a ${nick(ev.target_id)}: ${JSON.stringify(pl.attacker_dice)} vs ${JSON.stringify(pl.defender_dice)} (bajas ${pl.attacker_losses}/${pl.defender_losses})`; }
+  else if (ev.event_type === 'taunt.triggered') { cls = 'ev-ai'; text = `🔊 taunt: ${pl.audio_asset_id}`; }
+  else if (ev.event_type === 'error') { cls = 'ev-err'; text = `error: ${pl.code} ${pl.message}`; }
+  else { text = `${ev.event_type} ${JSON.stringify(pl)}`; }
+  logLine(text, cls);
+}
+
+function logLine(text, cls) {
+  const div = document.createElement('div');
+  div.className = cls; div.textContent = text;
+  const log = document.getElementById('log');
+  log.appendChild(div); log.scrollTop = log.scrollHeight;
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s ?? ''; return d.innerHTML; }
+</script>
+</body>
+</html>

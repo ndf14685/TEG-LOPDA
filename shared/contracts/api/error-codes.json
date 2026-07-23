@@ -1,0 +1,15 @@
+{
+  "schema_version": "1.0.0",
+  "errors": {
+    "AUTH_FAILED": { "http": 401, "description": "Token de admin o de jugador inválido" },
+    "FORBIDDEN": { "http": 403, "description": "Sin permisos para la operación" },
+    "NOT_FOUND": { "http": 404, "description": "Recurso o link inexistente (respuesta genérica, no revela detalle)" },
+    "INVALID_ACTION": { "http": 409, "description": "Acción no permitida en este estado" },
+    "GAME_STATE_CONFLICT": { "http": 409, "description": "El estado de la partida no admite la operación" },
+    "NOT_YOUR_TURN": { "http": 409, "description": "Acción de turno fuera de turno" },
+    "GAME_NOT_RUNNING": { "http": 409, "description": "La partida no está en curso" },
+    "INVALID_PAYLOAD": { "http": 422, "description": "Entrada inválida o mal formada" },
+    "MESSAGE_TOO_LARGE": { "http": 413, "description": "Mensaje WebSocket supera el límite (8 KiB)" },
+    "RATE_LIMITED": { "http": 429, "description": "Demasiadas peticiones o mensajes" }
+  }
+}

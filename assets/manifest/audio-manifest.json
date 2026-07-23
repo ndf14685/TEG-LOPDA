@@ -1,0 +1,11 @@
+{
+  "schema_version": "1.0",
+  "ui": {
+    "click": { "path": "audio/ui/sound-ui-click-001.ogg", "type": "audio/ogg" }
+  },
+  "gameplay": {
+    "dice_roll": { "path": "audio/dice/sound-dice-roll-001.ogg", "type": "audio/ogg" },
+    "conquest_success": { "path": "audio/battles/sound-battle-win-001.ogg", "type": "audio/ogg" },
+    "traitor_alert": { "path": "audio/alerts/sound-alert-traitor-001.ogg", "type": "audio/ogg" }
+  }
+}

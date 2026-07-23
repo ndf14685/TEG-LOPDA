@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "teg/assets/asset-manifest",
+  "title": "AssetManifest",
+  "description": "Manifiesto de assets. Los IDs lógicos son estables aunque cambie el archivo físico. Nombres: minúsculas, kebab-case, sin espacios/acentos/ñ.",
+  "type": "object",
+  "required": ["schema_version", "assets"],
+  "properties": {
+    "schema_version": { "type": "string" },
+    "assets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "kind", "mime_type"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^(audio|avatar|background)/[a-z0-9][a-z0-9/._-]*$",
+            "examples": [
+              "audio/taunts/player-nessi/to-player-daro/territory-conquered-001.ogg",
+              "avatar/player-daro-001.webp",
+              "background/lobby-main.webp"
+            ]
+          },
+          "kind": { "enum": ["taunt-audio", "avatar", "background", "sfx"] },
+          "mime_type": { "enum": ["audio/ogg", "audio/webm", "audio/mpeg", "image/webp", "image/png"] },
+          "max_duration_seconds": { "type": "number", "maximum": 15 },
+          "max_bytes": { "type": "integer", "maximum": 2097152 },
+          "owner_player_id": { "type": ["string", "null"] },
+          "target_player_id": { "type": ["string", "null"] },
+          "event_type": { "type": ["string", "null"] }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "teg/websocket/event-envelope",
+  "title": "GameEvent",
+  "description": "Sobre de todo mensaje servidor->cliente por WebSocket.",
+  "type": "object",
+  "required": [
+    "event_id", "event_type", "game_id", "timestamp",
+    "sequence_number", "payload", "visibility", "schema_version"
+  ],
+  "properties": {
+    "event_id": { "type": "string", "format": "uuid" },
+    "event_type": { "type": "string", "examples": [
+      "game.created", "player.invited", "player.joined", "player.ready",
+      "player.disconnected", "player.kicked", "player.eliminated",
+      "presence.changed", "game.started", "game.paused", "game.resumed",
+      "game.finished", "game.cancelled", "game.snapshot",
+      "turn.started", "turn.ended", "dice.rolled",
+      "attack.started", "attack.resolved", "territory.conquered",
+      "chat.message", "taunt.triggered", "ai.comment.generated",
+      "token.regenerated", "error"
+    ] },
+    "game_id": { "type": "string" },
+    "actor_id": { "type": ["string", "null"] },
+    "target_id": { "type": ["string", "null"] },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "sequence_number": {
+      "type": "integer",
+      "description": "Monotónico por partida para eventos persistidos; 0 en efímeros."
+    },
+    "payload": { "type": "object" },
+    "visibility": { "enum": ["public", "private", "admin"] },
+    "schema_version": { "type": "string" },
+    "persisted": {
+      "type": "boolean",
+      "description": "false en eventos efímeros (snapshot, presence.changed, error): no integran el historial."
+    }
+  }
+}

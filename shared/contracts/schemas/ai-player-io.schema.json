@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "teg/schemas/ai-player-io",
+  "title": "AIPlayerIO",
+  "description": "Contrato del AIPlayerProvider. La IA solo propone; el motor valida y aplica. Ante timeout o jugada ilegal: fallback turn.end.",
+  "$defs": {
+    "request": {
+      "type": "object",
+      "required": ["game_id", "player_id", "snapshot", "legal_actions"],
+      "properties": {
+        "game_id": { "type": "string" },
+        "player_id": { "type": "string" },
+        "snapshot": {
+          "type": "object",
+          "description": "Estado visible para la IA (turno, jugadores). Nunca objetivos secretos ajenos."
+        },
+        "legal_actions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["action"],
+            "properties": {
+              "action": { "type": "string", "examples": ["dice.roll", "attack", "turn.end"] },
+              "payload": { "type": "object" }
+            }
+          }
+        }
+      }
+    },
+    "response": {
+      "type": "object",
+      "required": ["action"],
+      "properties": {
+        "action": { "type": "string" },
+        "payload": { "type": "object" }
+      }
+    }
+  }
+}

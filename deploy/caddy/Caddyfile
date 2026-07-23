@@ -1,0 +1,29 @@
+# Reverse proxy con HTTPS automático (Let's Encrypt).
+# El dominio sale de la variable TEG_DOMAIN (ver .env).
+#
+# Uso en contenedor: docker compose --profile edge up -d
+# Uso con Caddy instalado en el host: caddy run --config deploy/caddy/Caddyfile
+#   (en ese caso reemplazar backend:8123 por 127.0.0.1:8123)
+
+{$TEG_DOMAIN} {
+    encode gzip
+
+    # /metrics jamás se expone
+    @metrics path /metrics
+    respond @metrics 404
+
+    # /docs y /openapi.json solo existen en dev
+    reverse_proxy backend:8123
+
+    header {
+        Strict-Transport-Security "max-age=31536000"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "no-referrer"
+    }
+
+    log {
+        output stdout
+        format json
+    }
+}

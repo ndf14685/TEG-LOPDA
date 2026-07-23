@@ -1,0 +1,9 @@
+{
+  "schema_version": "1.0",
+  "base_stamp_path": "taunts/stamps/overlay-stamp-classified-001.webp",
+  "definitions": [
+    { "id": "bardo_traicion", "text": "¡TRAIDOR!", "sound": "audio/alerts/sound-alert-traitor-001.ogg" },
+    { "id": "bardo_llora", "text": "LLORÁ EN DISCORD", "sound": null },
+    { "id": "bardo_malo", "text": "QUÉ MALO QUE SOS", "sound": "audio/dice/sound-dice-fail-001.ogg" }
+  ]
+}

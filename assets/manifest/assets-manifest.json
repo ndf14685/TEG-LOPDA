@@ -1,0 +1,18 @@
+{
+  "schema_version": "1.0",
+  "maps": {
+    "classic_50": {
+      "id": "map.tactical.50",
+      "path": "maps/base/map-base-tactical-50-001.svg"
+    },
+    "mega_world_100": {
+      "id": "map.tactical.100",
+      "path": "maps/base/map-base-tactical-100-001.svg"
+    }
+  },
+  "ui": {
+    "btn_attack": "ui/buttons/button-action-attack-001.svg",
+    "btn_fortify": "ui/buttons/button-action-fortify-001.svg",
+    "player_card_panel": "ui/panels/panel-player-card-001.svg"
+  }
+}

@@ -38,8 +38,9 @@ export function bindWsToStores(): void {
   wsClient.on('sync.lost', () => conn().setSyncState('syncing'));
 
   wsClient.on('game.snapshot', (p) => {
-    const snap = p as z.infer<typeof SnapshotPayload>;
-    game().applySnapshot(snap.game, snap.you, snap.players, snap.turn);
+    const snap = p as z.infer<typeof SnapshotPayload> & { territories?: Record<string, any> };
+    game().applySnapshot(snap.game, snap.you, snap.players, snap.turn, snap.territories);
+    if (snap.territories) game().setTerritories(snap.territories);
     // el historial reciente rehidrata chat y comentarios tras una reconexión
     for (const raw of snap.recent_events) {
       const ev = GameEventEnvelope.safeParse(raw);
@@ -89,20 +90,47 @@ export function bindWsToStores(): void {
   });
 
   wsClient.on('game.started', (p) => {
-    const payload = p as z.infer<typeof GameStartedPayload>;
+    const payload = p as z.infer<typeof GameStartedPayload> & {
+      territories?: Record<string, any>;
+      phase?: 'reinforcement' | 'attack' | 'fortify';
+      reinforcements_available?: number;
+    };
     for (const player of payload.players) game().upsertPlayer(player);
+    if (payload.territories) game().setTerritories(payload.territories);
     game().setGameStatus('running');
-    game().setTurn({ order: payload.turn_order, index: 0, turn_number: 1 });
+    game().setTurn({
+      order: payload.turn_order,
+      index: 0,
+      turn_number: 1,
+      phase: payload.phase ?? 'reinforcement',
+      reinforcements_available: payload.reinforcements_available ?? 3,
+    });
     game().markStarted();
   });
 
   wsClient.on('turn.started', (p, env) => {
-    const payload = p as z.infer<typeof TurnStartedPayload>;
+    const payload = p as z.infer<typeof TurnStartedPayload> & {
+      phase?: 'reinforcement' | 'attack' | 'fortify';
+      reinforcements_available?: number;
+    };
     const turn = game().turn;
     if (turn && env.actor_id) {
       const index = turn.order.indexOf(env.actor_id);
-      game().setTurn({ ...turn, index: index >= 0 ? index : turn.index, turn_number: payload.turn_number });
+      game().setTurn({
+        ...turn,
+        index: index >= 0 ? index : turn.index,
+        turn_number: payload.turn_number,
+        phase: payload.phase ?? 'reinforcement',
+        reinforcements_available: payload.reinforcements_available ?? turn.reinforcements_available,
+      });
     }
+  });
+
+  wsClient.on('territory.updated', (p) => {
+    const payload = p as { territory?: any; target_territory?: any; turn?: any };
+    if (payload.territory) game().updateTerritory(payload.territory);
+    if (payload.target_territory) game().updateTerritory(payload.target_territory);
+    if (payload.turn) game().setTurn(payload.turn);
   });
 
   wsClient.on('dice.rolled', (p, env) => {

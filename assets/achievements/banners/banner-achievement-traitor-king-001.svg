@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 150" width="400" height="150">
+  <rect width="396" height="146" x="2" y="2" rx="15" fill="#161B22" stroke="#DA3633" stroke-width="4"/>
+  <text x="200" y="60" font-family="sans-serif" font-weight="bold" font-size="28" fill="#DA3633" text-anchor="middle">EL REY TRAIDOR</text>
+  <text x="200" y="110" font-family="monospace" font-size="16" fill="#F0F6FC" text-anchor="middle">"Una puñalada por la espalda a la vez"</text>
+</svg>

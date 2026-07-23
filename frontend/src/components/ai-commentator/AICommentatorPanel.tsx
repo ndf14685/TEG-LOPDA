@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useGameStore } from '../../state/gameStore';
 import { colorValue } from '../../utils/playerColors';
+import { audioService } from '../../services/audio/AudioService';
 
 /** Emociones del backend (ai/commentator.py) → glifo. */
 const EMOTION_GLYPH: Record<string, string> = {
@@ -20,11 +21,12 @@ export function AICommentatorPanel() {
   const latest = comments[comments.length - 1];
 
   useEffect(() => {
-    if (!latest) return;
+    if (!latest || muted) return;
     setMinimized(false);
+    audioService.speakText(latest.text);
     const t = setTimeout(() => setMinimized(true), AUTO_MINIMIZE_MS);
     return () => clearTimeout(t);
-  }, [latest]);
+  }, [latest, muted]);
 
   if (muted) {
     return (

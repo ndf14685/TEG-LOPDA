@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "teg/schemas/ai-commentator-io",
+  "title": "AICommentatorIO",
+  "description": "Contrato del AICommentatorProvider: contexto estructurado de entrada y comentario de salida. El proveedor nunca accede a la aplicación directamente.",
+  "$defs": {
+    "input": {
+      "type": "object",
+      "required": ["game_id", "event", "recent_events", "players", "humor_level"],
+      "properties": {
+        "game_id": { "type": "string" },
+        "event": { "$ref": "../websocket/event-envelope.schema.json" },
+        "recent_events": {
+          "type": "array",
+          "maxItems": 20,
+          "items": { "$ref": "../websocket/event-envelope.schema.json" }
+        },
+        "players": { "type": "array", "items": { "$ref": "player.schema.json" } },
+        "humor_level": {
+          "type": "integer", "minimum": 0, "maximum": 4,
+          "description": "0 apagado | 1 relator neutral | 2 humor suave | 3 picante | 4 bardeo entre amigos (deshabilitado por defecto)"
+        },
+        "relationship_context": {
+          "type": "object",
+          "description": "Clave 'player-a:player-b' -> temas permitidos/prohibidos",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "allowed_topics": { "type": "array", "items": { "type": "string" } },
+              "forbidden_topics": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        }
+      }
+    },
+    "output": {
+      "type": ["object", "null"],
+      "description": "null => sin comentario para este evento",
+      "required": ["text"],
+      "properties": {
+        "text": { "type": "string", "maxLength": 280 },
+        "target_player_id": { "type": ["string", "null"] },
+        "visibility": { "enum": ["public", "private", "admin"], "default": "public" },
+        "emotion": { "type": "string", "examples": ["neutral", "mocking", "excited", "dramatic"] },
+        "audio_asset": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

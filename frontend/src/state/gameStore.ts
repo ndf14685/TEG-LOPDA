@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { GameRef, PublicPlayer, TurnState, AICommentView } from '@teg/contracts';
+import type { GameRef, PublicPlayer, TurnState, AICommentView, CountryCard, SecretObjective } from '@teg/contracts';
 
 export interface ChatEntry {
   id: string;
@@ -33,11 +33,22 @@ export interface TauntView {
   receivedAt: number;
 }
 
+export interface TerritoryStateData {
+  id: string;
+  owner_player_id: string | null;
+  armies: number;
+}
+
 interface GameState {
   game: GameRef | null;
   youId: string | null;
   players: PublicPlayer[];
   turn: TurnState | null;
+  territories: Record<string, TerritoryStateData>;
+  cards: CountryCard[];
+  secretObjective: SecretObjective | null;
+  selectedSourceTerritory: string | null;
+  selectedTargetTerritory: string | null;
   chat: ChatEntry[];
   lastDice: DiceResult | null;
   lastAttack: AttackResult | null;
@@ -48,11 +59,23 @@ interface GameState {
   finished: { winnerPlayerId: string | null; turnsPlayed: number } | null;
   lastError: { code: string; message: string; at: number } | null;
 
-  applySnapshot: (game: GameRef, youId: string, players: PublicPlayer[], turn: TurnState | null) => void;
+  applySnapshot: (
+    game: GameRef,
+    youId: string,
+    players: PublicPlayer[],
+    turn: TurnState | null,
+    territories?: Record<string, TerritoryStateData>
+  ) => void;
   upsertPlayer: (player: PublicPlayer) => void;
   patchPlayer: (id: string, patch: Partial<PublicPlayer>) => void;
   setGameStatus: (status: GameRef['status']) => void;
   setTurn: (turn: TurnState | null) => void;
+  setTerritories: (territories: Record<string, TerritoryStateData>) => void;
+  setCards: (cards: CountryCard[]) => void;
+  setSecretObjective: (objective: SecretObjective | null) => void;
+  updateTerritory: (territory: TerritoryStateData) => void;
+  setSelectedSourceTerritory: (tid: string | null) => void;
+  setSelectedTargetTerritory: (tid: string | null) => void;
   addChat: (entry: ChatEntry) => void;
   setDice: (dice: DiceResult) => void;
   setAttack: (attack: AttackResult) => void;
@@ -72,6 +95,11 @@ export const useGameStore = create<GameState>((set, get) => ({
   youId: null,
   players: [],
   turn: null,
+  territories: {},
+  cards: [],
+  secretObjective: null,
+  selectedSourceTerritory: null,
+  selectedTargetTerritory: null,
   chat: [],
   lastDice: null,
   lastAttack: null,
@@ -82,7 +110,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   finished: null,
   lastError: null,
 
-  applySnapshot: (game, youId, players, turn) => set({ game, youId, players, turn }),
+  applySnapshot: (game, youId, players, turn, territories) =>
+    set({ game, youId, players, turn, territories: territories ?? get().territories }),
 
   upsertPlayer: (player) =>
     set((s) => {
@@ -98,6 +127,12 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   setGameStatus: (status) => set((s) => (s.game ? { game: { ...s.game, status } } : {})),
   setTurn: (turn) => set({ turn }),
+  setTerritories: (territories) => set({ territories }),
+  setCards: (cards) => set({ cards }),
+  setSecretObjective: (secretObjective) => set({ secretObjective }),
+  updateTerritory: (t) => set((s) => ({ territories: { ...s.territories, [t.id]: t } })),
+  setSelectedSourceTerritory: (selectedSourceTerritory) => set({ selectedSourceTerritory }),
+  setSelectedTargetTerritory: (selectedTargetTerritory) => set({ selectedTargetTerritory }),
   addChat: (entry) => set((s) => ({ chat: [...s.chat.slice(-99), entry] })),
   setDice: (lastDice) => set({ lastDice }),
   setAttack: (lastAttack) => set({ lastAttack }),

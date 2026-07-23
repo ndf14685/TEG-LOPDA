@@ -1,0 +1,26 @@
+# Alternativa a Docker: correr el backend directo con uv + systemd.
+# sudo cp deploy/systemd/teg-backend.service /etc/systemd/system/
+# sudo systemctl daemon-reload && sudo systemctl enable --now teg-backend
+
+[Unit]
+Description=TEG LOPDA backend
+After=network.target
+
+[Service]
+Type=simple
+User=ndf
+WorkingDirectory=/home/ndf/workspace/TEG-LOPDA/backend
+EnvironmentFile=/home/ndf/workspace/TEG-LOPDA/.env
+ExecStart=/home/ndf/.local/bin/uv run --no-dev uvicorn teg_backend.main:app --host 127.0.0.1 --port 8123
+Restart=always
+RestartSec=3
+
+# endurecimiento básico
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=read-only
+ReadWritePaths=/home/ndf/workspace/TEG-LOPDA/backend/data
+
+[Install]
+WantedBy=multi-user.target
