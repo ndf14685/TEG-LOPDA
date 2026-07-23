@@ -32,3 +32,35 @@ def test_join_exposes_game_mode(client):
     body = resp.json()
     assert body["game"]["game_mode"] == "classic_50"
     assert body["game"]["map_assets"]["base_svg"].startswith("maps/base/")
+
+
+def test_attack_blocked_outside_attack_phase(client):
+    """El ataque territorial se rechaza durante la fase de refuerzos."""
+    from conftest import ADMIN, confirm_join, invite
+
+    game = create_game(client, config={"commentator_enabled": False})
+    inv1 = invite(client, game["id"], "A")
+    inv2 = invite(client, game["id"], "B")
+    confirm_join(client, game["code"], inv1["token"])
+    confirm_join(client, game["code"], inv2["token"])
+    client.post(f"/api/admin/games/{game['id']}/start", headers=ADMIN)
+
+    detail = client.get(f"/api/admin/games/{game['id']}", headers=ADMIN).json()
+    state = detail["game"]["state"]
+    assert state["turn"]["phase"] == "reinforcement"
+    current = state["turn"]["order"][state["turn"]["index"]]
+    territories = state["territories"]
+    mine = next(t for t, d in territories.items() if d["owner_player_id"] == current)
+    enemy = next(t for t, d in territories.items() if d["owner_player_id"] != current)
+    token = inv1["token"] if inv1["player"]["id"] == current else inv2["token"]
+
+    with client.websocket_connect(f"/ws/{game['code']}?token={token}") as ws:
+        from conftest import recv_until
+
+        recv_until(ws, "game.snapshot")
+        ws.send_json({"type": "attack", "payload": {
+            "source_territory_id": mine, "target_territory_id": enemy, "attacker_dice": 3,
+        }})
+        err = recv_until(ws, "error")
+        assert err["payload"]["code"] == "INVALID_ACTION"
+        assert "fase" in err["payload"]["message"]

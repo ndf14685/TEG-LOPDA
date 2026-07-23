@@ -590,6 +590,13 @@ class GameService:
             src_terr = engine.territories.get(source_territory_id) if source_territory_id else None
             tgt_terr = engine.territories.get(target_territory_id) if target_territory_id else None
 
+            # el ataque territorial solo vale en la fase de ataque
+            if (src_terr or tgt_terr) and engine.turn.phase != "attack":
+                raise ServiceError(
+                    ErrorCode.INVALID_ACTION,
+                    f"no podés atacar en la fase de {engine.turn.phase}",
+                )
+
             if src_terr:
                 if src_terr.owner_player_id != player_id:
                     raise ServiceError(ErrorCode.INVALID_ACTION, "el territorio de origen no te pertenece")
