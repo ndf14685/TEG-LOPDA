@@ -1,23 +1,30 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2560 1440" id="map-base-tactical-100-001">
+#!/usr/bin/env bash
+set -e
+
+mkdir -p assets/maps/base
+
+echo "🗺️ Generando mapa de 26 territorios..."
+cat << 'EOF' > assets/maps/base/map-base-tactical-26-001.svg
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2560 1440" id="map-base-tactical-26-001">
   <defs>
-    <radialGradient id="ocean-100" cx="50%" cy="50%" r="75%">
+    <radialGradient id="ocean-26" cx="50%" cy="50%" r="75%">
       <stop offset="0%" stop-color="#0f172a" />
       <stop offset="100%" stop-color="#070a0f" />
     </radialGradient>
-    <pattern id="grid-100" width="100" height="100" patternUnits="userSpaceOnUse">
+    <pattern id="grid-26" width="100" height="100" patternUnits="userSpaceOnUse">
       <path d="M 100 0 L 0 0 0 100" fill="none" stroke="#1e293b" stroke-width="1" opacity="0.5" />
     </pattern>
     <style>
-      .ocean-bg { fill: url(#ocean-100); }
-      .grid-layer { fill: url(#grid-100); }
+      .ocean-bg { fill: url(#ocean-26); }
+      .grid-layer { fill: url(#grid-26); }
       .sea-route { stroke: #38bdf8; stroke-width: 2.5; stroke-dasharray: 6 6; fill: none; opacity: 0.5; pointer-events: none; }
       .territory { fill: #1e293b; stroke: #475569; stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; cursor: pointer; transition: fill 0.2s, stroke 0.2s; }
       .territory:hover { fill: #334155; stroke: #38bdf8; filter: drop-shadow(0px 0px 8px rgba(56, 189, 248, 0.6)); }
       .territory.selected { stroke: #f59e0b; stroke-width: 4; }
       .territory.attack-source { stroke: #22c55e; stroke-width: 4; }
       .territory.attack-target { stroke: #ef4444; stroke-width: 4; }
-      .territory-label { font-family: ui-sans-serif, system-ui, sans-serif; font-weight: 700; font-size: 30px; fill: #f1f5f9; paint-order: stroke; stroke: rgba(2, 6, 23, 0.85); stroke-width: 6px; stroke-linejoin: round; pointer-events: none; text-anchor: middle; }
-      .continent-title { font-family: sans-serif; font-weight: 900; font-size: 44px; fill: #94a3b8; opacity: 0.35; pointer-events: none; text-anchor: middle; }
+      .territory-label { font-family: monospace; font-weight: 700; font-size: 13px; fill: #e2e8f0; pointer-events: none; text-anchor: middle; }
+      .continent-title { font-family: sans-serif; font-weight: 900; font-size: 36px; fill: #ffffff; opacity: 0.08; pointer-events: none; text-anchor: middle; }
     </style>
   </defs>
 
@@ -109,3 +116,16 @@
     <text x="2210" y="1040" class="territory-label">Aust. Oriental</text>
   </g>
 </svg>
+EOF
+
+# Los modos classic_50 y mega_world_100 todavía juegan con los 26 territorios
+# del backend (domain/map.py): sus SVG se derivan del mapa de 26 hasta que
+# exista arte propio con esa cantidad real de territorios.
+for n in 50 100; do
+  echo "🗺️ Derivando mapa de $n territorios desde el de 26..."
+  sed -e "s/ocean-26/ocean-$n/g" -e "s/grid-26/grid-$n/g" \
+      -e "s/map-base-tactical-26-001/map-base-tactical-$n-001/g" \
+      assets/maps/base/map-base-tactical-26-001.svg > "assets/maps/base/map-base-tactical-$n-001.svg"
+done
+
+echo "✨ ¡Los 3 mapas fueron generados exitosamente en assets/maps/base/!"
