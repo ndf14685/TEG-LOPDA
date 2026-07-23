@@ -1,0 +1,17 @@
+{
+  "name": "teg-lopda",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "pnpm --parallel --filter @teg/server-mock --filter @teg/frontend dev",
+    "dev:server": "pnpm --filter @teg/server-mock dev",
+    "dev:front": "pnpm --filter @teg/frontend dev",
+    "build": "pnpm --filter @teg/frontend build",
+    "test": "pnpm --filter @teg/frontend test -- --run",
+    "e2e": "playwright test",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0"
+  }
+}

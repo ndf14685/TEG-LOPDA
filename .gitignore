@@ -1,0 +1,24 @@
+node_modules/
+dist/
+.env
+.env.*
+playwright-report/
+test-results/
+*.local
+.DS_Store
+
+# excepción: el ejemplo de configuración sí se versiona
+!.env.example
+
+# datos y backups
+data/
+backups/
+*.db
+*.db-wal
+*.db-shm
+
+# python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/

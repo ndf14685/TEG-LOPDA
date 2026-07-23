@@ -1,0 +1,42 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-war-950: #0a0f0a;
+  --color-war-900: #111a12;
+  --color-war-800: #1a281c;
+  --color-war-700: #26392a;
+  --color-gold-400: #e8c46a;
+  --color-gold-500: #d4a942;
+  --font-display: 'Georgia', 'Times New Roman', serif;
+}
+
+:root {
+  --player-red: #ef4444;
+  --player-blue: #3b82f6;
+  --player-green: #22c55e;
+  --player-yellow: #eab308;
+  --player-purple: #a855f7;
+  --player-orange: #f97316;
+}
+
+body {
+  @apply bg-war-950 text-stone-200 antialiased;
+  font-family: system-ui, sans-serif;
+}
+
+/* Estados de territorio: colores por CSS, nunca dentro del SVG */
+.territory {
+  fill: var(--territory-color, #3f3f46);
+  stroke: #0a0f0a;
+  stroke-width: 2;
+  cursor: pointer;
+  transition: filter 120ms ease, transform 120ms ease;
+}
+.territory:hover { filter: brightness(1.25); }
+.territory.selected { stroke: var(--color-gold-400); stroke-width: 3; filter: brightness(1.2); }
+.territory.attack-source { stroke: #fff; stroke-width: 3; }
+.territory.attack-target { stroke: #ef4444; stroke-width: 3; stroke-dasharray: 6 3; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}

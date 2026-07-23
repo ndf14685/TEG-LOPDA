@@ -1,0 +1,4 @@
+packages:
+  - shared/contracts
+  - server-mock
+  - frontend
