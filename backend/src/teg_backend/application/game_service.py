@@ -518,18 +518,22 @@ class GameService:
     # --- acciones de jugador ------------------------------------------------
 
     async def set_ready(self, game: dict, player: dict, ready: bool) -> None:
-        if game["status"] not in (GameStatus.LOBBY, GameStatus.READY):
-            raise ServiceError(ErrorCode.GAME_STATE_CONFLICT, "la partida ya empezó")
-        await repo.update_player(self.db, player["id"], is_ready=ready)
-        players = await repo.get_players(self.db, game["id"])
-        seated = [
-            p for p in players
-            if p["role"] in PLAYING_ROLES and p["joined_at"] and not p["token_revoked"]
-        ]
-        all_ready = len(seated) >= 2 and all(p["is_ready"] for p in seated)
-        new_status = GameStatus.READY if all_ready else GameStatus.LOBBY
-        if game["status"] != new_status:
-            await self._set_status(game["id"], new_status)
+        # bajo el lock de la partida y releyendo estado: un "listo" que llega
+        # mientras el admin inicia no debe pisar el estado running con ready
+        async with self.lock(game["id"]):
+            game = await self.get_game_or_404(game["id"])
+            if game["status"] not in (GameStatus.LOBBY, GameStatus.READY):
+                raise ServiceError(ErrorCode.GAME_STATE_CONFLICT, "la partida ya empezó")
+            await repo.update_player(self.db, player["id"], is_ready=ready)
+            players = await repo.get_players(self.db, game["id"])
+            seated = [
+                p for p in players
+                if p["role"] in PLAYING_ROLES and p["joined_at"] and not p["token_revoked"]
+            ]
+            all_ready = len(seated) >= 2 and all(p["is_ready"] for p in seated)
+            new_status = GameStatus.READY if all_ready else GameStatus.LOBBY
+            if game["status"] != new_status:
+                await self._set_status(game["id"], new_status)
         await self.emit(
             game["id"], EventType.PLAYER_READY, actor_id=player["id"],
             payload={"ready": ready, "all_ready": all_ready, "game_status": new_status},

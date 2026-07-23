@@ -32,6 +32,9 @@ class TerritoryState:
 
     def to_dict(self) -> dict[str, Any]:
         return {
+            # "id" es el nombre del contrato TS (shared/contracts/src/map.ts);
+            # "territory_id" se mantiene por compatibilidad con eventos previos
+            "id": self.territory_id,
             "territory_id": self.territory_id,
             "owner_player_id": self.owner_player_id,
             "armies": self.armies,

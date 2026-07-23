@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { PublicPlayer } from './player';
+import { TerritoryState } from './map';
 
 export const GameStatus = z.enum(['draft', 'lobby', 'ready', 'running', 'paused', 'finished', 'cancelled']);
 export type GameStatus = z.infer<typeof GameStatus>;
@@ -58,6 +59,9 @@ export const SnapshotPayload = z.object({
   you: z.string(),
   players: z.array(PublicPlayer),
   turn: TurnState.nullable(),
+  // estado completo de territorios; sin este campo zod lo descartaría del
+  // payload y el mapa quedaría sin datos (no interactivo)
+  territories: z.record(z.string(), TerritoryState).optional(),
   recent_events: z.array(z.unknown()),
   cards: z.array(CountryCard).optional(),
   secret_objective: SecretObjective.nullable().optional(),

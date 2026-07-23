@@ -57,7 +57,12 @@ def test_attack_blocked_outside_attack_phase(client):
     with client.websocket_connect(f"/ws/{game['code']}?token={token}") as ws:
         from conftest import recv_until
 
-        recv_until(ws, "game.snapshot")
+        snap = recv_until(ws, "game.snapshot")
+        # el snapshot lleva el estado completo de territorios con "id"
+        # (contrato TS shared/contracts/src/map.ts) para pintar el mapa
+        snap_terr = snap["payload"]["territories"]
+        assert len(snap_terr) == 26
+        assert all(td["id"] == tid for tid, td in snap_terr.items())
         ws.send_json({"type": "attack", "payload": {
             "source_territory_id": mine, "target_territory_id": enemy, "attacker_dice": 3,
         }})

@@ -18,14 +18,24 @@ def test_territories_reinforcement_fortify_and_conquest(client):
         recv_until(ws1, "game.snapshot")
         recv_until(ws2, "game.snapshot")
 
+        # esperar la confirmación de ambos "listos" ANTES de iniciar: un
+        # ready procesado después de start se rechaza (y debe rechazarse)
         ws1.send_json({"type": "ready.set", "payload": {"ready": True}})
+        recv_until(ws1, "player.ready")
+        recv_until(ws2, "player.ready")
         ws2.send_json({"type": "ready.set", "payload": {"ready": True}})
+        recv_until(ws1, "player.ready")
+        recv_until(ws2, "player.ready")
 
         resp = client.post(f"/api/admin/games/{game['id']}/start", headers=ADMIN)
         assert resp.status_code == 200
 
+        # drenar ambos sockets para que el buffer de ws_current quede alineado
+        # sin importar a quién le toque el primer turno (sorteo aleatorio)
         ev_start = recv_until(ws1, "game.started")
+        recv_until(ws2, "game.started")
         turn_ev = recv_until(ws1, "turn.started")
+        recv_until(ws2, "turn.started")
         current_id = turn_ev["actor_id"]
         other_id = p2_id if current_id == p1_id else p1_id
         ws_current = ws1 if current_id == p1_id else ws2

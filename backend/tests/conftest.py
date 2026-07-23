@@ -49,9 +49,17 @@ def confirm_join(client: TestClient, code: str, token: str, nickname: str | None
 
 
 def recv_until(ws, event_type: str, max_msgs: int = 50) -> dict:
-    """Lee mensajes hasta encontrar el tipo esperado (tolera intercalados)."""
+    """Lee mensajes hasta encontrar el tipo esperado (tolera intercalados).
+
+    Un evento "error" inesperado corta con diagnóstico en vez de dejar al
+    test colgado esperando un evento que nunca va a llegar.
+    """
     for _ in range(max_msgs):
         msg = ws.receive_json()
         if msg.get("event_type") == event_type:
             return msg
+        if msg.get("event_type") == "error" and event_type != "error":
+            raise AssertionError(
+                f"error inesperado esperando {event_type}: {msg.get('payload')}"
+            )
     raise AssertionError(f"no llegó el evento {event_type} en {max_msgs} mensajes")

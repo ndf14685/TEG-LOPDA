@@ -119,8 +119,13 @@ export function MapPanel({ mode = 'classic_50' }: { mode?: GameMode }) {
           return;
         }
         if (tState && tState.owner_player_id === youId) {
-          setSelectedSource(id);
-          if (selectedTarget === id) setSelectedTarget(null);
+          // en reagrupamiento, un segundo territorio propio es el destino
+          if (currentPhase === 'fortify' && selectedSource) {
+            setSelectedTarget(id);
+          } else {
+            setSelectedSource(id);
+            if (selectedTarget === id) setSelectedTarget(null);
+          }
         } else if (selectedSource && selectedSource !== id) {
           setSelectedTarget(id);
         }
@@ -221,11 +226,17 @@ export function MapPanel({ mode = 'classic_50' }: { mode?: GameMode }) {
       {state === 'ready' && (
         <div className="pointer-events-none absolute bottom-3 left-3 z-10 flex flex-wrap items-center gap-2 rounded-lg border border-war-700 bg-war-900/80 px-3 py-1.5 backdrop-blur-md">
           <span className="text-xs font-semibold text-stone-300">
-            {selectedSource
-              ? selectedTarget
-                ? '⚔️ Listo para atacar'
-                : '🎯 Seleccioná un país objetivo'
-              : '👉 Hacé click en tu país para atacar'}
+            {turn?.phase === 'reinforcement'
+              ? '🪖 Tocá tus países para colocar refuerzos'
+              : turn?.phase === 'fortify'
+                ? selectedSource
+                  ? '🛡️ Elegí otro país tuyo como destino'
+                  : '🛡️ Elegí el país tuyo de origen'
+                : selectedSource
+                  ? selectedTarget
+                    ? '⚔️ Listo para atacar (botón en el panel derecho)'
+                    : '🎯 Seleccioná un país objetivo'
+                  : '👉 Hacé click en tu país para atacar'}
           </span>
         </div>
       )}

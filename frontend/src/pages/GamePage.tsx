@@ -37,6 +37,9 @@ export function GamePage() {
   const selectedTarget = useGameStore((s) => s.selectedTargetTerritory);
   const territories = useGameStore((s) => s.territories);
   const [attackTarget, setAttackTarget] = useState('');
+  const [fortifyCount, setFortifyCount] = useState(1);
+  const setSelectedSource = useGameStore((s) => s.setSelectedSourceTerritory);
+  const setSelectedTarget = useGameStore((s) => s.setSelectedTargetTerritory);
 
   useEffect(() => {
     if (selectedTarget && territories[selectedTarget]?.owner_player_id) {
@@ -133,19 +136,73 @@ export function GamePage() {
                   data-testid="roll-dice"
                   className="rounded-lg bg-gold-500 px-3 py-2 text-sm font-bold text-war-950 hover:bg-gold-400 disabled:opacity-30"
                 >
-                  🎲 Tirar dados
+                  🎲 Dados de práctica (sin efecto)
                 </button>
 
-                {/* Resumen táctico del ataque desde el mapa */}
-                {selectedSource && selectedTarget && (
-                  <div className="rounded-md border border-red-900/50 bg-red-950/40 p-2 text-xs">
-                    <p className="font-semibold text-red-300">⚔️ Ataque Táctico Map:</p>
-                    <p className="text-stone-300 truncate">
-                      {selectedSource.replace('territory-', '').replaceAll('-', ' ')} →{' '}
-                      <span className="font-bold text-gold-400">{selectedTarget.replace('territory-', '').replaceAll('-', ' ')}</span>
-                    </p>
-                  </div>
-                )}
+                {/* Acción táctica sobre la selección del mapa */}
+                {selectedSource && selectedTarget && (() => {
+                  const targetIsMine = territories[selectedTarget]?.owner_player_id === session.playerId;
+                  const maxMove = Math.max(1, (territories[selectedSource]?.armies ?? 1) - 1);
+                  const clearSelection = () => { setSelectedSource(null); setSelectedTarget(null); };
+                  return (
+                    <div className="rounded-md border border-red-900/50 bg-red-950/40 p-2 text-xs">
+                      <p className="font-semibold text-red-300">
+                        {targetIsMine ? '🛡️ Reagrupar:' : '⚔️ Ataque táctico:'}
+                      </p>
+                      <p className="text-stone-300 truncate">
+                        {selectedSource.replace('territory-', '').replaceAll('-', ' ')} →{' '}
+                        <span className="font-bold text-gold-400">{selectedTarget.replace('territory-', '').replaceAll('-', ' ')}</span>
+                      </p>
+                      {!targetIsMine ? (
+                        <button
+                          disabled={actionsBlocked || !myTurn || turn?.phase !== 'attack'}
+                          onClick={() => send(() => wsClient.send({
+                            type: 'attack',
+                            payload: {
+                              source_territory_id: selectedSource,
+                              target_territory_id: selectedTarget,
+                              attacker_dice: 3,
+                            },
+                          }))}
+                          data-testid="attack-territory"
+                          className="mt-2 w-full rounded-lg bg-red-700 px-3 py-1.5 text-sm font-bold text-red-50 hover:bg-red-600 disabled:opacity-30"
+                        >
+                          ⚔️ Atacar{turn?.phase !== 'attack' ? ' (pasá a fase de ataque)' : ''}
+                        </button>
+                      ) : (
+                        <div className="mt-2 flex items-center gap-2">
+                          <input
+                            type="number"
+                            min={1}
+                            max={maxMove}
+                            value={Math.min(fortifyCount, maxMove)}
+                            onChange={(e) => setFortifyCount(Math.max(1, Number(e.target.value) || 1))}
+                            aria-label="Ejércitos a mover"
+                            className="w-16 rounded border border-war-700 bg-war-800 px-2 py-1 text-sm"
+                          />
+                          <button
+                            disabled={actionsBlocked || !myTurn || turn?.phase !== 'fortify'}
+                            onClick={() => send(() => {
+                              wsClient.send({
+                                type: 'turn.fortify',
+                                payload: {
+                                  source_territory_id: selectedSource,
+                                  target_territory_id: selectedTarget,
+                                  count: Math.min(fortifyCount, maxMove),
+                                },
+                              });
+                              clearSelection();
+                            })}
+                            data-testid="fortify-button"
+                            className="flex-1 rounded-lg bg-sky-700 px-3 py-1.5 text-sm font-bold text-sky-50 hover:bg-sky-600 disabled:opacity-30"
+                          >
+                            🛡️ Mover{turn?.phase !== 'fortify' ? ' (pasá a reagrupar)' : ''}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 <div className="flex gap-2">
                   <select
