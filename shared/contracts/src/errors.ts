@@ -1,22 +1,24 @@
 import { z } from 'zod';
 
+/** Códigos del backend real: shared/contracts/api/error-codes.json */
 export const ErrorCode = z.enum([
-  'TOKEN_INVALID',
-  'TOKEN_REVOKED',
-  'TOKEN_EXPIRED',
-  'GAME_NOT_FOUND',
-  'GAME_ALREADY_STARTED',
-  'PLAYER_NOT_FOUND',
-  'NOT_ADMIN',
-  'VERSION_MISMATCH',
+  'AUTH_FAILED',
+  'FORBIDDEN',
+  'NOT_FOUND',
+  'INVALID_ACTION',
+  'GAME_STATE_CONFLICT',
+  'NOT_YOUR_TURN',
+  'GAME_NOT_RUNNING',
+  'INVALID_PAYLOAD',
+  'MESSAGE_TOO_LARGE',
   'RATE_LIMITED',
-  'VALIDATION_ERROR',
-  'INTERNAL_ERROR',
 ]);
 export type ErrorCode = z.infer<typeof ErrorCode>;
 
-export const ApiError = z.object({
-  code: ErrorCode,
+/** Todo error REST llega como {"detail": {"code", "message"}}. */
+export const ApiErrorDetail = z.object({
+  code: z.string(),
   message: z.string(),
 });
-export type ApiError = z.infer<typeof ApiError>;
+export const ApiErrorResponse = z.object({ detail: ApiErrorDetail });
+export type ApiErrorDetail = z.infer<typeof ApiErrorDetail>;

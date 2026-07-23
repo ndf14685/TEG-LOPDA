@@ -1,14 +1,12 @@
 import { z } from 'zod';
 
+/**
+ * Botón de bardeo rápido. La fuente canónica es assets/manifest/taunts-manifest.json
+ * (Dirección de Arte); esta forma es la normalización que consume la UI.
+ */
 export const SoundboardButton = z.object({
-  id: z.string(), // "soundboard.llora"
+  id: z.string(),
   label: z.string(),
-  audioAssetId: z.string().nullable().default(null),
+  soundPath: z.string().nullable().default(null),
 });
 export type SoundboardButton = z.infer<typeof SoundboardButton>;
-
-export const SoundboardConfig = z.object({
-  cooldownMs: z.number().int().default(5000),
-  buttons: z.array(SoundboardButton),
-});
-export type SoundboardConfig = z.infer<typeof SoundboardConfig>;

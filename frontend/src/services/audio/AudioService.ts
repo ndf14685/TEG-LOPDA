@@ -1,10 +1,12 @@
 import { TauntQueue } from './TauntQueue';
+import { assetRegistry } from '../assets/AssetRegistry';
 
 export type AudioChannel = 'master' | 'music' | 'sfx' | 'taunts' | 'ai';
 
 /**
- * Web Audio con desbloqueo por gesto de usuario (autoplay policy).
- * Hasta que unlock() corra tras una interacción, nada suena.
+ * Audio con desbloqueo por gesto de usuario (autoplay policy).
+ * Archivos reales vía <audio> (rutas del AssetRegistry); tonos sintéticos
+ * como fallback cuando el asset todavía no existe.
  */
 class AudioService {
   private ctx: AudioContext | null = null;
@@ -46,20 +48,45 @@ class AudioService {
     return this.volumes.master * this.volumes[channel];
   }
 
-  /** Fanfarria simple por osciladores: sirve para "probar audio" sin assets binarios. */
   playTestFanfare(): void {
-    this.playTones([440, 554, 659, 880], 0.12, 'sfx');
+    void this.playTonesAsync([440, 554, 659, 880], 0.12, 'sfx');
   }
 
-  playTauntBeep(): void {
+  playDiceSound(): void {
+    const asset = assetRegistry.get('audio.gameplay.dice_roll');
+    if (asset) void this.playFile(asset.url, 'sfx').catch(() => this.playTonesAsync([196, 220], 0.06, 'sfx'));
+    else void this.playTonesAsync([196, 220], 0.06, 'sfx');
+  }
+
+  /** Taunt del backend (audio_asset_id relativo a /assets). Encolado: nunca dos a la vez. */
+  playTauntAsset(audioAssetId: string): void {
+    const url = assetRegistry.urlForPath(audioAssetId);
     this.tauntQueue.enqueue({
-      id: `beep-${Math.random().toString(36).slice(2)}`,
-      play: () => this.playTonesAsync([330, 392, 494], 0.1, 'taunts'),
+      id: audioAssetId,
+      play: () => this.playFile(url, 'taunts').catch(() => this.playTonesAsync([330, 392, 494], 0.1, 'taunts')),
     });
   }
 
-  private playTones(freqs: number[], noteSeconds: number, channel: AudioChannel): void {
-    void this.playTonesAsync(freqs, noteSeconds, channel);
+  /** Sonido de botón del soundboard (path del taunts-manifest), si existe. */
+  playSoundboardSound(soundPath: string | null): void {
+    if (!soundPath) return;
+    this.tauntQueue.enqueue({
+      id: soundPath,
+      play: () => this.playFile(assetRegistry.urlForPath(soundPath), 'taunts').catch(() => Promise.resolve()),
+    });
+  }
+
+  private playFile(url: string, channel: AudioChannel): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (!this.unlocked) return resolve();
+      const gain = this.gainFor(channel);
+      if (gain === 0) return resolve();
+      const el = new Audio(url);
+      el.volume = gain;
+      el.onended = () => resolve();
+      el.onerror = () => reject(new Error(`audio no disponible: ${url}`));
+      el.play().catch(reject);
+    });
   }
 
   private playTonesAsync(freqs: number[], noteSeconds: number, channel: AudioChannel): Promise<void> {

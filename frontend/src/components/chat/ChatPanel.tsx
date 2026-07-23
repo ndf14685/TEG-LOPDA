@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useGameStore } from '../../state/gameStore';
 import { wsClient } from '../../services/websocket/wsClient';
-import { PLAYER_COLOR_VAR } from '../../utils/playerColors';
+import { colorValue } from '../../utils/playerColors';
 
 export function ChatPanel({ compact = false }: { compact?: boolean }) {
   const chat = useGameStore((s) => s.chat);
@@ -15,20 +15,21 @@ export function ChatPanel({ compact = false }: { compact?: boolean }) {
 
   function submit(e: FormEvent) {
     e.preventDefault();
-    const trimmed = text.trim().slice(0, 300);
+    const trimmed = text.trim().slice(0, 500);
     if (!trimmed) return;
-    wsClient.send({ type: 'chat.send', text: trimmed });
+    wsClient.send({ type: 'chat.send', payload: { text: trimmed } });
     setText('');
   }
 
   return (
     <div className={`flex flex-col ${compact ? 'h-32' : 'h-48'}`} data-testid="chat-panel">
       <ul ref={listRef} className="flex-1 space-y-1 overflow-y-auto rounded-t-lg border border-war-700 bg-war-900 p-2 text-sm" aria-live="polite" aria-label="Chat">
-        {chat.map((msg, i) => {
+        {chat.map((msg) => {
           const author = playerById(msg.playerId);
           return (
-            <li key={`${msg.ts}-${i}`} className="break-words">
-              <span className="font-semibold" style={{ color: author ? PLAYER_COLOR_VAR[author.color] : undefined }}>
+            <li key={msg.id} className="break-words">
+              {msg.private && <span className="mr-1 text-[10px] text-stone-500">🔒</span>}
+              <span className="font-semibold" style={{ color: colorValue(author?.color) }}>
                 {author?.nickname ?? '???'}:
               </span>{' '}
               {/* React escapa el contenido: nunca HTML crudo del usuario */}
@@ -42,7 +43,7 @@ export function ChatPanel({ compact = false }: { compact?: boolean }) {
         <input
           value={text}
           onChange={(e) => setText(e.target.value)}
-          maxLength={300}
+          maxLength={500}
           placeholder="Escribí algo picante…"
           aria-label="Mensaje de chat"
           className="min-w-0 flex-1 rounded-bl-lg border border-t-0 border-war-700 bg-war-800 px-3 py-1.5 text-sm outline-none focus:border-gold-500"

@@ -1,71 +1,99 @@
 import { z } from 'zod';
-import { GameSnapshot } from './game';
-import { PlayerPublic } from './player';
-import { AIComment } from './ai';
+import { SnapshotPayload, GameStatus, TurnState } from './game';
+import { PublicPlayer, Presence } from './player';
 
-/** Sobre común de todo evento servidor→cliente. seq es por partida, monotónico. */
-export const ServerEnvelope = z.object({
-  v: z.string(),
-  seq: z.number().int(),
-  type: z.string(),
-  ts: z.number(),
-  payload: z.unknown(),
+/**
+ * Sobre de todo evento servidor→cliente (event-envelope.schema.json).
+ * sequence_number: monotónico ≥1 en eventos persistidos; 0 en efímeros
+ * (game.snapshot, presence.changed, error).
+ */
+export const GameEventEnvelope = z.object({
+  event_id: z.string(),
+  event_type: z.string(),
+  game_id: z.string(),
+  actor_id: z.string().nullable().optional(),
+  target_id: z.string().nullable().optional(),
+  timestamp: z.string(),
+  sequence_number: z.number().int(),
+  payload: z.record(z.string(), z.unknown()),
+  visibility: z.enum(['public', 'private', 'admin']),
+  schema_version: z.string(),
+  persisted: z.boolean().optional(),
 });
-export type ServerEnvelope = z.infer<typeof ServerEnvelope>;
+export type GameEventEnvelope = z.infer<typeof GameEventEnvelope>;
 
-export const LobbyStatePayload = z.object({
-  gameId: z.string(),
-  gameName: z.string(),
-  status: z.enum(['lobby', 'starting', 'in-game', 'paused', 'finished']),
-  players: z.array(PlayerPublic),
+/** Único mensaje server→cliente que NO es envelope: respuesta al ping. */
+export const PongMessage = z.object({ type: z.literal('pong') });
+
+// ---- payloads por event_type ----
+
+export const PlayerJoinedPayload = z.object({ player: PublicPlayer });
+export const PlayerReadyPayload = z.object({ ready: z.boolean(), all_ready: z.boolean(), game_status: GameStatus });
+export const PresenceChangedPayload = z.object({ presence: Presence });
+export const GameStartedPayload = z.object({ turn_order: z.array(z.string()), players: z.array(PublicPlayer) });
+export const TurnStartedPayload = z.object({ turn_number: z.number().int() });
+export const TurnEndedPayload = z.object({ turn_number: z.number().int() }).partial();
+export const DiceRolledPayload = z.object({ dice: z.array(z.number().int()), count: z.number().int() });
+export const AttackResolvedPayload = z.object({
+  attacker_dice: z.array(z.number().int()),
+  defender_dice: z.array(z.number().int()),
+  attacker_losses: z.number().int(),
+  defender_losses: z.number().int(),
+  comparisons: z.array(z.object({ attacker: z.number().int(), defender: z.number().int() })),
 });
-
-export const ChatMessagePayload = z.object({
-  playerId: z.string(),
-  text: z.string().max(300),
-  ts: z.number(),
-});
-
-export const GameStartingPayload = z.object({ countdownMs: z.number() });
-export const GameStartedPayload = z.object({ snapshot: GameSnapshot });
-export const SnapshotPayload = z.object({ snapshot: GameSnapshot });
-
+export const ChatMessagePayload = z.object({ text: z.string() });
 export const TauntTriggeredPayload = z.object({
-  fromPlayerId: z.string(),
-  soundboardId: z.string(),
-  text: z.string(),
-  audioAssetId: z.string().nullable(),
+  audio_asset_id: z.string(),
+  source_event_type: z.string(),
+  source_event_id: z.string().nullable().optional(),
 });
-
-export const AICommentTypingPayload = z.object({ commentId: z.string() });
-export const AICommentGeneratedPayload = z.object({ comment: AIComment });
-export const AICommentCancelledPayload = z.object({ commentId: z.string() });
-export const AICommentErrorPayload = z.object({ commentId: z.string(), message: z.string() });
-
+export const AICommentGeneratedPayload = z.object({
+  text: z.string(),
+  emotion: z.string().default('neutral'),
+  audio_asset: z.string().nullable().default(null),
+});
+export const GameFinishedPayload = z.object({
+  turns_played: z.number().int(),
+  winner_player_id: z.string().nullable(),
+  total_events: z.number().int(),
+});
 export const ErrorPayload = z.object({ code: z.string(), message: z.string() });
 
-/** Mapa tipo→schema. El cliente valida payloads contra esto y descarta lo inválido. */
-export const SERVER_EVENT_SCHEMAS = {
-  'lobby.state': LobbyStatePayload,
-  'chat.message': ChatMessagePayload,
-  'game.starting': GameStartingPayload,
-  'game.started': GameStartedPayload,
+/**
+ * Mapa event_type→schema de payload. El cliente valida contra esto y descarta
+ * lo inválido. Eventos sin entrada se aceptan con payload opaco (forward-compat).
+ */
+export const EVENT_PAYLOAD_SCHEMAS = {
   'game.snapshot': SnapshotPayload,
+  'player.joined': PlayerJoinedPayload,
+  'player.ready': PlayerReadyPayload,
+  'presence.changed': PresenceChangedPayload,
+  'game.started': GameStartedPayload,
+  'turn.started': TurnStartedPayload,
+  'turn.ended': TurnEndedPayload,
+  'dice.rolled': DiceRolledPayload,
+  'attack.resolved': AttackResolvedPayload,
+  'chat.message': ChatMessagePayload,
   'taunt.triggered': TauntTriggeredPayload,
-  'ai.comment.typing': AICommentTypingPayload,
   'ai.comment.generated': AICommentGeneratedPayload,
-  'ai.comment.cancelled': AICommentCancelledPayload,
-  'ai.comment.error': AICommentErrorPayload,
+  'game.finished': GameFinishedPayload,
   'error': ErrorPayload,
 } as const;
-export type ServerEventType = keyof typeof SERVER_EVENT_SCHEMAS;
+export type KnownEventType = keyof typeof EVENT_PAYLOAD_SCHEMAS;
 
-/** Mensajes cliente→servidor. */
+/** Mensajes cliente→servidor (client-messages.schema.json). Máximo 8 KiB. */
 export const ClientMessage = z.discriminatedUnion('type', [
-  z.object({ type: z.literal('player.ready'), ready: z.boolean() }),
-  z.object({ type: z.literal('chat.send'), text: z.string().min(1).max(300) }),
-  z.object({ type: z.literal('game.start') }),
-  z.object({ type: z.literal('sync.request') }),
-  z.object({ type: z.literal('taunt.trigger'), soundboardId: z.string() }),
+  z.object({ type: z.literal('ping'), payload: z.object({}).optional() }),
+  z.object({ type: z.literal('ready.set'), payload: z.object({ ready: z.boolean() }) }),
+  z.object({
+    type: z.literal('chat.send'),
+    payload: z.object({ text: z.string().min(1).max(500), target_player_id: z.string().nullable().optional() }),
+  }),
+  z.object({ type: z.literal('dice.roll'), payload: z.object({ count: z.number().int().min(1).max(3) }) }),
+  z.object({
+    type: z.literal('attack'),
+    payload: z.object({ target_player_id: z.string(), attacker_dice: z.number().int().min(1).max(3).optional() }),
+  }),
+  z.object({ type: z.literal('turn.end'), payload: z.object({}).optional() }),
 ]);
 export type ClientMessage = z.infer<typeof ClientMessage>;

@@ -1,38 +1,39 @@
 import { z } from 'zod';
 
-export const PlayerRole = z.enum(['admin', 'player', 'spectator', 'ai-player']);
+export const PlayerRole = z.enum(['admin', 'player', 'spectator', 'ai_commentator', 'ai_player']);
 export type PlayerRole = z.infer<typeof PlayerRole>;
 
-export const PlayerColor = z.enum(['red', 'blue', 'green', 'yellow', 'purple', 'orange']);
-export type PlayerColor = z.infer<typeof PlayerColor>;
+export const Presence = z.enum(['online', 'reconnecting', 'offline']);
+export type Presence = z.infer<typeof Presence>;
 
-export const ConnectionState = z.enum(['connected', 'disconnected', 'never-joined']);
-export type ConnectionState = z.infer<typeof ConnectionState>;
-
-/** Datos que el admin precarga por jugador. Nunca viajan en la URL. */
-export const PlayerProfile = z.object({
-  name: z.string().min(1).max(60),
-  nickname: z.string().min(1).max(40),
-  color: PlayerColor,
-  avatarId: z.string(), // id dot-notation del asset manifest
-  tauntAudioIds: z.array(z.string()).default([]),
-  trustLevel: z.number().int().min(0).max(10).default(5),
-  titles: z.array(z.string()).default([]),
-  relationships: z.record(z.string(), z.string()).default({}),
-});
-export type PlayerProfile = z.infer<typeof PlayerProfile>;
-
-/** Vista pública de un jugador (lo que ven los demás). */
-export const PlayerPublic = z.object({
+/** Shape base de jugador que emite el backend en snapshot y eventos. */
+export const PublicPlayer = z.object({
   id: z.string(),
-  role: PlayerRole,
   nickname: z.string(),
-  color: PlayerColor,
-  avatarId: z.string(),
-  titles: z.array(z.string()),
-  connection: ConnectionState,
-  ready: z.boolean(),
-  isAI: z.boolean().default(false),
-  muted: z.boolean().default(false),
+  role: PlayerRole,
+  color: z.string().nullable(),
+  avatar_asset_id: z.string().nullable(),
+  is_ready: z.boolean(),
+  eliminated: z.boolean(),
+  joined: z.boolean(),
+  presence: Presence.optional(), // presente en snapshot y GET admin
 });
-export type PlayerPublic = z.infer<typeof PlayerPublic>;
+export type PublicPlayer = z.infer<typeof PublicPlayer>;
+
+/** Vista admin: agrega estado del token y editabilidad del apodo. */
+export const AdminPlayer = PublicPlayer.extend({
+  token_revoked: z.boolean(),
+  nickname_editable: z.boolean(),
+});
+export type AdminPlayer = z.infer<typeof AdminPlayer>;
+
+/** Forma ad-hoc del GET /api/join (preview): usa already_joined, sin is_ready/eliminated. */
+export const JoinPreviewPlayer = z.object({
+  id: z.string(),
+  nickname: z.string(),
+  role: PlayerRole,
+  color: z.string().nullable(),
+  nickname_editable: z.boolean(),
+  already_joined: z.boolean(),
+});
+export type JoinPreviewPlayer = z.infer<typeof JoinPreviewPlayer>;

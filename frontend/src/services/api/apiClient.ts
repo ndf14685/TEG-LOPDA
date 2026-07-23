@@ -2,12 +2,17 @@ import type { z } from 'zod';
 import {
   HealthResponse,
   CreateGameResponse,
-  SessionResponse,
-  AdminGameView,
-  PlayerLink,
+  AdminGameDetailResponse,
+  InvitePlayerResponse,
+  RegenerateTokenResponse,
+  StartGameResponse,
+  OkResponse,
+  JoinPreviewResponse,
+  JoinConfirmResponse,
+  ApiErrorResponse,
   type CreateGameRequest,
-  type CreatePlayerRequest,
-  ApiError,
+  type InvitePlayerRequest,
+  type CommentatorConfigRequest,
 } from '@teg/contracts';
 
 export class ApiRequestError extends Error {
@@ -23,48 +28,84 @@ async function request<S extends z.ZodTypeAny>(schema: S, path: string, init?: R
   });
   const body = await res.json().catch(() => null);
   if (!res.ok) {
-    const parsed = ApiError.safeParse(body);
-    if (parsed.success) throw new ApiRequestError(parsed.data.code, parsed.data.message, res.status);
+    const parsed = ApiErrorResponse.safeParse(body);
+    if (parsed.success) throw new ApiRequestError(parsed.data.detail.code, parsed.data.detail.message, res.status);
     throw new ApiRequestError('INTERNAL_ERROR', `Error HTTP ${res.status}`, res.status);
   }
   return schema.parse(body);
 }
 
+const adminHeaders = (adminToken: string) => ({ 'x-admin-token': adminToken });
+
 export const api = {
-  health: () => request(HealthResponse, '/api/health'),
+  health: () => request(HealthResponse, '/health'),
 
-  createGame: (body: CreateGameRequest) =>
-    request(CreateGameResponse, '/api/games', { method: 'POST', body: JSON.stringify(body) }),
+  // ---- join (público, token en URL) ----
+  joinPreview: (code: string, token: string) =>
+    request(JoinPreviewResponse, `/api/join/${code}/${encodeURIComponent(token)}`),
 
-  adminView: (gameId: string, adminToken: string) =>
-    request(AdminGameView, `/api/games/${gameId}/admin`, { headers: { 'x-admin-token': adminToken } }),
-
-  createPlayer: (gameId: string, adminToken: string, body: CreatePlayerRequest) =>
-    request(PlayerLink, `/api/games/${gameId}/players`, {
+  joinConfirm: (code: string, token: string, nickname?: string | null) =>
+    request(JoinConfirmResponse, `/api/join/${code}/${encodeURIComponent(token)}`, {
       method: 'POST',
-      headers: { 'x-admin-token': adminToken },
+      body: JSON.stringify({ nickname: nickname ?? null }),
+    }),
+
+  // ---- admin (X-Admin-Token global del servidor) ----
+  createGame: (adminToken: string, body: CreateGameRequest) =>
+    request(CreateGameResponse, '/api/admin/games', {
+      method: 'POST',
+      headers: adminHeaders(adminToken),
       body: JSON.stringify(body),
     }),
 
-  revokeLink: (gameId: string, adminToken: string, playerId: string) =>
-    request(PlayerLink, `/api/games/${gameId}/players/${playerId}/revoke`, {
+  gameDetail: (adminToken: string, gameId: string) =>
+    request(AdminGameDetailResponse, `/api/admin/games/${gameId}`, { headers: adminHeaders(adminToken) }),
+
+  invitePlayer: (adminToken: string, gameId: string, body: InvitePlayerRequest) =>
+    request(InvitePlayerResponse, `/api/admin/games/${gameId}/players`, {
       method: 'POST',
-      headers: { 'x-admin-token': adminToken },
+      headers: adminHeaders(adminToken),
+      body: JSON.stringify(body),
     }),
 
-  regenerateLink: (gameId: string, adminToken: string, playerId: string) =>
-    request(PlayerLink, `/api/games/${gameId}/players/${playerId}/regenerate`, {
+  regenerateToken: (adminToken: string, gameId: string, playerId: string) =>
+    request(RegenerateTokenResponse, `/api/admin/games/${gameId}/players/${playerId}/regenerate-token`, {
       method: 'POST',
-      headers: { 'x-admin-token': adminToken },
+      headers: adminHeaders(adminToken),
     }),
 
-  createSession: (token: string) =>
-    request(SessionResponse, '/api/session', { method: 'POST', body: JSON.stringify({ token }) }),
-
-  confirmNickname: (sessionId: string, nickname: string) =>
-    fetch(`/api/session/${sessionId}/nickname`, {
+  kickPlayer: (adminToken: string, gameId: string, playerId: string) =>
+    request(OkResponse, `/api/admin/games/${gameId}/players/${playerId}/kick`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ nickname }),
+      headers: adminHeaders(adminToken),
+    }),
+
+  startGame: (adminToken: string, gameId: string) =>
+    request(StartGameResponse, `/api/admin/games/${gameId}/start`, {
+      method: 'POST',
+      headers: adminHeaders(adminToken),
+    }),
+
+  pauseGame: (adminToken: string, gameId: string) =>
+    request(OkResponse, `/api/admin/games/${gameId}/pause`, { method: 'POST', headers: adminHeaders(adminToken) }),
+
+  configureCommentator: (adminToken: string, gameId: string, body: CommentatorConfigRequest) =>
+    fetch(`/api/admin/games/${gameId}/commentator`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', ...adminHeaders(adminToken) },
+      body: JSON.stringify(body),
     }),
 };
+
+/**
+ * Los join_url del backend usan su public_base_url (ej: http://localhost:8123).
+ * Para compartir/navegar usamos siempre el origin del frontend, mismo path.
+ */
+export function toFrontendUrl(backendUrl: string): string {
+  try {
+    const url = new URL(backendUrl);
+    return location.origin + url.pathname;
+  } catch {
+    return backendUrl;
+  }
+}

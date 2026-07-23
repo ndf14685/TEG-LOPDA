@@ -1,23 +1,29 @@
 import { defineConfig } from '@playwright/test';
 
+/**
+ * E2E contra el backend FastAPI real (backend/) + frontend Vite.
+ * Puertos aislados (8124/5174) para no chocar con los servicios de dev
+ * que corren en 8123/5173. DB efímera por corrida.
+ */
 export default defineConfig({
   testDir: './e2e',
   timeout: 60_000,
   use: {
-    baseURL: 'http://localhost:5173',
+    baseURL: 'http://localhost:5174',
     screenshot: 'only-on-failure',
   },
   webServer: [
     {
-      command: 'pnpm --filter @teg/server-mock dev',
-      url: 'http://localhost:8790/api/health',
-      reuseExistingServer: !process.env.CI,
-      timeout: 30_000,
+      command:
+        'cd backend && TEG_ADMIN_TOKEN=dev-admin TEG_DB_PATH=$(mktemp -d)/teg-e2e.db TEG_CORS_ORIGINS=http://localhost:5174 uv run uvicorn teg_backend.main:app --port 8124',
+      url: 'http://localhost:8124/health',
+      reuseExistingServer: false,
+      timeout: 60_000,
     },
     {
-      command: 'pnpm --filter @teg/frontend dev',
-      url: 'http://localhost:5173',
-      reuseExistingServer: !process.env.CI,
+      command: 'BACKEND_URL=http://localhost:8124 pnpm --filter @teg/frontend exec vite --port 5174 --strictPort',
+      url: 'http://localhost:5174',
+      reuseExistingServer: false,
       timeout: 30_000,
     },
   ],

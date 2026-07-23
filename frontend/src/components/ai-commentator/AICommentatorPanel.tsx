@@ -1,21 +1,16 @@
 import { useEffect, useState } from 'react';
 import { useGameStore } from '../../state/gameStore';
-import { assetRegistry } from '../../services/assets/AssetRegistry';
-import { PLAYER_COLOR_VAR } from '../../utils/playerColors';
+import { colorValue } from '../../utils/playerColors';
 
-const EXPRESSION_GLYPH: Record<string, string> = {
-  neutral: '🎙️', smug: '😏', shocked: '😱', laughing: '🤣', evil: '😈',
-};
-
-const TYPE_LABEL: Record<string, string> = {
-  roast: 'BARDEO', praise: 'ELOGIO', narration: 'RELATO', drama: 'DRAMA', stats: 'DATOS',
+/** Emociones del backend (ai/commentator.py) → glifo. */
+const EMOTION_GLYPH: Record<string, string> = {
+  neutral: '🎙️', mocking: '😏', excited: '🤩', dramatic: '😱', deadpan: '😐',
 };
 
 const AUTO_MINIMIZE_MS = 12_000;
 
 /** Panel del comentarista IA. No interrumpe: se minimiza solo. */
 export function AICommentatorPanel() {
-  const aiTyping = useGameStore((s) => s.aiTyping);
   const comments = useGameStore((s) => s.aiComments);
   const muted = useGameStore((s) => s.aiMuted);
   const setMuted = useGameStore((s) => s.setAiMuted);
@@ -47,24 +42,20 @@ export function AICommentatorPanel() {
       <header className="mb-2 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="text-2xl" aria-hidden>
-            {latest ? EXPRESSION_GLYPH[latest.expression] ?? '🎙️' : assetRegistry.emoji('avatar.comentarista.001', '🎙️')}
+            {latest ? EMOTION_GLYPH[latest.emotion] ?? '🎙️' : '🎙️'}
           </span>
           <h3 className="font-display text-sm font-bold tracking-wide text-gold-400">EL RELATOR</h3>
         </div>
         <button className="text-xs text-stone-400 hover:text-stone-200" onClick={() => setMuted(true)} aria-label="Silenciar comentarista">🔇</button>
       </header>
 
-      {aiTyping && (
-        <p data-testid="ai-typing" className="animate-pulse text-sm text-stone-400">escribiendo maldades…</p>
-      )}
+      {!latest && <p className="text-sm italic text-stone-600">Afinando el micrófono…</p>}
 
       {latest && !minimized && (
         <div data-testid="ai-comment" className="rounded-md bg-war-800 p-3">
           <div className="mb-1 flex items-center gap-2 text-[10px] tracking-wider">
-            <span className="rounded bg-red-900/60 px-1.5 py-0.5 text-red-200">{TYPE_LABEL[latest.type] ?? latest.type}</span>
-            {target && (
-              <span style={{ color: PLAYER_COLOR_VAR[target.color] }}>→ {target.nickname}</span>
-            )}
+            <span className="rounded bg-red-900/60 px-1.5 py-0.5 text-red-200">{latest.emotion.toUpperCase()}</span>
+            {target && <span style={{ color: colorValue(target.color) }}>→ {target.nickname}</span>}
           </div>
           <p className="text-sm leading-snug">{latest.text}</p>
         </div>

@@ -1,20 +1,43 @@
 import { z } from 'zod';
 
-export const AssetKind = z.enum(['image', 'audio', 'video', 'emoji', 'json']);
-export type AssetKind = z.infer<typeof AssetKind>;
+/**
+ * Manifiestos publicados por Dirección de Arte en assets/manifest/
+ * (ver assets/README-INTEGRATION.md).
+ */
 
-export const AssetEntry = z.object({
-  id: z.string(), // dot-notation: "background.lobby.war-room.001"
-  kind: AssetKind,
-  /** Ruta relativa a /assets para archivos, o el glifo para kind=emoji. */
-  src: z.string(),
-  preload: z.boolean().default(false),
-  fallbackId: z.string().nullable().default(null),
+/** assets-manifest.json: mapas por modo de juego + piezas de UI. */
+export const ArtAssetsManifest = z.object({
+  schema_version: z.string(),
+  maps: z.record(z.string(), z.object({ id: z.string(), path: z.string() })),
+  ui: z.record(z.string(), z.string()),
 });
-export type AssetEntry = z.infer<typeof AssetEntry>;
+export type ArtAssetsManifest = z.infer<typeof ArtAssetsManifest>;
 
-export const AssetManifest = z.object({
-  version: z.string(),
-  assets: z.array(AssetEntry),
+/** audio-manifest.json: categorías → { nombre → {path, type} }. */
+export const AudioManifest = z.object({
+  schema_version: z.string(),
+}).catchall(z.record(z.string(), z.object({ path: z.string(), type: z.string() })));
+export type AudioManifest = z.infer<typeof AudioManifest>;
+
+/** taunts-manifest.json: bardos con texto y sonido opcional, sobre un stamp visual. */
+export const TauntsManifest = z.object({
+  schema_version: z.string(),
+  base_stamp_path: z.string(),
+  definitions: z.array(z.object({
+    id: z.string(),
+    text: z.string(),
+    sound: z.string().nullable(),
+  })),
 });
-export type AssetManifest = z.infer<typeof AssetManifest>;
+export type TauntsManifest = z.infer<typeof TauntsManifest>;
+
+export const GameMode = z.enum(['classic_50', 'mega_world_100']);
+export type GameMode = z.infer<typeof GameMode>;
+
+/** brand/palette/palette.json: tema global + colores de jugador (WCAG AA sobre fondo oscuro). */
+export const BrandPalette = z.object({
+  theme: z.string(),
+  global: z.record(z.string(), z.string()),
+  players: z.array(z.object({ id: z.string(), name: z.string(), hex: z.string() })),
+});
+export type BrandPalette = z.infer<typeof BrandPalette>;

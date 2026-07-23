@@ -3,9 +3,8 @@
   "private": true,
   "version": "0.1.0",
   "scripts": {
-    "dev": "pnpm --parallel --filter @teg/server-mock --filter @teg/frontend dev",
-    "dev:server": "pnpm --filter @teg/server-mock dev",
-    "dev:front": "pnpm --filter @teg/frontend dev",
+    "dev": "pnpm --filter @teg/frontend dev",
+    "dev:backend": "cd backend && TEG_ADMIN_TOKEN=${TEG_ADMIN_TOKEN:-dev-admin} uv run uvicorn teg_backend.main:app --port 8123",
     "build": "pnpm --filter @teg/frontend build",
     "test": "pnpm --filter @teg/frontend test -- --run",
     "e2e": "playwright test",

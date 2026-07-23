@@ -11,9 +11,10 @@ export function App() {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/admin/:gameId" element={<AdminPage />} />
-        <Route path="/join/:gameId/:token" element={<JoinPage />} />
-        <Route path="/lobby/:gameId" element={<LobbyPage />} />
-        <Route path="/game/:gameId" element={<GamePage />} />
+        <Route path="/join/:code/:token" element={<JoinPage />} />
+        <Route path="/join/:code" element={<LandingPage />} />
+        <Route path="/lobby/:code" element={<LobbyPage />} />
+        <Route path="/game/:code" element={<GamePage />} />
         <Route path="*" element={<LandingPage />} />
       </Routes>
     </BrowserRouter>

@@ -67,26 +67,25 @@ assets/manifest/    manifiesto de assets (ejemplo)
 
 ## Frontend
 
-SPA en **Vite + React 19 + TypeScript** (Zustand, Tailwind v4, zod, WebSocket nativo). El frontend no calcula reglas: consume snapshots y eventos con `seq` del backend, reconecta con backoff y resincroniza pidiendo snapshot.
+SPA en **Vite + React 19 + TypeScript** (Zustand, Tailwind v4, zod, WebSocket nativo), integrada al backend FastAPI real y a los assets de Dirección de Arte. No calcula reglas: consume `game.snapshot` + eventos con `sequence_number`, reconecta con backoff (reconectar = resincronizar: el server manda snapshot fresco) y bloquea acciones mientras no está sincronizada.
 
 ```bash
 pnpm install
-pnpm dev          # server-mock (:8790) + frontend (:5173) en paralelo
-pnpm test         # unit (Vitest)
-pnpm e2e          # vertical slice E2E (Playwright, 2 contextos de navegador)
-pnpm build        # frontend/dist estáticos
+pnpm dev:backend   # FastAPI en :8123 (TEG_ADMIN_TOKEN=dev-admin por defecto)
+pnpm dev           # Vite en :5173 con proxy /api, /health y /ws al :8123
+pnpm test          # unit (Vitest)
+pnpm e2e           # E2E Playwright contra backend real (puertos aislados 8124/5174, DB efímera)
+pnpm build         # frontend/dist estáticos (bundles en /static, assets de Arte en /assets)
 ```
 
 ```
 frontend/           SPA (pages, components, services, state, config)
-server-mock/        backend mock (express+ws) usado por dev y E2E
-shared/contracts/   src/ = schemas zod TS (frontend + mock); api|websocket|schemas = docs del backend real
+shared/contracts/   src/ = schemas zod TS espejando api|websocket|schemas (docs del backend)
+assets/             Dirección de Arte: manifiestos, mapas SVG, paleta, audio (frontend/public/assets → symlink)
 e2e/                Playwright: slice completo con dos navegadores
 ```
 
-Convenciones: componentes `PascalCase.tsx`; assets `kebab-case` numerados; IDs lógicos dot-notation resueltos solo vía `AssetRegistry` + `frontend/public/assets/manifests/assets-manifest.json`; textos del soundboard en `frontend/src/config/soundboard.config.ts`. Deploy: `frontend/Dockerfile` (nginx sirve estáticos y proxya `/api` y `/ws`).
-
-**Pendiente**: apuntar el frontend al backend FastAPI real (puerto 8123) — hoy los paths difieren del mock (`/api/admin/games` + `X-Admin-Token` global vs `/api/games` + token de admin por partida). Ver "Próximos pasos" en `docs/superpowers/specs/2026-07-22-teg-lopda-frontend-design.md`.
+Integración: `AssetRegistry` consume `assets/manifest/*.json` (mapas, audio, taunts) y `assets/brand/palette/palette.json` (pisa las CSS variables de colores de jugador); el mapa se inyecta como SVG dinámico desde `assets/maps/base/` según `assets/README-INTEGRATION.md`. El soundboard sale de `taunts-manifest.json` (fallback en `frontend/src/config/soundboard.config.ts`). Flujo de organizador: la clave `X-Admin-Token` crea la partida y links; el organizador juega auto-invitándose como `player` (el rol `admin` del backend no se sienta a la mesa). Deploy: `frontend/Dockerfile` (nginx proxya `/api`, `/health` y `/ws` a `backend:8123`).
 
 ## Documentación
 

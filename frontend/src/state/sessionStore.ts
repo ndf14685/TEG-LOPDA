@@ -1,49 +1,56 @@
 import { create } from 'zustand';
-import type { SessionResponse } from '@teg/contracts';
 
 /**
- * Sesión activa. Se persiste en sessionStorage (no localStorage) para
- * sobrevivir refresh sin quedar permanente. Con backend real: cookie HttpOnly.
+ * Sesión de jugador por partida. El token de join es la credencial WS: se
+ * guarda en sessionStorage (no localStorage) — pedido explícito al backend
+ * de cookie HttpOnly queda para producción.
  */
+export interface PlayerSession {
+  code: string; // código público de la sala (va en URLs)
+  gameId: string; // uuid interno (solo lo usa el admin)
+  token: string;
+  playerId: string;
+  nickname: string;
+  role: string;
+}
+
 interface SessionState {
-  session: SessionResponse | null;
-  adminToken: string | null; // sólo presente si este cliente creó la partida
-  setSession: (session: SessionResponse) => void;
+  session: PlayerSession | null;
+  /** X-Admin-Token global del servidor; solo presente en el navegador del admin. */
+  adminToken: string | null;
+  setSession: (session: PlayerSession) => void;
   setAdminToken: (token: string) => void;
-  restore: (gameId: string) => boolean;
+  restore: (code: string) => boolean;
   clear: () => void;
 }
 
-const keyFor = (gameId: string) => `teg.session.${gameId}`;
-const adminKeyFor = (gameId: string) => `teg.admin.${gameId}`;
+const keyFor = (code: string) => `teg.session.${code}`;
+const ADMIN_KEY = 'teg.adminToken';
 
-export const useSessionStore = create<SessionState>((set, get) => ({
+export const useSessionStore = create<SessionState>((set) => ({
   session: null,
-  adminToken: null,
+  adminToken: sessionStorage.getItem(ADMIN_KEY),
 
   setSession: (session) => {
-    sessionStorage.setItem(keyFor(session.gameId), JSON.stringify(session));
+    sessionStorage.setItem(keyFor(session.code), JSON.stringify(session));
     set({ session });
   },
 
   setAdminToken: (token) => {
-    const gameId = get().session?.gameId;
-    if (gameId) sessionStorage.setItem(adminKeyFor(gameId), token);
+    sessionStorage.setItem(ADMIN_KEY, token);
     set({ adminToken: token });
   },
 
-  restore: (gameId) => {
+  restore: (code) => {
     try {
-      const raw = sessionStorage.getItem(keyFor(gameId));
+      const raw = sessionStorage.getItem(keyFor(code));
       if (!raw) return false;
-      const session = JSON.parse(raw) as SessionResponse;
-      const adminToken = sessionStorage.getItem(adminKeyFor(gameId));
-      set({ session, adminToken });
+      set({ session: JSON.parse(raw) as PlayerSession });
       return true;
     } catch {
       return false;
     }
   },
 
-  clear: () => set({ session: null, adminToken: null }),
+  clear: () => set({ session: null }),
 }));
