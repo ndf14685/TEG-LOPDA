@@ -131,10 +131,14 @@ export function MapPanel({ mode = 'classic_50' }: { mode?: GameMode }) {
         }
       };
 
-      // 4. Calcular centro para insignias de ejércitos
+      // 4. Calcular centro para insignias de ejércitos (desplazadas hacia
+      // abajo para no tapar el nombre del país)
       try {
         const bbox = path.getBBox();
-        centers[id] = { x: bbox.x + bbox.width / 2, y: bbox.y + bbox.height / 2 };
+        centers[id] = {
+          x: bbox.x + bbox.width / 2,
+          y: bbox.y + bbox.height / 2 + Math.min(bbox.height * 0.18, 42),
+        };
       } catch {
         // Fallback si no está renderizado en screen
       }
@@ -151,24 +155,26 @@ export function MapPanel({ mode = 'classic_50' }: { mode?: GameMode }) {
       badgeGroup.setAttribute('class', 'army-badge');
       badgeGroup.setAttribute('pointer-events', 'none');
 
-      // Círculo de fondo
+      // Círculo de fondo — el viewBox es 2560x1440, en pantalla se reduce
+      // ~4x: la insignia debe ser grande para que las tropas se lean
       const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
       circle.setAttribute('cx', String(center.x));
       circle.setAttribute('cy', String(center.y));
-      circle.setAttribute('r', '18');
+      circle.setAttribute('r', '44');
       circle.setAttribute('fill', '#0f172a');
+      circle.setAttribute('fill-opacity', '0.92');
       circle.setAttribute('stroke', badgeColor);
-      circle.setAttribute('stroke-width', id === selectedSource || id === selectedTarget ? '3.5' : '2');
+      circle.setAttribute('stroke-width', id === selectedSource || id === selectedTarget ? '9' : '5');
       badgeGroup.appendChild(circle);
 
       // Texto con cantidad de ejércitos
       const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       text.setAttribute('x', String(center.x));
-      text.setAttribute('y', String(center.y + 6));
+      text.setAttribute('y', String(center.y + 16));
       text.setAttribute('text-anchor', 'middle');
       text.setAttribute('fill', '#f8fafc');
-      text.setAttribute('font-size', '15');
-      text.setAttribute('font-weight', '800');
+      text.setAttribute('font-size', '46');
+      text.setAttribute('font-weight', '900');
       text.setAttribute('font-family', 'sans-serif');
       text.textContent = String(armies);
       badgeGroup.appendChild(text);
@@ -187,8 +193,8 @@ export function MapPanel({ mode = 'classic_50' }: { mode?: GameMode }) {
       line.setAttribute('x2', String(tgtCenter.x));
       line.setAttribute('y2', String(tgtCenter.y));
       line.setAttribute('stroke', '#ef4444');
-      line.setAttribute('stroke-width', '4');
-      line.setAttribute('stroke-dasharray', '8 4');
+      line.setAttribute('stroke-width', '10');
+      line.setAttribute('stroke-dasharray', '18 10');
       line.setAttribute('pointer-events', 'none');
       overlayGroup.appendChild(line);
     }

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { SnapshotPayload, GameStatus, TurnState } from './game';
+import { SnapshotPayload, GameStatus, TurnState, TurnPhase } from './game';
 import { PublicPlayer, Presence } from './player';
 
 /**
@@ -31,7 +31,13 @@ export const PlayerJoinedPayload = z.object({ player: PublicPlayer });
 export const PlayerReadyPayload = z.object({ ready: z.boolean(), all_ready: z.boolean(), game_status: GameStatus });
 export const PresenceChangedPayload = z.object({ presence: Presence });
 export const GameStartedPayload = z.object({ turn_order: z.array(z.string()), players: z.array(PublicPlayer) });
-export const TurnStartedPayload = z.object({ turn_number: z.number().int() });
+// phase y reinforcements_available deben estar declarados: zod descarta los
+// campos no declarados y el contador de refuerzos quedaba en 0 al iniciar turno
+export const TurnStartedPayload = z.object({
+  turn_number: z.number().int(),
+  phase: TurnPhase.optional(),
+  reinforcements_available: z.number().int().optional(),
+});
 export const TurnEndedPayload = z.object({ turn_number: z.number().int() }).partial();
 export const DiceRolledPayload = z.object({ dice: z.array(z.number().int()), count: z.number().int() });
 export const AttackResolvedPayload = z.object({
