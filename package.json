@@ -2,6 +2,7 @@
   "name": "teg-lopda",
   "private": true,
   "version": "0.1.0",
+  "packageManager": "pnpm@10.12.1",
   "scripts": {
     "dev": "pnpm --filter @teg/frontend dev",
     "dev:backend": "cd backend && TEG_ADMIN_TOKEN=${TEG_ADMIN_TOKEN:-dev-admin} uv run uvicorn teg_backend.main:app --port 8123",

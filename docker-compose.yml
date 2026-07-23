@@ -20,6 +20,16 @@ services:
       driver: json-file
       options: { max-size: "10m", max-file: "3" }
 
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    restart: unless-stopped
+    depends_on: [backend]
+    # nginx sirve la SPA y proxya /api, /health y /ws al backend
+    ports:
+      - "127.0.0.1:${TEG_FRONTEND_PORT:-8130}:80"
+
   caddy:
     image: caddy:2-alpine
     profiles: ["edge"]

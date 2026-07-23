@@ -1,3 +1,6 @@
 packages:
   - shared/contracts
   - frontend
+
+onlyBuiltDependencies:
+  - esbuild
