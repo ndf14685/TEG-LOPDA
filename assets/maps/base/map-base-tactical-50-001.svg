@@ -2,147 +2,250 @@
   <defs>
     <style>
       .territory {
-        fill: rgba(30, 35, 45, 0.85);
-        stroke: #0b1220;
-        stroke-width: 4;
+        fill: rgba(30, 41, 59, 0.85);
+        stroke: #0f172a;
+        stroke-width: 4.5;
         stroke-linejoin: round;
+        stroke-linecap: round;
         cursor: pointer;
-        transition: fill 0.2s ease, stroke 0.2s ease, filter 0.2s ease;
+        transition: fill 0.2s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.2s cubic-bezier(0.4, 0, 0.2, 1), filter 0.2s ease;
       }
       .territory:hover {
         stroke: #38bdf8;
-        filter: brightness(1.25);
+        stroke-width: 5;
+        filter: brightness(1.3) drop-shadow(0 0 8px rgba(56, 189, 248, 0.4));
       }
       .territory.selected {
         stroke: #fbbf24;
-        stroke-width: 4;
-        filter: brightness(1.35);
+        stroke-width: 5.5;
+        filter: brightness(1.4) drop-shadow(0 0 12px rgba(251, 191, 36, 0.6));
       }
       .territory.attack-source {
-        stroke: #38bdf8;
-        stroke-width: 4;
+        stroke: #0284c7;
+        stroke-width: 5.5;
+        filter: brightness(1.3);
       }
       .territory.attack-target {
         stroke: #ef4444;
-        stroke-width: 4;
-        stroke-dasharray: 8 4;
+        stroke-width: 5.5;
+        stroke-dasharray: 10 5;
+        filter: brightness(1.3) drop-shadow(0 0 10px rgba(239, 68, 68, 0.6));
       }
       .territory-label {
-        fill: #f1f5f9;
-        font-family: ui-sans-serif, system-ui, sans-serif;
-        font-size: 34px;
-        font-weight: 700;
+        fill: #f8fafc;
+        font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+        font-size: 32px;
+        font-weight: 800;
         paint-order: stroke;
-        stroke: rgba(2, 6, 23, 0.8);
-        stroke-width: 7px;
+        stroke: #020617;
+        stroke-width: 8px;
         stroke-linejoin: round;
         pointer-events: none;
         text-anchor: middle;
         user-select: none;
+        letter-spacing: 0.5px;
       }
       .continent-title {
-        fill: rgba(148, 163, 184, 0.55);
-        font-family: ui-sans-serif, system-ui, sans-serif;
-        font-size: 46px;
-        font-weight: 700;
-        letter-spacing: 3px;
+        fill: rgba(148, 163, 184, 0.45);
+        font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+        font-size: 44px;
+        font-weight: 900;
+        letter-spacing: 4px;
         pointer-events: none;
         text-anchor: middle;
         text-transform: uppercase;
       }
+      .sea-route {
+        stroke: rgba(56, 189, 248, 0.45);
+        stroke-width: 3.5;
+        stroke-dasharray: 8 6;
+        fill: none;
+        pointer-events: none;
+      }
     </style>
-    <radialGradient id="ocean-grad" cx="50%" cy="42%" r="75%">
-      <stop offset="0%" stop-color="#0e2a47" />
-      <stop offset="60%" stop-color="#0a1e35" />
-      <stop offset="100%" stop-color="#060f1d" />
+    <radialGradient id="ocean-grad" cx="50%" cy="45%" r="75%">
+      <stop offset="0%" stop-color="#0f2b48" />
+      <stop offset="55%" stop-color="#091b30" />
+      <stop offset="100%" stop-color="#040a14" />
     </radialGradient>
     <pattern id="ocean-grid" width="120" height="120" patternUnits="userSpaceOnUse">
-      <path d="M 120 0 L 0 0 0 120" fill="none" stroke="rgba(96, 165, 250, 0.06)" stroke-width="1.5" />
+      <path d="M 120 0 L 0 0 0 120" fill="none" stroke="rgba(56, 189, 248, 0.05)" stroke-width="1.5" />
+      <circle cx="120" cy="120" r="2" fill="rgba(56, 189, 248, 0.15)" />
     </pattern>
   </defs>
 
+  <!-- Fondo Océano -->
   <rect x="0" y="0" width="2560" height="1440" fill="url(#ocean-grad)" />
   <rect x="0" y="0" width="2560" height="1440" fill="url(#ocean-grid)" />
 
-  <!-- AMÉRICA DEL SUR -->
+  <!-- Rutas Marítimas -->
+  <g id="sea-routes">
+    <!-- Canadá <-> Alaska <-> UK <-> Kamchatka -->
+    <path class="sea-route" d="M 900 230 C 970 240, 1020 260, 1080 300" />
+    <path class="sea-route" d="M 1120 400 C 1080 480, 1040 520, 1030 560" />
+    <path class="sea-route" d="M 1120 680 C 1120 710, 1140 730, 1160 740" />
+    <path class="sea-route" d="M 2300 680 C 2350 670, 2370 660, 2390 650" />
+    <path class="sea-route" d="M 2400 350 C 2480 330, 2520 300, 2550 280 M 10 280 C 60 260, 110 240, 180 230" />
+    <path class="sea-route" d="M 2180 770 C 2160 840, 2120 900, 2090 970" />
+  </g>
+
+  <!-- 1. AMÉRICA DEL SUR -->
   <g id="continent-south-america">
-    <text x="650" y="780" class="continent-title">América del Sur</text>
-    <path id="territory-south-america-colombia" class="territory" d="M 540 820 L 660 800 L 640 920 L 530 900 Z" />
-    <path id="territory-south-america-peru" class="territory" d="M 530 900 L 640 920 L 620 1040 L 510 1020 Z" />
-    <path id="territory-south-america-brazil" class="territory" d="M 660 800 L 840 820 L 860 1000 L 620 1040 L 640 920 Z" />
-    <path id="territory-south-america-chile" class="territory" d="M 510 1020 L 590 1030 L 560 1320 L 490 1300 Z" />
-    <path id="territory-south-america-argentina" class="territory" d="M 590 1030 L 740 1010 L 720 1340 L 560 1320 Z" />
-    <text x="590" y="865" class="territory-label">Colombia</text>
-    <text x="575" y="975" class="territory-label">Perú</text>
-    <text x="740" y="920" class="territory-label">Brasil</text>
-    <text x="535" y="1170" class="territory-label">Chile</text>
-    <text x="650" y="1175" class="territory-label">Argentina</text>
+    <text x="750" y="790" class="continent-title">América del Sur</text>
+    
+    <!-- Colombia -->
+    <path id="territory-south-america-colombia" class="territory" 
+      d="M 640 840 C 680 825, 750 820, 800 835 C 830 870, 820 920, 780 945 C 730 955, 660 940, 630 900 C 625 870, 630 850, 640 840 Z" />
+    <text x="715" y="875" class="territory-label">Colombia</text>
+
+    <!-- Perú -->
+    <path id="territory-south-america-peru" class="territory" 
+      d="M 630 900 C 660 940, 730 955, 780 945 C 765 1010, 730 1065, 660 1100 C 610 1065, 595 995, 615 930 C 620 915, 625 905, 630 900 Z" />
+    <text x="670" y="960" class="territory-label">Perú</text>
+
+    <!-- Brasil -->
+    <path id="territory-south-america-brazil" class="territory" 
+      d="M 800 835 C 890 830, 990 875, 1010 955 C 1025 1035, 960 1115, 860 1125 C 785 1115, 765 1010, 780 945 C 820 920, 830 870, 800 835 Z" />
+    <text x="900" y="940" class="territory-label">Brasil</text>
+
+    <!-- Chile -->
+    <path id="territory-south-america-chile" class="territory" 
+      d="M 660 1100 C 700 1090, 710 1145, 705 1205 C 695 1285, 665 1365, 605 1375 C 575 1335, 580 1245, 600 1175 C 620 1135, 645 1110, 660 1100 Z" />
+    <text x="635" y="1170" class="territory-label">Chile</text>
+
+    <!-- Argentina -->
+    <path id="territory-south-america-argentina" class="territory" 
+      d="M 780 945 C 765 1010, 785 1115, 860 1125 C 845 1215, 795 1315, 725 1375 C 665 1365, 695 1285, 705 1205 C 710 1145, 700 1090, 660 1100 C 730 1065, 765 1010, 780 945 Z" />
+    <text x="765" y="1160" class="territory-label">Argentina</text>
   </g>
 
-  <!-- AMÉRICA DEL NORTE -->
+  <!-- 2. AMÉRICA DEL NORTE -->
   <g id="continent-north-america">
-    <text x="480" y="130" class="continent-title">América del Norte</text>
-    <path id="territory-north-america-alaska" class="territory" d="M 220 180 L 420 170 L 400 340 L 200 350 Z" />
-    <path id="territory-north-america-canada" class="territory" d="M 420 170 L 780 160 L 760 420 L 400 340 Z" />
-    <path id="territory-north-america-usa" class="territory" d="M 400 340 L 760 420 L 740 620 L 380 540 Z" />
-    <path id="territory-north-america-mexico" class="territory" d="M 380 540 L 740 620 L 660 800 L 540 820 Z" />
-    <text x="310" y="265" class="territory-label">Alaska</text>
-    <text x="590" y="290" class="territory-label">Canadá</text>
-    <text x="570" y="480" class="territory-label">EE. UU.</text>
-    <text x="580" y="700" class="territory-label">México</text>
+    <text x="560" y="125" class="continent-title">América del Norte</text>
+
+    <!-- Alaska -->
+    <path id="territory-north-america-alaska" class="territory" 
+      d="M 180 190 C 230 170, 330 160, 400 180 C 425 220, 415 280, 385 330 C 325 360, 245 370, 195 340 C 165 300, 155 230, 180 190 Z" />
+    <text x="285" y="235" class="territory-label">Alaska</text>
+
+    <!-- Canadá -->
+    <path id="territory-north-america-canada" class="territory" 
+      d="M 400 180 C 530 140, 730 130, 890 170 C 930 230, 910 350, 870 410 C 730 440, 570 420, 385 330 C 415 280, 425 220, 400 180 Z" />
+    <text x="640" y="230" class="territory-label">Canadá</text>
+
+    <!-- EE. UU. -->
+    <path id="territory-north-america-usa" class="territory" 
+      d="M 385 330 C 570 420, 730 440, 870 410 C 900 470, 880 570, 830 630 C 670 660, 490 640, 370 550 C 360 470, 365 390, 385 330 Z" />
+    <text x="610" y="450" class="territory-label">EE. UU.</text>
+
+    <!-- México -->
+    <path id="territory-north-america-mexico" class="territory" 
+      d="M 370 550 C 490 640, 670 660, 830 630 C 810 710, 750 790, 690 830 C 590 850, 500 840, 450 750 C 390 690, 370 610, 370 550 Z" />
+    <text x="590" y="675" class="territory-label">México</text>
   </g>
 
-  <!-- EUROPA -->
+  <!-- 3. EUROPA -->
   <g id="continent-europe">
-    <text x="1300" y="200" class="continent-title">Europa</text>
-    <path id="territory-europe-uk" class="territory" d="M 1050 250 L 1180 240 L 1170 380 L 1040 390 Z" />
-    <path id="territory-europe-france" class="territory" d="M 1080 390 L 1240 380 L 1220 520 L 1060 530 Z" />
-    <path id="territory-europe-spain" class="territory" d="M 1060 530 L 1220 520 L 1200 660 L 1040 670 Z" />
-    <path id="territory-europe-germany" class="territory" d="M 1240 380 L 1400 370 L 1380 510 L 1220 520 Z" />
-    <path id="territory-europe-russia" class="territory" d="M 1400 370 L 1650 350 L 1630 600 L 1380 510 Z" />
-    <text x="1110" y="320" class="territory-label">Reino Unido</text>
-    <text x="1150" y="455" class="territory-label">Francia</text>
-    <text x="1130" y="600" class="territory-label">España</text>
-    <text x="1310" y="445" class="territory-label">Alemania</text>
-    <text x="1515" y="485" class="territory-label">Rusia</text>
+    <text x="1360" y="170" class="continent-title">Europa</text>
+
+    <!-- Reino Unido -->
+    <path id="territory-europe-uk" class="territory" 
+      d="M 1040 240 C 1080 220, 1150 210, 1180 250 C 1200 300, 1180 360, 1130 390 C 1080 400, 1030 370, 1020 320 C 1010 270, 1020 250, 1040 240 Z" />
+    <text x="1100" y="285" class="territory-label">Reino Unido</text>
+
+    <!-- España -->
+    <path id="territory-europe-spain" class="territory" 
+      d="M 1020 520 C 1100 500, 1190 490, 1230 530 C 1250 600, 1210 670, 1140 690 C 1060 690, 1000 640, 990 580 C 1000 540, 1010 525, 1020 520 Z" />
+    <text x="1110" y="565" class="territory-label">España</text>
+
+    <!-- Francia -->
+    <path id="territory-europe-france" class="territory" 
+      d="M 1180 390 C 1240 370, 1310 360, 1340 410 C 1360 470, 1320 530, 1250 550 C 1190 540, 1170 470, 1180 390 Z" />
+    <text x="1260" y="430" class="territory-label">Francia</text>
+
+    <!-- Alemania -->
+    <path id="territory-europe-germany" class="territory" 
+      d="M 1340 320 C 1420 310, 1490 300, 1510 350 C 1530 410, 1490 480, 1420 490 C 1350 480, 1330 420, 1340 320 Z" />
+    <text x="1420" y="365" class="territory-label">Alemania</text>
+
+    <!-- Rusia -->
+    <path id="territory-europe-russia" class="territory" 
+      d="M 1510 230 C 1620 210, 1750 200, 1800 270 C 1830 370, 1790 520, 1710 580 C 1600 590, 1500 550, 1480 470 C 1490 410, 1510 350, 1510 230 Z" />
+    <text x="1635" y="340" class="territory-label">Rusia</text>
   </g>
 
-  <!-- ÁFRICA -->
+  <!-- 4. ÁFRICA -->
   <g id="continent-africa">
-    <text x="1240" y="630" class="continent-title">África</text>
-    <path id="territory-africa-sahara" class="territory" d="M 1040 670 L 1280 660 L 1260 920 L 1020 930 Z" />
-    <path id="territory-africa-egypt" class="territory" d="M 1280 660 L 1500 650 L 1480 900 L 1260 920 Z" />
-    <path id="territory-africa-congo" class="territory" d="M 1020 930 L 1480 900 L 1440 1140 L 1000 1150 Z" />
-    <path id="territory-africa-south-africa" class="territory" d="M 1000 1150 L 1440 1140 L 1400 1340 L 980 1330 Z" />
-    <text x="1150" y="800" class="territory-label">Sáhara</text>
-    <text x="1380" y="785" class="territory-label">Egipto</text>
-    <text x="1235" y="1025" class="territory-label">Congo</text>
-    <text x="1205" y="1245" class="territory-label">Sudáfrica</text>
+    <text x="1260" y="650" class="continent-title">África</text>
+
+    <!-- Sáhara -->
+    <path id="territory-africa-sahara" class="territory" 
+      d="M 1000 690 C 1120 670, 1260 660, 1310 720 C 1330 800, 1290 890, 1210 920 C 1100 920, 1000 870, 980 790 C 980 730, 990 700, 1000 690 Z" />
+    <text x="1140" y="750" class="territory-label">Sáhara</text>
+
+    <!-- Egipto -->
+    <path id="territory-africa-egypt" class="territory" 
+      d="M 1310 660 C 1420 640, 1530 630, 1560 700 C 1580 790, 1520 880, 1440 900 C 1350 890, 1310 800, 1310 720 C 1260 660, 1310 660, 1310 660 Z" />
+    <text x="1430" y="730" class="territory-label">Egipto</text>
+
+    <!-- Congo -->
+    <path id="territory-africa-congo" class="territory" 
+      d="M 1000 920 C 1150 920, 1440 900, 1480 960 C 1500 1060, 1430 1160, 1320 1180 C 1180 1180, 1000 1130, 970 1040 C 970 970, 990 930, 1000 920 Z" />
+    <text x="1220" y="990" class="territory-label">Congo</text>
+
+    <!-- Sudáfrica -->
+    <path id="territory-africa-south-africa" class="territory" 
+      d="M 970 1130 C 1150 1130, 1380 1130, 1420 1190 C 1450 1280, 1380 1370, 1240 1390 C 1080 1380, 950 1310, 930 1220 C 940 1160, 950 1140, 970 1130 Z" />
+    <text x="1180" y="1210" class="territory-label">Sudáfrica</text>
   </g>
 
-  <!-- ASIA -->
+  <!-- 5. ASIA -->
   <g id="continent-asia">
-    <text x="1950" y="280" class="continent-title">Asia</text>
-    <path id="territory-asia-middle-east" class="territory" d="M 1480 650 L 1750 640 L 1730 840 L 1460 850 Z" />
-    <path id="territory-asia-india" class="territory" d="M 1750 640 L 1980 630 L 1950 880 L 1730 840 Z" />
-    <path id="territory-asia-china" class="territory" d="M 1980 630 L 2250 610 L 2220 860 L 1950 880 Z" />
-    <path id="territory-asia-siberia" class="territory" d="M 1650 350 L 2100 330 L 2070 620 L 1630 600 Z" />
-    <path id="territory-asia-kamchatka" class="territory" d="M 2100 330 L 2380 320 L 2350 580 L 2070 620 Z" />
-    <path id="territory-asia-japan" class="territory" d="M 2250 610 L 2420 600 L 2400 780 L 2220 860 Z" />
-    <text x="1605" y="750" class="territory-label">Oriente Medio</text>
-    <text x="1855" y="760" class="territory-label">India</text>
-    <text x="2100" y="745" class="territory-label">China</text>
-    <text x="1860" y="475" class="territory-label">Siberia</text>
-    <text x="2225" y="470" class="territory-label">Kamchatka</text>
-    <text x="2320" y="735" class="territory-label">Japón</text>
+    <text x="2020" y="150" class="continent-title">Asia</text>
+
+    <!-- Oriente Medio -->
+    <path id="territory-asia-middle-east" class="territory" 
+      d="M 1520 630 C 1630 610, 1750 600, 1790 670 C 1810 760, 1750 850, 1660 870 C 1560 860, 1490 790, 1500 710 C 1510 660, 1515 640, 1520 630 Z" />
+    <text x="1640" y="690" class="territory-label">Oriente Medio</text>
+
+    <!-- India -->
+    <path id="territory-asia-india" class="territory" 
+      d="M 1790 600 C 1880 590, 1990 580, 2020 660 C 2040 770, 1970 880, 1870 900 C 1780 880, 1730 800, 1750 720 C 1770 650, 1780 615, 1790 600 Z" />
+    <text x="1880" y="675" class="territory-label">India</text>
+
+    <!-- China -->
+    <path id="territory-asia-china" class="territory" 
+      d="M 1990 580 C 2100 560, 2260 550, 2300 630 C 2320 740, 2240 860, 2120 880 C 2010 870, 1960 780, 1970 690 C 1980 630, 1985 595, 1990 580 Z" />
+    <text x="2130" y="660" class="territory-label">China</text>
+
+    <!-- Siberia -->
+    <path id="territory-asia-siberia" class="territory" 
+      d="M 1750 200 C 1900 180, 2120 170, 2180 250 C 2210 360, 2160 510, 2060 570 C 1920 570, 1800 530, 1770 440 C 1760 330, 1750 250, 1750 200 Z" />
+    <text x="1950" y="310" class="territory-label">Siberia</text>
+
+    <!-- Kamchatka -->
+    <path id="territory-asia-kamchatka" class="territory" 
+      d="M 2180 170 C 2300 160, 2440 150, 2480 230 C 2510 340, 2460 490, 2360 550 C 2240 550, 2160 470, 2170 370 C 2175 270, 2175 200, 2180 170 Z" />
+    <text x="2320" y="280" class="territory-label">Kamchatka</text>
+
+    <!-- Japón -->
+    <path id="territory-asia-japan" class="territory" 
+      d="M 2330 570 C 2390 560, 2460 550, 2490 610 C 2510 690, 2470 770, 2400 790 C 2340 780, 2310 720, 2315 660 C 2320 610, 2325 585, 2330 570 Z" />
+    <text x="2400" y="625" class="territory-label">Japón</text>
   </g>
 
-  <!-- OCEANÍA -->
+  <!-- 6. OCEANÍA -->
   <g id="continent-oceania">
-    <text x="2210" y="890" class="continent-title">Oceanía</text>
-    <path id="territory-australia-western" class="territory" d="M 2000 930 L 2220 920 L 2200 1300 L 1980 1310 Z" />
-    <path id="territory-australia-eastern" class="territory" d="M 2220 920 L 2440 910 L 2420 1290 L 2200 1300 Z" />
-    <text x="2100" y="1115" class="territory-label">Australia O.</text>
-    <text x="2320" y="1105" class="territory-label">Australia E.</text>
+    <text x="2210" y="870" class="continent-title">Oceanía</text>
+
+    <!-- Australia Occidental -->
+    <path id="territory-australia-western" class="territory" 
+      d="M 1970 930 C 2080 910, 2220 900, 2240 970 C 2260 1080, 2210 1280, 2110 1320 C 2000 1310, 1940 1210, 1945 1090 C 1950 1000, 1960 950, 1970 930 Z" />
+    <text x="2080" y="1020" class="territory-label">Australia O.</text>
+
+    <!-- Australia Oriental -->
+    <path id="territory-australia-eastern" class="territory" 
+      d="M 2240 900 C 2350 880, 2470 870, 2490 950 C 2510 1070, 2460 1270, 2360 1300 C 2250 1290, 2200 1180, 2210 1070 C 2220 980, 2230 920, 2240 900 Z" />
+    <text x="2350" y="1000" class="territory-label">Australia E.</text>
   </g>
 </svg>

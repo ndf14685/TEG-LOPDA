@@ -2,32 +2,66 @@
   <defs>
     <style>
       .territory {
-        fill: rgba(22, 27, 34, 0.7);
-        stroke: #0b1220;
-        stroke-width: 3;
+        fill: rgba(30, 41, 59, 0.85);
+        stroke: #0f172a;
+        stroke-width: 4.5;
         stroke-linejoin: round;
+        stroke-linecap: round;
         cursor: pointer;
-        transition: fill 0.15s ease;
+        transition: fill 0.2s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.2s cubic-bezier(0.4, 0, 0.2, 1), filter 0.2s ease;
       }
       .territory:hover {
-        stroke: #00b4d8; /* Cian Fósforo al hover */
+        stroke: #38bdf8;
+        stroke-width: 5;
+        filter: brightness(1.3) drop-shadow(0 0 8px rgba(56, 189, 248, 0.4));
+      }
+      .territory.selected {
+        stroke: #fbbf24;
+        stroke-width: 5.5;
+        filter: brightness(1.4) drop-shadow(0 0 12px rgba(251, 191, 36, 0.6));
+      }
+      .territory-label {
+        fill: #f8fafc;
+        font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+        font-size: 30px;
+        font-weight: 800;
+        paint-order: stroke;
+        stroke: #020617;
+        stroke-width: 8px;
+        stroke-linejoin: round;
+        pointer-events: none;
+        text-anchor: middle;
+        user-select: none;
+      }
+      .continent-title {
+        fill: rgba(148, 163, 184, 0.45);
+        font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+        font-size: 44px;
+        font-weight: 900;
+        letter-spacing: 4px;
+        pointer-events: none;
+        text-anchor: middle;
+        text-transform: uppercase;
       }
     </style>
-    <radialGradient id="ocean-grad" cx="50%" cy="42%" r="75%">
-      <stop offset="0%" stop-color="#0e2a47" />
-      <stop offset="60%" stop-color="#0a1e35" />
-      <stop offset="100%" stop-color="#060f1d" />
+    <radialGradient id="ocean-grad" cx="50%" cy="45%" r="75%">
+      <stop offset="0%" stop-color="#0f2b48" />
+      <stop offset="55%" stop-color="#091b30" />
+      <stop offset="100%" stop-color="#040a14" />
     </radialGradient>
     <pattern id="ocean-grid" width="120" height="120" patternUnits="userSpaceOnUse">
-      <path d="M 120 0 L 0 0 0 120" fill="none" stroke="rgba(96, 165, 250, 0.06)" stroke-width="1.5" />
+      <path d="M 120 0 L 0 0 0 120" fill="none" stroke="rgba(56, 189, 248, 0.05)" stroke-width="1.5" />
     </pattern>
   </defs>
 
   <rect x="0" y="0" width="2560" height="1440" fill="url(#ocean-grad)" />
   <rect x="0" y="0" width="2560" height="1440" fill="url(#ocean-grid)" />
-  <!-- Ejemplo de subdivisiones -->
+
   <g id="continent-south-america-extended">
-    <path id="territory-south-america-patagonia" class="territory" d="M 530 1200 L 580 1190 L 560 1280 L 510 1270 Z" />
-    <path id="territory-south-america-argentina-norte" class="territory" d="M 540 1100 L 610 1080 L 600 1190 L 530 1200 Z" />
+    <text x="750" y="790" class="continent-title">América del Sur (Ext)</text>
+    <path id="territory-south-america-colombia" class="territory" d="M 640 840 C 680 825, 750 820, 800 835 C 830 870, 820 920, 780 945 C 730 955, 660 940, 630 900 C 625 870, 630 850, 640 840 Z" />
+    <path id="territory-south-america-patagonia" class="territory" d="M 725 1375 C 665 1365, 695 1285, 705 1205 C 710 1145, 765 1205, 750 1300 Z" />
+    <text x="715" y="875" class="territory-label">Colombia</text>
+    <text x="725" y="1285" class="territory-label">Patagonia</text>
   </g>
 </svg>
