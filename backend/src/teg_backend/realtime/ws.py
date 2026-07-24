@@ -159,5 +159,17 @@ async def _dispatch(
             if not isinstance(ids, list):
                 raise ServiceError(ErrorCode.INVALID_PAYLOAD, "card_ids debe ser lista")
             await service.trade_cards(game["id"], player["id"], [str(c) for c in ids])
+        case "pact.propose":
+            await service.propose_pact(
+                game["id"], player["id"], str(payload.get("target_player_id", ""))
+            )
+        case "pact.respond":
+            await service.respond_pact(
+                game["id"], player["id"], bool(payload.get("accept", False))
+            )
+        case "pact.break":
+            await service.break_pact(
+                game["id"], player["id"], str(payload.get("target_player_id", ""))
+            )
         case _:
             raise ServiceError(ErrorCode.INVALID_ACTION, f"tipo desconocido: {mtype}")

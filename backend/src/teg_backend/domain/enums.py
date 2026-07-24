@@ -71,6 +71,11 @@ class EventType(StrEnum):
 
     CHAT_MESSAGE = "chat.message"
 
+    PACT_PROPOSED = "pact.proposed"
+    PACT_ACCEPTED = "pact.accepted"
+    PACT_REJECTED = "pact.rejected"
+    PACT_BROKEN = "pact.broken"  # ruptura explícita o traición al atacar
+
     TAUNT_TRIGGERED = "taunt.triggered"
     AI_COMMENT_GENERATED = "ai.comment.generated"
 

@@ -635,6 +635,8 @@ class GameService:
                 if engine.stage in ("placement_1", "placement_2")
                 else None
             ),
+            "pacts": [k.split("|") for k in sorted(engine.pacts)],
+            "pact_proposal_from": engine.pact_proposals.get(for_player_id),
             "your_cards": [c.to_dict() for c in engine.cards.hands.get(for_player_id, [])],
             "your_objective": (
                 engine.objectives[for_player_id].public_view()
@@ -727,6 +729,51 @@ class GameService:
             payload={"text": clean},
         )
 
+    async def propose_pact(self, game_id: str, player_id: str, target_id: str) -> None:
+        async with self.lock(game_id):
+            game = await self.get_game_or_404(game_id)
+            if game["status"] != GameStatus.RUNNING:
+                raise ServiceError(ErrorCode.GAME_NOT_RUNNING, "la partida no está en curso")
+            engine = await self._engine(game)
+            try:
+                engine.propose_pact(player_id, target_id)
+            except EngineError as exc:
+                raise ServiceError(ErrorCode.INVALID_ACTION, str(exc)) from exc
+            await self._save_engine(game_id)
+            await self.emit(
+                game_id, EventType.PACT_PROPOSED, actor_id=player_id,
+                target_id=target_id, payload={},
+            )
+
+    async def respond_pact(self, game_id: str, player_id: str, accept: bool) -> None:
+        async with self.lock(game_id):
+            game = await self.get_game_or_404(game_id)
+            engine = await self._engine(game)
+            try:
+                from_id = engine.respond_pact(player_id, accept)
+            except EngineError as exc:
+                raise ServiceError(ErrorCode.INVALID_ACTION, str(exc)) from exc
+            await self._save_engine(game_id)
+            await self.emit(
+                game_id,
+                EventType.PACT_ACCEPTED if accept else EventType.PACT_REJECTED,
+                actor_id=player_id, target_id=from_id, payload={},
+            )
+
+    async def break_pact(self, game_id: str, player_id: str, other_id: str) -> None:
+        async with self.lock(game_id):
+            game = await self.get_game_or_404(game_id)
+            engine = await self._engine(game)
+            try:
+                engine.break_pact(player_id, other_id)
+            except EngineError as exc:
+                raise ServiceError(ErrorCode.INVALID_ACTION, str(exc)) from exc
+            await self._save_engine(game_id)
+            await self.emit(
+                game_id, EventType.PACT_BROKEN, actor_id=player_id,
+                target_id=other_id, payload={"betrayal": False},
+            )
+
     async def _require_running_turn(self, game_id: str, player_id: str) -> GameEngine:
         game = await self.get_game_or_404(game_id)
         if game["status"] != GameStatus.RUNNING:
@@ -816,6 +863,15 @@ class GameService:
             if def_dice_count < 1:
                 def_dice_count = 1
             defender_dice = eng.roll_dice(def_dice_count)
+
+            # atacar a un aliado rompe el pacto: TRAICIÓN pública
+            if engine.has_pact(player_id, target_player_id):
+                engine.break_pact(player_id, target_player_id)
+                await self.emit(
+                    game_id, EventType.PACT_BROKEN, actor_id=player_id,
+                    target_id=target_player_id,
+                    payload={"betrayal": True},
+                )
 
             await self.emit(
                 game_id, EventType.ATTACK_STARTED, actor_id=player_id,

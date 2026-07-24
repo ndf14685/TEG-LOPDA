@@ -53,9 +53,17 @@ class AudioService {
   }
 
   playDiceSound(): void {
-    const asset = assetRegistry.get('audio.gameplay.dice_roll');
-    if (asset) void this.playFile(asset.url, 'sfx').catch(() => this.playTonesAsync([196, 220], 0.06, 'sfx'));
-    else void this.playTonesAsync([196, 220], 0.06, 'sfx');
+    this.playGameSound('audio.gameplay.dice_roll', [196, 220]);
+  }
+
+  /** Sonido del pack por id de manifiesto, con fallback a tonos sintéticos. */
+  playGameSound(assetId: string, fallbackFreqs: number[] = [440]): void {
+    const asset = assetRegistry.get(assetId);
+    if (asset) {
+      void this.playFile(asset.url, 'sfx').catch(() => this.playTonesAsync(fallbackFreqs, 0.08, 'sfx'));
+    } else {
+      void this.playTonesAsync(fallbackFreqs, 0.08, 'sfx');
+    }
   }
 
   /** Taunt del backend (audio_asset_id relativo a /assets). Encolado: nunca dos a la vez. */

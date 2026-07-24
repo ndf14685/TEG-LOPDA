@@ -29,6 +29,8 @@ export function GamePage() {
   const stage = useGameStore((s) => s.stage);
   const placementRemaining = useGameStore((s) => s.placementRemaining);
   const placementDone = useGameStore((s) => s.placementDone);
+  const hasPactWith = useGameStore((s) => s.hasPactWith);
+  const pactProposalFrom = useGameStore((s) => s.pactProposalFrom);
   const lastDice = useGameStore((s) => s.lastDice);
   const lastAttack = useGameStore((s) => s.lastAttack);
   const finished = useGameStore((s) => s.finished);
@@ -79,22 +81,68 @@ export function GamePage() {
     <main className="flex h-screen flex-col" data-testid="game-board">
       <ConnectionBanner />
 
+      {/* propuesta de pacto entrante */}
+      {pactProposalFrom && (
+        <div className="fixed left-1/2 top-4 z-40 flex -translate-x-1/2 items-center gap-3 rounded-xl border border-gold-500/60 bg-war-900/95 px-4 py-2.5 shadow-2xl backdrop-blur-md" data-testid="pact-proposal">
+          <span className="text-sm text-stone-200">
+            🤝 <strong style={{ color: colorValue(playerById(pactProposalFrom)?.color) }}>
+              {playerById(pactProposalFrom)?.nickname ?? '???'}
+            </strong>{' '}
+            te propone un pacto de no agresión
+          </span>
+          <button
+            onClick={() => wsClient.send({ type: 'pact.respond', payload: { accept: true } })}
+            className="rounded-lg bg-gold-500 px-3 py-1 text-xs font-bold text-war-950 hover:bg-gold-400"
+          >
+            Aceptar
+          </button>
+          <button
+            onClick={() => wsClient.send({ type: 'pact.respond', payload: { accept: false } })}
+            className="rounded-lg border border-war-600 px-3 py-1 text-xs text-stone-300 hover:border-red-500"
+          >
+            Rechazar
+          </button>
+        </div>
+      )}
+
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 p-3 lg:grid-cols-[230px_1fr_300px]">
         {/* izquierda: ejércitos */}
         <aside className="hidden min-h-0 flex-col gap-2 overflow-y-auto lg:flex">
           <h2 className="text-xs font-semibold tracking-wider text-stone-400">EJÉRCITOS</h2>
-          {combatants.map((p) => (
-            <div key={p.id} className={`rounded-lg border bg-war-900 px-3 py-2 ${currentId === p.id ? 'border-gold-500' : 'border-war-700'}`}>
-              <div className="flex items-center gap-2">
-                <PlayerAvatar avatarAssetId={p.avatar_asset_id} role={p.role} color={p.color} size="sm" />
-                <span className="truncate text-sm font-semibold" style={{ color: colorValue(p.color) }}>{p.nickname}</span>
-                {p.role === 'ai_player' && <span className="rounded bg-war-700 px-1 text-[10px]">🤖 IA</span>}
+          {combatants.map((p) => {
+            const isMe = p.id === session.playerId;
+            const allied = hasPactWith(p.id);
+            return (
+              <div key={p.id} className={`rounded-lg border bg-war-900 px-3 py-2 ${currentId === p.id ? 'border-gold-500' : 'border-war-700'}`}>
+                <div className="flex items-center gap-2">
+                  <PlayerAvatar avatarAssetId={p.avatar_asset_id} role={p.role} color={p.color} size="sm" />
+                  <span className="truncate text-sm font-semibold" style={{ color: colorValue(p.color) }}>{p.nickname}</span>
+                  {p.role === 'ai_player' && <span className="rounded bg-war-700 px-1 text-[10px]">🤖 IA</span>}
+                  {allied && <span title="Pacto de no agresión" className="text-[10px]">🤝</span>}
+                </div>
+                <p className="mt-1 text-xs text-stone-400">
+                  {p.presence === 'online' ? '🟢' : p.presence === 'reconnecting' ? '🟡' : '⚫'} {p.presence ?? '—'}
+                </p>
+                {!isMe && session.role !== 'spectator' && game?.status === 'running' && (
+                  allied ? (
+                    <button
+                      onClick={() => wsClient.send({ type: 'pact.break', payload: { target_player_id: p.id } })}
+                      className="mt-1 rounded border border-red-800 px-1.5 py-0.5 text-[10px] text-red-300 hover:border-red-500"
+                    >
+                      🗡️ romper pacto
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => wsClient.send({ type: 'pact.propose', payload: { target_player_id: p.id } })}
+                      className="mt-1 rounded border border-war-700 px-1.5 py-0.5 text-[10px] text-stone-300 hover:border-gold-500"
+                    >
+                      🤝 proponer pacto
+                    </button>
+                  )
+                )}
               </div>
-              <p className="mt-1 text-xs text-stone-400">
-                {p.presence === 'online' ? '🟢' : p.presence === 'reconnecting' ? '🟡' : '⚫'} {p.presence ?? '—'}
-              </p>
-            </div>
-          ))}
+            );
+          })}
         </aside>
 
         {/* centro: mapa y barra de fases */}

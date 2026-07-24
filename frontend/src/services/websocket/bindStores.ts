@@ -56,6 +56,9 @@ export function bindWsToStores(): void {
     game().setPlacementDone(snap.placement?.players_done ?? []);
     game().setCards(snap.your_cards ?? []);
     game().setSecretObjective(snap.your_objective ?? null);
+    const snapExtra = p as { pacts?: string[][]; pact_proposal_from?: string | null };
+    game().setPacts(snapExtra.pacts ?? []);
+    game().setPactProposalFrom(snapExtra.pact_proposal_from ?? null);
     // el historial reciente rehidrata chat y comentarios tras una reconexión
     for (const raw of snap.recent_events) {
       const ev = GameEventEnvelope.safeParse(raw);
@@ -215,6 +218,50 @@ export function bindWsToStores(): void {
       defenderLosses: payload.defender_losses,
       ts: env.timestamp,
     });
+    audioService.playGameSound('audio.gameplay.battle_clash', [140, 90]);
+  });
+
+  wsClient.on('territory.conquered', (p, env) => {
+    const payload = p as { territory?: { id?: string } };
+    if (payload.territory?.id) game().setConquestFlash(payload.territory.id);
+    const you = game().youId;
+    if (env.target_id === you) {
+      audioService.playGameSound('audio.gameplay.territory_lost', [330, 220]);
+    } else {
+      audioService.playGameSound('audio.gameplay.conquest_success', [262, 330, 392, 523]);
+    }
+  });
+
+  wsClient.on('player.eliminated', (_p, env) => {
+    const you = game().youId;
+    audioService.playGameSound(
+      env.target_id === you ? 'audio.gameplay.defeat_sad' : 'audio.gameplay.player_eliminated',
+      [392, 311, 233],
+    );
+  });
+
+  wsClient.on('pact.proposed', (_p, env) => {
+    if (env.target_id === game().youId) {
+      game().setPactProposalFrom(env.actor_id ?? null);
+      audioService.playGameSound('audio.ui.notify', [880, 1175]);
+    }
+  });
+
+  wsClient.on('pact.accepted', (_p, env) => {
+    const a = env.actor_id, b = env.target_id;
+    if (a && b) game().addPact([a, b]);
+    if (b === game().youId) game().setPactProposalFrom(null);
+    audioService.playGameSound('audio.ui.notify', [880, 1175]);
+  });
+
+  wsClient.on('pact.rejected', (_p, env) => {
+    if (env.target_id === game().youId) game().setPactProposalFrom(null);
+  });
+
+  wsClient.on('pact.broken', (_p, env) => {
+    const a = env.actor_id, b = env.target_id;
+    if (a && b) game().removePact([a, b]);
+    audioService.playGameSound('audio.gameplay.traitor_alert', [466, 494, 155]);
   });
 
   wsClient.on('chat.message', (p, env) => {
@@ -264,6 +311,12 @@ export function bindWsToStores(): void {
     game().setGameStatus('finished');
     game().setFinished(payload.winner_player_id, payload.turns_played);
     game().setFinishedObjective(payload.objective ?? null);
+    audioService.playGameSound(
+      payload.winner_player_id === game().youId
+        ? 'audio.gameplay.victory_fanfare'
+        : 'audio.gameplay.player_eliminated',
+      [392, 523, 659, 784],
+    );
   });
 
   wsClient.on('error', (p) => {

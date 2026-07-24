@@ -2,6 +2,25 @@ import { useGameStore } from '../../state/gameStore';
 import { colorValue } from '../../utils/playerColors';
 import { PlayerAvatar } from '../players/PlayerAvatar';
 
+const CONFETTI_COLORS = ['#f59e0b', '#22c55e', '#3b82f6', '#ef4444', '#a855f7', '#eab308'];
+
+function Confetti() {
+  // 40 papelitos con posición/tempo pseudoaleatorios pero estables por render
+  const pieces = Array.from({ length: 40 }, (_, i) => ({
+    left: `${(i * 37) % 100}%`,
+    background: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+    animationDuration: `${2.2 + ((i * 13) % 17) / 10}s`,
+    animationDelay: `${((i * 7) % 20) / 10}s`,
+  }));
+  return (
+    <>
+      {pieces.map((style, i) => (
+        <span key={i} className="teg-confetti" style={style} aria-hidden />
+      ))}
+    </>
+  );
+}
+
 export function PostGameModal() {
   const finished = useGameStore((s) => s.finished);
   const finishedObjective = useGameStore((s) => s.finishedObjective);
@@ -13,6 +32,7 @@ export function PostGameModal() {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-war-950/95 p-4 backdrop-blur-lg">
+      <Confetti />
       <div className="w-full max-w-2xl rounded-2xl border border-gold-500/50 bg-gradient-to-b from-war-900 via-war-950 to-stone-950 p-6 text-slate-100 shadow-2xl">
         {/* Encabezado */}
         <div className="text-center">

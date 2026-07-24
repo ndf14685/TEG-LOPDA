@@ -21,6 +21,7 @@ log = logging.getLogger("teg.ai.commentator")
 INTERESTING_EVENTS = {
     "game.started", "dice.rolled", "attack.resolved", "territory.conquered",
     "player.eliminated", "player.joined", "game.finished", "turn.started",
+    "pact.proposed", "pact.accepted", "pact.broken", "cards.traded",
 }
 
 
@@ -100,6 +101,26 @@ class MockCommentator:
             1: ["{actor} entró a la sala."],
             2: ["{actor} llegó. Que empiece el show."],
             3: ["{actor} entró a la sala. Bajen las expectativas."],
+        },
+        "pact.proposed": {
+            1: ["{actor} le propuso un pacto a {target}."],
+            2: ["{actor} le ofrece paz a {target}. ¿Diplomacia o miedo?"],
+            3: ["{actor} propone pacto a {target}. Traducción: no me pegues todavía."],
+        },
+        "pact.accepted": {
+            1: ["{actor} y {target} sellaron un pacto."],
+            2: ["Pacto sellado entre {actor} y {target}. Veremos cuánto dura."],
+            3: ["{actor} y {target} son aliados. Apuestas abiertas sobre quién traiciona primero."],
+        },
+        "pact.broken": {
+            1: ["Se rompió el pacto entre {actor} y {target}."],
+            2: ["{actor} rompió el pacto con {target}. Se pudrió todo."],
+            3: ["¡TRAICIÓN! {actor} apuñaló a {target}. El TEG en su máxima expresión."],
+        },
+        "cards.traded": {
+            1: ["{actor} canjeó tarjetas."],
+            2: ["{actor} canjeó tarjetas y suma refuerzos frescos."],
+            3: ["{actor} canjeó tarjetas. Ahora tiene ejércitos y delirios de grandeza."],
         },
         "game.finished": {
             1: ["La partida terminó."],

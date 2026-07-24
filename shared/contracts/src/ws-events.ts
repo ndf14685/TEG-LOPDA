@@ -105,6 +105,8 @@ export const CardsTradedPayload = z.object({
   turn: TurnState.optional(),
 });
 export const CardAwardedPayload = z.object({ player_id: z.string() });
+export const PactPayload = z.object({}).passthrough();
+export const PactBrokenPayload = z.object({ betrayal: z.boolean().optional() });
 export const ObjectiveAssignedPayload = z.object({ objective: SecretObjective });
 export const LegalActionsPayload = z.object({
   actions: z.array(
@@ -167,6 +169,10 @@ export const EVENT_PAYLOAD_SCHEMAS = {
   'card.awarded': CardAwardedPayload,
   'objective.assigned': ObjectiveAssignedPayload,
   'legal.actions': LegalActionsPayload,
+  'pact.proposed': PactPayload,
+  'pact.accepted': PactPayload,
+  'pact.rejected': PactPayload,
+  'pact.broken': PactBrokenPayload,
   'error': ErrorPayload,
 } as const;
 export type KnownEventType = keyof typeof EVENT_PAYLOAD_SCHEMAS;
@@ -213,6 +219,18 @@ export const ClientMessage = z.discriminatedUnion('type', [
       territory_id: z.string(),
       count: z.number().int().min(1).max(5),
     }),
+  }),
+  z.object({
+    type: z.literal('pact.propose'),
+    payload: z.object({ target_player_id: z.string() }),
+  }),
+  z.object({
+    type: z.literal('pact.respond'),
+    payload: z.object({ accept: z.boolean() }),
+  }),
+  z.object({
+    type: z.literal('pact.break'),
+    payload: z.object({ target_player_id: z.string() }),
   }),
 ]);
 export type ClientMessage = z.infer<typeof ClientMessage>;
