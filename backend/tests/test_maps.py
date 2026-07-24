@@ -52,6 +52,7 @@ def test_engine_neighbors_and_fortify_adjacency():
     )
     # reagrupar entre no limítrofes se rechaza
     current = engine.turn.current_player_id
+    engine.stage = "turns"  # el test manipula estado: saltea la colocación
     engine.turn.phase = "fortify"
     arg = engine.territories["territory-south-america-argentina"]
     jap = engine.territories["territory-asia-japan"]

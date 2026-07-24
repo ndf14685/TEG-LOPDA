@@ -63,3 +63,18 @@ def recv_until(ws, event_type: str, max_msgs: int = 50) -> dict:
                 f"error inesperado esperando {event_type}: {msg.get('payload')}"
             )
     raise AssertionError(f"no llegó el evento {event_type} en {max_msgs} mensajes")
+
+
+def complete_placement(ws_by_player: dict, started_payload: dict) -> dict:
+    """Coloca 5+3 por jugador y retorna el payload del último placement.revealed."""
+    territories = started_payload["territories"]
+    reveal = None
+    for round_pool in (5, 3):
+        for pid, ws in ws_by_player.items():
+            tid = next(t for t, d in territories.items() if d["owner_player_id"] == pid)
+            ws.send_json({"type": "placement.place",
+                          "payload": {"territory_id": tid, "count": round_pool}})
+        for ws in ws_by_player.values():
+            reveal = recv_until(ws, "placement.revealed")
+        territories = reveal["payload"]["territories"]
+    return reveal["payload"]

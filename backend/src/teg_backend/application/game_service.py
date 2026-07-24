@@ -36,6 +36,17 @@ TAUNTABLE_EVENTS = {
 }
 
 
+def _first_valid_trio(hand: list) -> list[str] | None:
+    from itertools import combinations
+
+    from ..domain.cards import is_valid_trio
+
+    for combo in combinations(hand, 3):
+        if is_valid_trio(list(combo)):
+            return [c.id for c in combo]
+    return None
+
+
 class ServiceError(Exception):
     def __init__(self, code: ErrorCode, message: str) -> None:
         super().__init__(message)
@@ -364,6 +375,8 @@ class GameService:
                 turn = engine.start([p["id"] for p in seated])
             except EngineError as exc:
                 raise ServiceError(ErrorCode.INVALID_ACTION, str(exc)) from exc
+            nicknames = {p["id"]: p["nickname"] for p in seated}
+            objectives = engine.assign_objectives(nicknames)
             await self._save_engine(game_id)
             await self._set_status(game_id, GameStatus.RUNNING)
             await self.emit(
@@ -374,9 +387,24 @@ class GameService:
                     "territories": {tid: t.to_dict() for tid, t in engine.territories.items()},
                     "phase": turn.phase,
                     "reinforcements_available": turn.reinforcements_available,
+                    "stage": engine.stage,
                 },
             )
-            await self._start_turn(game_id, turn.current_player_id, turn.turn_number)
+            for pid, obj in objectives.items():
+                await self.emit(
+                    game_id, EventType.OBJECTIVE_ASSIGNED, target_id=pid,
+                    visibility=Visibility.PRIVATE,
+                    payload={"objective": obj.public_view()},
+                )
+            await self.emit(
+                game_id, EventType.PLACEMENT_STARTED,
+                payload={
+                    "stage": engine.stage,
+                    "pool_size": eng.PLACEMENT_ROUNDS[0],
+                    "players": list(engine.turn.order),
+                },
+            )
+            self._schedule_ai_placements(game_id)
             return {"status": GameStatus.RUNNING, "turn_order": turn.order}
 
     async def _start_turn(self, game_id: str, player_id: str | None, turn_number: int) -> None:
@@ -386,10 +414,22 @@ class GameService:
         engine = await self._engine(game) if game else None
         phase = engine.turn.phase if engine else "reinforcement"
         reinf = engine.turn.reinforcements_available if engine else 3
+        if engine is not None:
+            # snapshot del estado al inicio del turno: la base del replay
+            await repo.save_turn_snapshot(
+                self.db, game_id, engine.turn.turn_number, engine.to_dict()
+            )
         await self.emit(
             game_id, EventType.TURN_STARTED, actor_id=player_id,
             payload={"turn_number": turn_number, "phase": phase, "reinforcements_available": reinf},
         )
+        if engine is not None:
+            await self.emit(
+                game_id, EventType.LEGAL_ACTIONS, target_id=player_id,
+                visibility=Visibility.PRIVATE,
+                payload={"actions": engine.legal_actions(player_id)},
+                persisted=False,
+            )
         player = await repo.get_player(self.db, player_id)
         if player and player["role"] == Role.AI_PLAYER:
             self._schedule_ai_turn(game_id, player_id)
@@ -408,7 +448,12 @@ class GameService:
         await self._set_status(game_id, GameStatus.RUNNING)
         await self.emit(game_id, EventType.GAME_RESUMED)
 
-    async def finish_game(self, game_id: str, winner_player_id: str | None = None) -> dict:
+    async def finish_game(
+        self,
+        game_id: str,
+        winner_player_id: str | None = None,
+        winning_objective: dict | None = None,
+    ) -> dict:
         game = await self.get_game_or_404(game_id)
         if game["status"] not in ACTIVE_STATUSES:
             raise ServiceError(ErrorCode.GAME_STATE_CONFLICT, "la partida no está activa")
@@ -418,8 +463,8 @@ class GameService:
             "turns_played": engine.turn.turn_number,
             "winner_player_id": winner_player_id,
             "total_events": events_count,
+            "objective": winning_objective,
         }
-        # TODO(teg-rules): detectar ganador automáticamente por objetivos.
         await self._set_status(game_id, GameStatus.FINISHED)
         await self.emit(game_id, EventType.GAME_FINISHED, target_id=winner_player_id, payload=summary)
         return summary
@@ -481,8 +526,31 @@ class GameService:
                 for p in players
                 if not p["token_revoked"] or p["role"] == Role.AI_PLAYER
             ],
-            "turn": engine.turn.to_dict() if game["status"] in (GameStatus.RUNNING, GameStatus.PAUSED) else None,
+            "turn": (
+                engine.turn.to_dict()
+                if game["status"] in (GameStatus.RUNNING, GameStatus.PAUSED)
+                and engine.stage == "turns"
+                else None
+            ),
             "territories": {tid: t.to_dict() for tid, t in engine.territories.items()} if game["status"] in (GameStatus.RUNNING, GameStatus.PAUSED) else {},
+            "stage": engine.stage,
+            "placement": (
+                {
+                    "remaining": engine.placement_pools.get(for_player_id, 0),
+                    "pending": engine.placement_pending.get(for_player_id, {}),
+                    "players_done": [
+                        pid for pid, n in engine.placement_pools.items() if n == 0
+                    ],
+                }
+                if engine.stage in ("placement_1", "placement_2")
+                else None
+            ),
+            "your_cards": [c.to_dict() for c in engine.cards.hands.get(for_player_id, [])],
+            "your_objective": (
+                engine.objectives[for_player_id].public_view()
+                if for_player_id in engine.objectives
+                else None
+            ),
             # adyacencia del mapa activo: el frontend resalta vecinos atacables
             "map_adjacency": {
                 tid: sorted(t.neighbor_ids) for tid, t in engine.map.territories.items()
@@ -690,6 +758,7 @@ class GameService:
                         moved = 1
                     src_terr.armies -= moved
                     tgt_terr.armies = moved
+                    engine.register_conquest(player_id)
 
                     await self.emit(
                         game_id, EventType.TERRITORY_CONQUERED, actor_id=player_id,
@@ -707,15 +776,27 @@ class GameService:
                         if not remaining_owner_terr:
                             await repo.update_player(self.db, old_owner, eliminated=True)
                             engine.remove_player(old_owner)
+                            inherited = engine.register_elimination(old_owner, player_id)
                             await self.emit(
                                 game_id, EventType.PLAYER_ELIMINATED, actor_id=player_id,
                                 target_id=old_owner,
                                 payload={"player_id": old_owner, "eliminated_by": player_id},
                             )
+                            if inherited:
+                                await self._emit_hand(game_id, engine, player_id)
 
                     player_terrs = [t for t in engine.territories.values() if t.owner_player_id == player_id]
                     if len(player_terrs) == len(engine.territories) and len(engine.territories) > 0:
                         await self.finish_game(game_id, winner_player_id=player_id)
+                    else:
+                        winner = engine.check_victory()
+                        if winner is not None:
+                            win_pid, win_obj = winner
+                            await self._save_engine(game_id)
+                            await self.finish_game(
+                                game_id, winner_player_id=win_pid,
+                                winning_objective=win_obj.public_view(),
+                            )
 
                 await self._save_engine(game_id)
                 await self.emit(
@@ -724,6 +805,70 @@ class GameService:
                 )
 
             return payload
+
+    async def place_initial(
+        self, game_id: str, player_id: str, territory_id: str, count: int = 1
+    ) -> dict:
+        async with self.lock(game_id):
+            game = await self.get_game_or_404(game_id)
+            if game["status"] != GameStatus.RUNNING:
+                raise ServiceError(ErrorCode.GAME_NOT_RUNNING, "la partida no está en curso")
+            engine = await self._engine(game)
+            try:
+                result = engine.place_initial(player_id, territory_id, int(count))
+            except EngineError as exc:
+                raise ServiceError(ErrorCode.INVALID_ACTION, str(exc)) from exc
+            await self._save_engine(game_id)
+            await self.emit(
+                game_id, EventType.PLACEMENT_UPDATED, target_id=player_id,
+                visibility=Visibility.PRIVATE,
+                payload={"remaining": result["remaining"],
+                         "pending": engine.placement_pending.get(player_id, {})},
+                persisted=False,
+            )
+            if result["remaining"] == 0:
+                await self.emit(
+                    game_id, EventType.PLACEMENT_PROGRESS, actor_id=player_id,
+                    payload={"player_id": player_id, "done": True},
+                )
+            revealed = result["revealed"]
+            if revealed:
+                await self.emit(game_id, EventType.PLACEMENT_REVEALED, payload=revealed)
+                if revealed["next_stage"] == "turns":
+                    await self._save_engine(game_id)
+                    await self._start_turn(
+                        game_id, engine.turn.current_player_id, engine.turn.turn_number
+                    )
+                else:
+                    self._schedule_ai_placements(game_id)
+            return result
+
+    async def trade_cards(self, game_id: str, player_id: str, card_ids: list[str]) -> dict:
+        async with self.lock(game_id):
+            engine = await self._require_running_turn(game_id, player_id)
+            try:
+                result = engine.trade_cards(player_id, [str(c) for c in card_ids])
+            except EngineError as exc:
+                raise ServiceError(ErrorCode.INVALID_ACTION, str(exc)) from exc
+            await self._save_engine(game_id)
+            await self.emit(
+                game_id, EventType.CARDS_TRADED, actor_id=player_id,
+                payload={"value": result["value"],
+                         "cards": result["cards"],
+                         "country_bonuses": result["country_bonuses"],
+                         "turn": engine.turn.to_dict()},
+            )
+            await self._emit_hand(game_id, engine, player_id)
+            return result
+
+    async def _emit_hand(self, game_id: str, engine: GameEngine, player_id: str) -> None:
+        await self.emit(
+            game_id, EventType.CARDS_HAND, target_id=player_id,
+            visibility=Visibility.PRIVATE,
+            payload={"your_cards": [c.to_dict()
+                                    for c in engine.cards.hands.get(player_id, [])]},
+            persisted=False,
+        )
 
     async def place_reinforcement(self, game_id: str, player_id: str, territory_id: str, count: int = 1) -> dict:
         async with self.lock(game_id):
@@ -755,10 +900,22 @@ class GameService:
             )
             return {"source": src.to_dict(), "target": tgt.to_dict()}
 
+    async def _award_card_on_turn_close(self, game_id: str, engine: GameEngine, player_id: str) -> None:
+        card = engine.award_card_if_due(player_id)
+        if card is not None:
+            await self.emit(
+                game_id, EventType.CARD_AWARDED, actor_id=player_id,
+                payload={"player_id": player_id},
+            )
+            await self._emit_hand(game_id, engine, player_id)
+
     async def next_phase(self, game_id: str, player_id: str) -> dict:
         async with self.lock(game_id):
             engine = await self._require_running_turn(game_id, player_id)
             old_index = engine.turn.index
+            if engine.turn.phase == "fortify":
+                # cerrar el turno otorga la tarjeta por conquista si corresponde
+                await self._award_card_on_turn_close(game_id, engine, player_id)
             turn = engine.next_phase(player_id)
             await self._save_engine(game_id)
             if turn.index != old_index:
@@ -774,12 +931,39 @@ class GameService:
     async def end_turn(self, game_id: str, player_id: str) -> None:
         async with self.lock(game_id):
             engine = await self._require_running_turn(game_id, player_id)
+            await self._award_card_on_turn_close(game_id, engine, player_id)
             await self.emit(game_id, EventType.TURN_ENDED, actor_id=player_id, payload={})
             turn = engine.advance_turn()
             await self._save_engine(game_id)
         await self._start_turn(game_id, turn.current_player_id, turn.turn_number)
 
     # --- jugador IA ---------------------------------------------------------
+
+    def _schedule_ai_placements(self, game_id: str) -> None:
+        asyncio.create_task(self._ai_placements(game_id))
+
+    async def _ai_placements(self, game_id: str) -> None:
+        """Los bots colocan su pool inicial apenas arranca cada ronda."""
+        try:
+            await asyncio.sleep(self.settings.ai_player_think_seconds)
+            game = await repo.get_game(self.db, game_id)
+            if game is None or game["status"] != GameStatus.RUNNING:
+                return
+            players = await repo.get_players(self.db, game_id)
+            ai_ids = {p["id"] for p in players if p["role"] == Role.AI_PLAYER}
+            engine = await self._engine(game)
+            for pid in list(engine.placement_pools):
+                if pid not in ai_ids:
+                    continue
+                while engine.placement_pools.get(pid, 0) > 0:
+                    own = [t.territory_id for t in engine.territories.values()
+                           if t.owner_player_id == pid]
+                    tid = eng._rng.choice(own)
+                    await self.place_initial(game_id, pid, tid, 1)
+        except ServiceError as exc:
+            log.info("colocación IA rechazada", extra={"ctx": {"code": exc.code}})
+        except Exception:
+            log.warning("fallo en colocación IA", exc_info=True)
 
     def _schedule_ai_turn(self, game_id: str, player_id: str) -> None:
         key = f"{game_id}:{player_id}"
@@ -797,6 +981,24 @@ class GameService:
             engine = await self._engine(game)
             if engine.turn.current_player_id != player_id:
                 return
+            # canje forzado y refuerzos: la IA nunca deja el turno trabado
+            hand = engine.cards.hands.get(player_id, [])
+            if len(hand) >= 5:
+                trio = _first_valid_trio(hand)
+                if trio:
+                    await self.trade_cards(game_id, player_id, trio)
+            engine = await self._engine(game)
+            while (
+                engine.turn.current_player_id == player_id
+                and engine.turn.phase == "reinforcement"
+                and engine.turn.reinforcements_available > 0
+            ):
+                own = [t.territory_id for t in engine.territories.values()
+                       if t.owner_player_id == player_id]
+                await self.place_reinforcement(
+                    game_id, player_id, eng._rng.choice(own),
+                    engine.turn.reinforcements_available,
+                )
             legal = [
                 {"action": "dice.roll", "payload": {"count": 3}},
                 {"action": "turn.end", "payload": {}},

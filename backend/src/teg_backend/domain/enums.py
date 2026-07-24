@@ -49,6 +49,18 @@ class EventType(StrEnum):
     PLAYER_ELIMINATED = "player.eliminated"
     PRESENCE_CHANGED = "presence.changed"  # efímero: online/reconnecting/offline
 
+    PLACEMENT_STARTED = "placement.started"
+    PLACEMENT_UPDATED = "placement.updated"    # privado: tu pool y pendientes
+    PLACEMENT_PROGRESS = "placement.progress"  # público: quién terminó
+    PLACEMENT_REVEALED = "placement.revealed"
+
+    CARDS_HAND = "cards.hand"        # privado: tu mano completa
+    CARDS_TRADED = "cards.traded"    # público: canje realizado
+    CARD_AWARDED = "card.awarded"    # público: fulano recibió una tarjeta
+
+    OBJECTIVE_ASSIGNED = "objective.assigned"  # privado
+    LEGAL_ACTIONS = "legal.actions"            # privado y efímero
+
     TURN_STARTED = "turn.started"
     TURN_ENDED = "turn.ended"
     DICE_ROLLED = "dice.rolled"
