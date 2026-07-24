@@ -14,6 +14,14 @@ import {
   GameFinishedPayload,
   ErrorPayload,
   GameEventEnvelope,
+  PlacementStartedPayload,
+  PlacementUpdatedPayload,
+  PlacementProgressPayload,
+  PlacementRevealedPayload,
+  CardsHandPayload,
+  CardsTradedPayload,
+  ObjectiveAssignedPayload,
+  LegalActionsPayload,
 } from '@teg/contracts';
 import { wsClient } from './wsClient';
 import { useGameStore } from '../../state/gameStore';
@@ -41,6 +49,13 @@ export function bindWsToStores(): void {
     const snap = p as z.infer<typeof SnapshotPayload> & { territories?: Record<string, any> };
     game().applySnapshot(snap.game, snap.you, snap.players, snap.turn, snap.territories, snap.map_adjacency);
     if (snap.territories) game().setTerritories(snap.territories);
+    game().setStage(snap.stage ?? (snap.turn ? 'turns' : null));
+    if (snap.placement) {
+      game().setPlacement(snap.placement.remaining, snap.placement.pending);
+    }
+    game().setPlacementDone(snap.placement?.players_done ?? []);
+    game().setCards(snap.your_cards ?? []);
+    game().setSecretObjective(snap.your_objective ?? null);
     // el historial reciente rehidrata chat y comentarios tras una reconexión
     for (const raw of snap.recent_events) {
       const ev = GameEventEnvelope.safeParse(raw);
@@ -98,14 +113,62 @@ export function bindWsToStores(): void {
     for (const player of payload.players) game().upsertPlayer(player);
     if (payload.territories) game().setTerritories(payload.territories);
     game().setGameStatus('running');
-    game().setTurn({
-      order: payload.turn_order,
-      index: 0,
-      turn_number: 1,
-      phase: payload.phase ?? 'reinforcement',
-      reinforcements_available: payload.reinforcements_available ?? 3,
-    });
+    const stage = payload.stage as 'placement_1' | 'placement_2' | 'turns' | undefined;
+    game().setStage(stage ?? 'turns');
+    if (!stage || stage === 'turns') {
+      game().setTurn({
+        order: payload.turn_order,
+        index: 0,
+        turn_number: 1,
+        phase: payload.phase ?? 'reinforcement',
+        reinforcements_available: payload.reinforcements_available ?? 3,
+      });
+    }
     game().markStarted();
+  });
+
+  wsClient.on('placement.started', (p) => {
+    const payload = p as z.infer<typeof PlacementStartedPayload>;
+    game().setStage(payload.stage as 'placement_1' | 'placement_2');
+    game().setPlacement(payload.pool_size, {});
+    game().setPlacementDone([]);
+  });
+
+  wsClient.on('placement.updated', (p) => {
+    const payload = p as z.infer<typeof PlacementUpdatedPayload>;
+    game().setPlacement(payload.remaining, payload.pending);
+  });
+
+  wsClient.on('placement.progress', (p) => {
+    const payload = p as z.infer<typeof PlacementProgressPayload>;
+    if (payload.done && !game().placementDone.includes(payload.player_id)) {
+      game().setPlacementDone([...game().placementDone, payload.player_id]);
+    }
+  });
+
+  wsClient.on('placement.revealed', (p) => {
+    const payload = p as z.infer<typeof PlacementRevealedPayload>;
+    game().setTerritories(payload.territories as Record<string, { id: string; owner_player_id: string | null; armies: number }>);
+    game().setStage(payload.next_stage as 'placement_1' | 'placement_2' | 'turns');
+    game().setPlacementDone([]);
+    if (payload.next_stage !== 'turns') game().setPlacement(3, {});
+  });
+
+  wsClient.on('cards.hand', (p) => {
+    game().setCards((p as z.infer<typeof CardsHandPayload>).your_cards);
+  });
+
+  wsClient.on('cards.traded', (p) => {
+    const payload = p as z.infer<typeof CardsTradedPayload>;
+    if (payload.turn) game().setTurn(payload.turn);
+  });
+
+  wsClient.on('objective.assigned', (p) => {
+    game().setSecretObjective((p as z.infer<typeof ObjectiveAssignedPayload>).objective);
+  });
+
+  wsClient.on('legal.actions', (p) => {
+    game().setLegalActions((p as z.infer<typeof LegalActionsPayload>).actions as { action: string; params: Record<string, unknown> }[]);
   });
 
   wsClient.on('turn.started', (p, env) => {
@@ -193,6 +256,7 @@ export function bindWsToStores(): void {
     const payload = p as z.infer<typeof GameFinishedPayload>;
     game().setGameStatus('finished');
     game().setFinished(payload.winner_player_id, payload.turns_played);
+    game().setFinishedObjective(payload.objective ?? null);
   });
 
   wsClient.on('error', (p) => {
