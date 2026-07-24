@@ -1135,9 +1135,18 @@ class GameService:
     def _schedule_ai_turn(self, game_id: str, player_id: str) -> None:
         key = f"{game_id}:{player_id}"
         old = self._ai_tasks.get(key)
-        if old and not old.done():
-            return
-        self._ai_tasks[key] = asyncio.create_task(self._ai_turn(game_id, player_id))
+
+        async def _run() -> None:
+            # si el turno volvió al bot mientras su tarea anterior terminaba,
+            # esperarla y jugar igual: descartar la jugada trababa la partida
+            if old is not None and not old.done():
+                try:
+                    await old
+                except Exception:
+                    pass
+            await self._ai_turn(game_id, player_id)
+
+        self._ai_tasks[key] = asyncio.create_task(_run())
 
     async def _ai_turn(self, game_id: str, player_id: str) -> None:
         """El bot juega el turno completo: canje, refuerzos, ataques y fortify.
@@ -1211,14 +1220,22 @@ class GameService:
                 await self.end_turn(game_id, player_id)
         except ServiceError as exc:
             log.info("jugada IA rechazada", extra={"ctx": {"code": exc.code}})
-            try:
-                engine = self._engines.get(game_id)
-                if engine and engine.turn.current_player_id == player_id:
-                    await self.end_turn(game_id, player_id)
-            except Exception:
-                log.warning("la IA no pudo cerrar su turno", exc_info=True)
+            await self._ai_close_turn(game_id, player_id)
         except Exception:
             log.warning("fallo en turno IA", exc_info=True)
+            await self._ai_close_turn(game_id, player_id)
+
+    async def _ai_close_turn(self, game_id: str, player_id: str) -> None:
+        """Pase lo que pase, el bot suelta el turno: la partida jamás se traba."""
+        try:
+            game = await repo.get_game(self.db, game_id)
+            if game is None or game["status"] != GameStatus.RUNNING:
+                return
+            engine = await self._engine(game)
+            if engine.stage == "turns" and engine.turn.current_player_id == player_id:
+                await self.end_turn(game_id, player_id)
+        except Exception:
+            log.warning("la IA no pudo cerrar su turno", exc_info=True)
 
     async def convert_seat_to_ai(self, game_id: str, player_id: str) -> None:
         """El admin convierte el asiento de un ausente en bot; su link sigue
