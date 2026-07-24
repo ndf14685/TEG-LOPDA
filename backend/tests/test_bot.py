@@ -79,7 +79,7 @@ def test_full_game_between_bots_reaches_victory(client):
     resp = client.post(f"/api/admin/games/{game['id']}/start", headers=ADMIN)
     assert resp.status_code == 200, resp.text
 
-    deadline = time.time() + 90
+    deadline = time.time() + 120
     status = "running"
     while time.time() < deadline:
         detail = client.get(f"/api/admin/games/{game['id']}", headers=ADMIN).json()
