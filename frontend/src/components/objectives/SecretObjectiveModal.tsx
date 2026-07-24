@@ -2,15 +2,8 @@ import { useState } from 'react';
 import { useGameStore } from '../../state/gameStore';
 
 export function SecretObjectiveModal() {
-  const secretObjective = useGameStore((s) => s.secretObjective);
+  const objective = useGameStore((s) => s.secretObjective);
   const [isVisible, setIsVisible] = useState(false);
-
-  // Default objective fallback if null
-  const objective = secretObjective ?? {
-    id: 'obj-default',
-    title: 'Objetivo de Conquista Global',
-    description: 'Conquistá 30 territorios del mapa o destruí a tus rivales.',
-  };
 
   return (
     <div className="relative">
@@ -29,8 +22,16 @@ export function SecretObjectiveModal() {
               ✕
             </button>
           </div>
-          <h4 className="mt-2 text-sm font-bold text-gold-400">{objective.title}</h4>
-          <p className="mt-1 text-xs text-stone-300 leading-relaxed">{objective.description}</p>
+          {objective ? (
+            <>
+              <h4 className="mt-2 text-sm font-bold text-gold-400">{objective.title}</h4>
+              <p className="mt-1 text-xs text-stone-300 leading-relaxed">{objective.description}</p>
+            </>
+          ) : (
+            <p className="mt-2 text-xs text-stone-400">
+              Tu objetivo se revela al iniciar la partida.
+            </p>
+          )}
         </div>
       )}
     </div>

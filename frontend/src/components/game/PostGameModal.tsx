@@ -4,18 +4,12 @@ import { PlayerAvatar } from '../players/PlayerAvatar';
 
 export function PostGameModal() {
   const finished = useGameStore((s) => s.finished);
-  const players = useGameStore((s) => s.players);
+  const finishedObjective = useGameStore((s) => s.finishedObjective);
   const playerById = useGameStore((s) => s.playerById);
 
   if (!finished) return null;
 
   const winner = finished.winnerPlayerId ? playerById(finished.winnerPlayerId) : undefined;
-  const combatants = players.filter((p) => p.role === 'player' || p.role === 'admin' || p.role === 'ai_player');
-
-  // Asignación humorística de trofeos
-  const traitor = combatants[1 % combatants.length] ?? winner;
-  const manco = combatants[combatants.length - 1] ?? winner;
-  const muralla = combatants[0] ?? winner;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-war-950/95 p-4 backdrop-blur-lg">
@@ -31,45 +25,25 @@ export function PostGameModal() {
           </p>
         </div>
 
-        {/* Podio de Premios Humorísticos */}
-        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-          {/* Trofeo 1: El Conquistador */}
-          <div className="flex flex-col items-center rounded-xl border border-gold-500/40 bg-gold-950/20 p-4 text-center">
+        {/* Ganador y cómo ganó (los trofeos reales llegan con las estadísticas) */}
+        <div className="mt-6 flex flex-col items-center gap-3">
+          <div className="flex w-full max-w-md flex-col items-center rounded-xl border border-gold-500/40 bg-gold-950/20 p-4 text-center">
             <span className="text-3xl">👑</span>
-            <h3 className="mt-1 font-bold text-xs text-gold-400">EL CONQUISTADOR</h3>
             <div className="my-2 flex items-center gap-2">
               <PlayerAvatar avatarAssetId={winner?.avatar_asset_id ?? null} color={winner?.color ?? null} role={winner?.role ?? 'player'} size="sm" />
               <span className="font-semibold text-sm" style={{ color: colorValue(winner?.color) }}>
                 {winner?.nickname ?? 'Desconocido'}
               </span>
             </div>
-            <p className="text-[10px] text-stone-400">Dominio absoluto del tablero</p>
-          </div>
-
-          {/* Trofeo 2: El Manco de la Noche */}
-          <div className="flex flex-col items-center rounded-xl border border-red-500/40 bg-red-950/20 p-4 text-center">
-            <span className="text-3xl">🤡</span>
-            <h3 className="mt-1 font-bold text-xs text-red-400">MANCO DE LA NOCHE</h3>
-            <div className="my-2 flex items-center gap-2">
-              <PlayerAvatar avatarAssetId={manco?.avatar_asset_id ?? null} color={manco?.color ?? null} role={manco?.role ?? 'player'} size="sm" />
-              <span className="font-semibold text-sm" style={{ color: colorValue(manco?.color) }}>
-                {manco?.nickname ?? 'Desconocido'}
-              </span>
-            </div>
-            <p className="text-[10px] text-stone-400">Peores tiradas de dados registradas</p>
-          </div>
-
-          {/* Trofeo 3: El Traidor / La Muralla */}
-          <div className="flex flex-col items-center rounded-xl border border-purple-500/40 bg-purple-950/20 p-4 text-center">
-            <span className="text-3xl">🗡️</span>
-            <h3 className="mt-1 font-bold text-xs text-purple-400">EL TRAIDOR DE LA GUERRA</h3>
-            <div className="my-2 flex items-center gap-2">
-              <PlayerAvatar avatarAssetId={traitor?.avatar_asset_id ?? null} color={traitor?.color ?? null} role={traitor?.role ?? 'player'} size="sm" />
-              <span className="font-semibold text-sm" style={{ color: colorValue(traitor?.color) }}>
-                {traitor?.nickname ?? 'Desconocido'}
-              </span>
-            </div>
-            <p className="text-[10px] text-stone-400">Mayor cantidad de pactos rotos</p>
+            {finishedObjective ? (
+              <>
+                <p className="text-xs font-bold text-purple-300">🕵️ Cumplió su objetivo secreto</p>
+                <p className="mt-1 text-sm font-bold text-gold-400">{finishedObjective.title}</p>
+                <p className="mt-1 text-[11px] text-stone-400">{finishedObjective.description}</p>
+              </>
+            ) : (
+              <p className="text-xs text-stone-400">Victoria por dominación total del mapa</p>
+            )}
           </div>
         </div>
 

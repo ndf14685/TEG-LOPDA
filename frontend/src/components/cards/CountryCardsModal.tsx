@@ -17,11 +17,24 @@ const SYMBOL_NAME: Record<string, string> = {
   joker: 'Comodín',
 };
 
+// espejo de la regla del motor: 3 iguales o 3 distintas; el comodín completa
+function isValidTrio(symbols: string[]): boolean {
+  if (symbols.length !== 3) return false;
+  const plain = symbols.filter((s) => s !== 'joker');
+  return new Set(plain).size <= 1 || new Set(plain).size === plain.length;
+}
+
 export function CountryCardsModal() {
   const cards = useGameStore((s) => s.cards);
   const turn = useGameStore((s) => s.turn);
   const [isOpen, setIsOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+  const selectedSymbols = cards
+    .filter((c) => selectedIds.includes(c.id))
+    .map((c) => c.symbol);
+  const trioOk = isValidTrio(selectedSymbols);
+  const forcedTrade = cards.length >= 5;
 
   function toggleCard(id: string) {
     if (selectedIds.includes(id)) {
@@ -77,6 +90,12 @@ export function CountryCardsModal() {
               </button>
             </div>
 
+            {forcedTrade && (
+              <div className="mt-3 rounded-lg border border-red-700 bg-red-950/60 px-3 py-2 text-xs font-bold text-red-300">
+                ⚠️ Canje obligatorio: tenés {cards.length} tarjetas. No podés atacar hasta canjear.
+              </div>
+            )}
+
             {cards.length === 0 ? (
               <div className="my-8 text-center text-sm text-stone-500">
                 <p className="text-4xl mb-2">📜</p>
@@ -113,13 +132,16 @@ export function CountryCardsModal() {
             <div className="flex items-center justify-between border-t border-war-700 pt-3">
               <span className="text-xs text-stone-400">
                 Seleccionadas: <strong className="text-gold-400">{selectedIds.length} / 3</strong>
+                {selectedIds.length === 3 && !trioOk && (
+                  <span className="ml-2 text-red-400">— trío inválido</span>
+                )}
               </span>
               <button
-                disabled={selectedIds.length !== 3 || turn?.phase !== 'reinforcement'}
+                disabled={!trioOk || turn?.phase !== 'reinforcement'}
                 onClick={handleTrade}
                 className="rounded-xl bg-gold-500 px-4 py-2 text-xs font-bold text-war-950 hover:bg-gold-400 disabled:opacity-30"
               >
-                Realizar Canje (+Refuerzos)
+                Canjear trío
               </button>
             </div>
           </div>
