@@ -67,3 +67,50 @@ describe('contratos del backend real', () => {
     expect(ClientMessage.safeParse({ type: 'dice.roll', payload: { count: 9 } }).success).toBe(false);
   });
 });
+
+describe('contratos del flujo canónico', () => {
+  it('valida el snapshot con stage, colocación, mano y objetivo', () => {
+    const snap = SnapshotPayload.parse({
+      game: { id: 'g', code: 'ABC123', name: 'n', status: 'running' },
+      you: 'p1',
+      players: [],
+      turn: null,
+      recent_events: [],
+      stage: 'placement_1',
+      placement: { remaining: 5, pending: { t1: 2 }, players_done: [] },
+      your_cards: [{ id: 'c1', territory_id: 't1', symbol: 'ship' }],
+      your_objective: { id: 'o1', title: 'T', description: 'D' },
+    });
+    expect(snap.stage).toBe('placement_1');
+    expect(snap.your_cards?.[0].symbol).toBe('ship');
+  });
+
+  it('valida placement.place como mensaje de cliente', () => {
+    expect(ClientMessage.safeParse({
+      type: 'placement.place',
+      payload: { territory_id: 't1', count: 3 },
+    }).success).toBe(true);
+    expect(ClientMessage.safeParse({
+      type: 'placement.place',
+      payload: { territory_id: 't1', count: 9 },
+    }).success).toBe(false);
+  });
+
+  it('valida payloads nuevos del servidor', () => {
+    expect(EVENT_PAYLOAD_SCHEMAS['placement.revealed'].safeParse({
+      stage_completed: 'placement_1',
+      next_stage: 'placement_2',
+      territories: { t1: { id: 't1', territory_id: 't1', owner_player_id: 'p1', armies: 6 } },
+    }).success).toBe(true);
+    expect(EVENT_PAYLOAD_SCHEMAS['cards.hand'].safeParse({ your_cards: [] }).success).toBe(true);
+    expect(EVENT_PAYLOAD_SCHEMAS['objective.assigned'].safeParse({
+      objective: { id: 'o', title: 't', description: 'd' },
+    }).success).toBe(true);
+    expect(EVENT_PAYLOAD_SCHEMAS['legal.actions'].safeParse({
+      actions: [{ action: 'attack', params: { sources: [] } }],
+    }).success).toBe(true);
+    expect(EVENT_PAYLOAD_SCHEMAS['cards.traded'].safeParse({
+      value: 4, cards: [], country_bonuses: [],
+    }).success).toBe(true);
+  });
+});

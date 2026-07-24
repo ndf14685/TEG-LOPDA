@@ -62,6 +62,17 @@ export const SecretObjective = z.object({
 });
 export type SecretObjective = z.infer<typeof SecretObjective>;
 
+export const GameStage = z.enum(['placement_1', 'placement_2', 'turns']);
+export type GameStage = z.infer<typeof GameStage>;
+
+/** Vista privada de la colocación inicial (solo lo tuyo + quiénes terminaron). */
+export const PlacementView = z.object({
+  remaining: z.number().int(),
+  pending: z.record(z.string(), z.number().int()),
+  players_done: z.array(z.string()),
+});
+export type PlacementView = z.infer<typeof PlacementView>;
+
 /** payload de game.snapshot (efímero, al conectar el WS). */
 export const SnapshotPayload = z.object({
   game: GameRef,
@@ -75,7 +86,9 @@ export const SnapshotPayload = z.object({
   // objetivos atacables; zod descartaría el campo si no está declarado
   map_adjacency: z.record(z.string(), z.array(z.string())).optional(),
   recent_events: z.array(z.unknown()),
-  cards: z.array(CountryCard).optional(),
-  secret_objective: SecretObjective.nullable().optional(),
+  stage: GameStage.optional(),
+  placement: PlacementView.nullable().optional(),
+  your_cards: z.array(CountryCard).optional(),
+  your_objective: SecretObjective.nullable().optional(),
 });
 export type SnapshotPayload = z.infer<typeof SnapshotPayload>;
