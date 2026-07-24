@@ -9,6 +9,7 @@ from ..application.game_service import ServiceError
 from .errors import to_http
 
 router = APIRouter(prefix="/api/join", tags=["join"])
+profile_router = APIRouter(prefix="/api/profile", tags=["profile"])
 
 
 class ConfirmJoinBody(BaseModel):
@@ -43,5 +44,16 @@ async def confirm_join(code: str, token: str, body: ConfirmJoinBody, request: Re
     service = request.app.state.service
     try:
         return await service.confirm_join(code, token, body.nickname)
+    except ServiceError as exc:
+        raise to_http(exc)
+
+
+# --- link personal permanente de perfil ------------------------------------
+
+@profile_router.get("/{token}")
+async def resolve_profile(token: str, request: Request) -> dict:
+    service = request.app.state.service
+    try:
+        return {"profile": await service.resolve_profile(token)}
     except ServiceError as exc:
         raise to_http(exc)

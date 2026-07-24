@@ -4,6 +4,7 @@ import { AdminPage } from '../pages/AdminPage';
 import { JoinPage } from '../pages/JoinPage';
 import { LobbyPage } from '../pages/LobbyPage';
 import { GamePage } from '../pages/GamePage';
+import { ProfilePage } from '../pages/ProfilePage';
 
 export function App() {
   return (
@@ -15,6 +16,7 @@ export function App() {
         <Route path="/join/:code" element={<LandingPage />} />
         <Route path="/lobby/:code" element={<LobbyPage />} />
         <Route path="/game/:code" element={<GamePage />} />
+        <Route path="/p/:token" element={<ProfilePage />} />
         <Route path="*" element={<LandingPage />} />
       </Routes>
     </BrowserRouter>

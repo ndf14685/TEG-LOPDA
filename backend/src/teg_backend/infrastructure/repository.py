@@ -37,6 +37,7 @@ def _row_to_player(row: aiosqlite.Row) -> dict[str, Any]:
         "nickname_editable": bool(row["nickname_editable"]),
         "is_ready": bool(row["is_ready"]),
         "eliminated": bool(row["eliminated"]),
+        "profile_id": row["profile_id"] if "profile_id" in row.keys() else None,
         "joined_at": row["joined_at"],
         "created_at": row["created_at"],
     }
@@ -66,6 +67,18 @@ def public_player(player: dict[str, Any]) -> dict[str, Any]:
         "is_ready": player["is_ready"],
         "eliminated": player["eliminated"],
         "joined": player["joined_at"] is not None,
+        "profile_id": player.get("profile_id"),
+    }
+
+
+def public_profile(profile: dict[str, Any]) -> dict[str, Any]:
+    """Vista de perfil sin el hash del token."""
+    return {
+        "id": profile["id"],
+        "nickname": profile["nickname"],
+        "color": profile["color"],
+        "avatar_asset_id": profile["avatar_asset_id"],
+        "created_at": profile["created_at"],
     }
 
 
@@ -128,12 +141,14 @@ async def create_player(
     token_hash: str | None,
     color: str | None = None,
     nickname_editable: bool = True,
+    profile_id: str | None = None,
 ) -> dict:
     player_id = str(uuid.uuid4())
     await db.execute(
         "INSERT INTO players (id, game_id, nickname, role, color, token_hash,"
-        " nickname_editable) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (player_id, game_id, nickname, role, color, token_hash, int(nickname_editable)),
+        " nickname_editable, profile_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        (player_id, game_id, nickname, role, color, token_hash,
+         int(nickname_editable), profile_id),
     )
     row = await db.fetchone("SELECT * FROM players WHERE id = ?", (player_id,))
     assert row is not None
@@ -171,6 +186,59 @@ async def update_player(db: Database, player_id: str, **fields: Any) -> None:
     cols = ", ".join(f"{k} = ?" for k in updates)
     params = tuple(int(v) if isinstance(v, bool) else v for v in updates.values())
     await db.execute(f"UPDATE players SET {cols} WHERE id = ?", params + (player_id,))
+
+
+# --- profiles ---------------------------------------------------------------
+
+def _row_to_profile(row: aiosqlite.Row) -> dict[str, Any]:
+    return {
+        "id": row["id"],
+        "nickname": row["nickname"],
+        "color": row["color"],
+        "avatar_asset_id": row["avatar_asset_id"],
+        "token_hash": row["token_hash"],
+        "created_at": row["created_at"],
+    }
+
+
+async def create_profile(
+    db: Database, nickname: str, token_hash: str, color: str | None = None
+) -> dict:
+    profile_id = str(uuid.uuid4())
+    await db.execute(
+        "INSERT INTO profiles (id, nickname, color, token_hash) VALUES (?, ?, ?, ?)",
+        (profile_id, nickname, color, token_hash),
+    )
+    row = await db.fetchone("SELECT * FROM profiles WHERE id = ?", (profile_id,))
+    assert row is not None
+    return _row_to_profile(row)
+
+
+async def get_profile(db: Database, profile_id: str) -> dict | None:
+    row = await db.fetchone("SELECT * FROM profiles WHERE id = ?", (profile_id,))
+    return _row_to_profile(row) if row else None
+
+
+async def find_profile_by_token_hash(db: Database, token_hash: str) -> dict | None:
+    row = await db.fetchone("SELECT * FROM profiles WHERE token_hash = ?", (token_hash,))
+    return _row_to_profile(row) if row else None
+
+
+async def list_profiles(db: Database) -> list[dict]:
+    rows = await db.fetchall("SELECT * FROM profiles ORDER BY created_at")
+    return [_row_to_profile(r) for r in rows]
+
+
+async def update_profile(db: Database, profile_id: str, **fields: Any) -> None:
+    allowed = {"nickname", "color", "avatar_asset_id", "token_hash"}
+    updates = {k: v for k, v in fields.items() if k in allowed}
+    if not updates:
+        return
+    cols = ", ".join(f"{k} = ?" for k in updates)
+    await db.execute(
+        f"UPDATE profiles SET {cols} WHERE id = ?",
+        tuple(updates.values()) + (profile_id,),
+    )
 
 
 # --- events ----------------------------------------------------------------

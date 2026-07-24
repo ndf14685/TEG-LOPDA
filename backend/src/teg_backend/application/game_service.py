@@ -189,6 +189,37 @@ class GameService:
             },
         )
 
+    # --- perfiles persistentes ---------------------------------------------
+
+    async def create_profile(self, nickname: str, color: str | None = None) -> dict:
+        clean = sanitize_nickname(nickname)
+        if not clean:
+            raise ServiceError(ErrorCode.INVALID_PAYLOAD, "apodo vacío")
+        token = tok.new_player_token()
+        profile = await repo.create_profile(self.db, clean, tok.hash_token(token), color)
+        return {
+            "profile": repo.public_profile(profile),
+            "token": token,
+            "profile_url": f"{self.settings.public_base_url}/p/{token}",
+        }
+
+    async def list_profiles(self) -> list[dict]:
+        return [repo.public_profile(p) for p in await repo.list_profiles(self.db)]
+
+    async def regenerate_profile_token(self, profile_id: str) -> dict:
+        profile = await repo.get_profile(self.db, profile_id)
+        if profile is None:
+            raise ServiceError(ErrorCode.NOT_FOUND, "perfil inexistente")
+        token = tok.new_player_token()
+        await repo.update_profile(self.db, profile_id, token_hash=tok.hash_token(token))
+        return {"token": token, "profile_url": f"{self.settings.public_base_url}/p/{token}"}
+
+    async def resolve_profile(self, token: str) -> dict:
+        profile = await repo.find_profile_by_token_hash(self.db, tok.hash_token(token))
+        if profile is None:
+            raise ServiceError(ErrorCode.NOT_FOUND, "link de perfil inválido")
+        return repo.public_profile(profile)
+
     # --- admin: partidas ---------------------------------------------------
 
     async def create_game(self, name: str, config: dict | None = None) -> dict:
@@ -239,12 +270,22 @@ class GameService:
         role: str = Role.PLAYER,
         color: str | None = None,
         nickname_editable: bool | None = None,
+        profile_id: str | None = None,
     ) -> dict:
         game = await self.get_game_or_404(game_id)
         if game["status"] not in ACTIVE_STATUSES:
             raise ServiceError(ErrorCode.GAME_STATE_CONFLICT, "la partida no admite invitaciones")
         if role not in (Role.ADMIN, Role.PLAYER, Role.SPECTATOR, Role.AI_PLAYER):
             raise ServiceError(ErrorCode.INVALID_PAYLOAD, f"rol inválido: {role}")
+        if profile_id:
+            profile = await repo.get_profile(self.db, profile_id)
+            if profile is None:
+                raise ServiceError(ErrorCode.NOT_FOUND, "perfil inexistente")
+            # el perfil manda: apodo y color del amigo, siempre iguales
+            nickname = nickname or profile["nickname"]
+            if not nickname.strip():
+                nickname = profile["nickname"]
+            color = color or profile["color"]
         nickname = sanitize_nickname(nickname)
         if not nickname:
             raise ServiceError(ErrorCode.INVALID_PAYLOAD, "apodo vacío")
@@ -259,7 +300,8 @@ class GameService:
             token = tok.new_player_token()
             token_hash = tok.hash_token(token)
         player = await repo.create_player(
-            self.db, game_id, nickname, role, token_hash, color, editable
+            self.db, game_id, nickname, role, token_hash, color, editable,
+            profile_id=profile_id,
         )
         if role == Role.AI_PLAYER:
             # los jugadores IA no tienen link: quedan "unidos" desde el alta

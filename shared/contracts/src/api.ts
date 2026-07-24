@@ -44,12 +44,39 @@ export const AdminGameDetailResponse = z.object({
 export type AdminGameDetailResponse = z.infer<typeof AdminGameDetailResponse>;
 
 export const InvitePlayerRequest = z.object({
-  nickname: z.string().min(1).max(64),
+  nickname: z.string().max(64).optional(),
   role: PlayerRole.optional(),
   color: z.string().max(16).nullable().optional(),
   nickname_editable: z.boolean().nullable().optional(),
+  // invitar por perfil persistente: apodo y color salen del perfil
+  profile_id: z.string().nullable().optional(),
 });
 export type InvitePlayerRequest = z.infer<typeof InvitePlayerRequest>;
+
+export const Profile = z.object({
+  id: z.string(),
+  nickname: z.string(),
+  color: z.string().nullable(),
+  avatar_asset_id: z.string().nullable(),
+  created_at: z.string(),
+});
+export type Profile = z.infer<typeof Profile>;
+
+export const CreateProfileResponse = z.object({
+  profile: Profile,
+  token: z.string(),
+  profile_url: z.string(),
+});
+export type CreateProfileResponse = z.infer<typeof CreateProfileResponse>;
+
+export const ProfileListResponse = z.object({ profiles: z.array(Profile) });
+export type ProfileListResponse = z.infer<typeof ProfileListResponse>;
+
+export const ProfileTokenResponse = z.object({ token: z.string(), profile_url: z.string() });
+export type ProfileTokenResponse = z.infer<typeof ProfileTokenResponse>;
+
+export const ResolveProfileResponse = z.object({ profile: Profile });
+export type ResolveProfileResponse = z.infer<typeof ResolveProfileResponse>;
 /** El token en claro aparece SOLO acá (o en regenerate). ai_player: token y join_url null. */
 export const InvitePlayerResponse = z.object({
   player: AdminPlayer,
