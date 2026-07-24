@@ -526,10 +526,11 @@ class GameService:
                 for p in players
                 if not p["token_revoked"] or p["role"] == Role.AI_PLAYER
             ],
+            # el turno viaja también durante la colocación: el orden ya está
+            # sorteado y la UI lo necesita para armar el estado local
             "turn": (
                 engine.turn.to_dict()
                 if game["status"] in (GameStatus.RUNNING, GameStatus.PAUSED)
-                and engine.stage == "turns"
                 else None
             ),
             "territories": {tid: t.to_dict() for tid, t in engine.territories.items()} if game["status"] in (GameStatus.RUNNING, GameStatus.PAUSED) else {},

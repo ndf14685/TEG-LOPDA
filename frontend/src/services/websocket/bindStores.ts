@@ -115,7 +115,9 @@ export function bindWsToStores(): void {
     game().setGameStatus('running');
     const stage = payload.stage as 'placement_1' | 'placement_2' | 'turns' | undefined;
     game().setStage(stage ?? 'turns');
-    if (!stage || stage === 'turns') {
+    // el turno se setea siempre: el orden ya está sorteado y turn.started
+    // necesita la lista para mapear el índice (la UI lo oculta en colocación)
+    {
       game().setTurn({
         order: payload.turn_order,
         index: 0,
