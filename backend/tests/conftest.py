@@ -15,6 +15,7 @@ def client(tmp_path):
         env="dev",
         db_path=str(tmp_path / "test.db"),
         admin_token="test-admin",
+        commentator_provider="mock",  # tests deterministas: sin CLI ni ollama
         commentator_cooldown_seconds=0.0,
         reconnect_grace_seconds=0.05,
         ai_player_think_seconds=0.01,

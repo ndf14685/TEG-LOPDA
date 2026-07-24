@@ -10,6 +10,10 @@ import {
   JoinPreviewResponse,
   JoinConfirmResponse,
   ApiErrorResponse,
+  CreateProfileResponse,
+  ProfileListResponse,
+  ProfileTokenResponse,
+  ResolveProfileResponse,
   type CreateGameRequest,
   type InvitePlayerRequest,
   type CommentatorConfigRequest,
@@ -74,6 +78,12 @@ export const api = {
       headers: adminHeaders(adminToken),
     }),
 
+  convertToAi: (adminToken: string, gameId: string, playerId: string) =>
+    request(OkResponse, `/api/admin/games/${gameId}/players/${playerId}/convert-to-ai`, {
+      method: 'POST',
+      headers: adminHeaders(adminToken),
+    }),
+
   kickPlayer: (adminToken: string, gameId: string, playerId: string) =>
     request(OkResponse, `/api/admin/games/${gameId}/players/${playerId}/kick`, {
       method: 'POST',
@@ -88,6 +98,26 @@ export const api = {
 
   pauseGame: (adminToken: string, gameId: string) =>
     request(OkResponse, `/api/admin/games/${gameId}/pause`, { method: 'POST', headers: adminHeaders(adminToken) }),
+
+  // ---- perfiles persistentes del grupo ----
+  createProfile: (adminToken: string, body: { nickname: string; color?: string | null }) =>
+    request(CreateProfileResponse, '/api/admin/profiles', {
+      method: 'POST',
+      headers: adminHeaders(adminToken),
+      body: JSON.stringify(body),
+    }),
+
+  listProfiles: (adminToken: string) =>
+    request(ProfileListResponse, '/api/admin/profiles', { headers: adminHeaders(adminToken) }),
+
+  regenerateProfileToken: (adminToken: string, profileId: string) =>
+    request(ProfileTokenResponse, `/api/admin/profiles/${profileId}/regenerate-token`, {
+      method: 'POST',
+      headers: adminHeaders(adminToken),
+    }),
+
+  resolveProfile: (token: string) =>
+    request(ResolveProfileResponse, `/api/profile/${encodeURIComponent(token)}`),
 
   configureCommentator: (adminToken: string, gameId: string, body: CommentatorConfigRequest) =>
     fetch(`/api/admin/games/${gameId}/commentator`, {

@@ -40,3 +40,26 @@ body {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* --- juice global: los botones responden al tacto --- */
+button:not(:disabled) {
+  transition: transform 0.06s ease-out;
+}
+button:not(:disabled):active {
+  transform: scale(0.94);
+}
+
+/* --- confetti de victoria (CSS puro, sin dependencias) --- */
+@keyframes teg-confetti-fall {
+  0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(105vh) rotate(720deg); opacity: 0.7; }
+}
+.teg-confetti {
+  position: fixed;
+  top: 0;
+  width: 10px;
+  height: 16px;
+  z-index: 60;
+  pointer-events: none;
+  animation: teg-confetti-fall linear infinite;
+}

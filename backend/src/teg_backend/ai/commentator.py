@@ -21,6 +21,7 @@ log = logging.getLogger("teg.ai.commentator")
 INTERESTING_EVENTS = {
     "game.started", "dice.rolled", "attack.resolved", "territory.conquered",
     "player.eliminated", "player.joined", "game.finished", "turn.started",
+    "pact.proposed", "pact.accepted", "pact.broken", "cards.traded",
 }
 
 
@@ -101,24 +102,67 @@ class MockCommentator:
             2: ["{actor} llegó. Que empiece el show."],
             3: ["{actor} entró a la sala. Bajen las expectativas."],
         },
+        "pact.proposed": {
+            1: ["{actor} le propuso un pacto a {target}."],
+            2: ["{actor} le ofrece paz a {target}. ¿Diplomacia o miedo?"],
+            3: ["{actor} propone pacto a {target}. Traducción: no me pegues todavía."],
+        },
+        "pact.accepted": {
+            1: ["{actor} y {target} sellaron un pacto."],
+            2: ["Pacto sellado entre {actor} y {target}. Veremos cuánto dura."],
+            3: ["{actor} y {target} son aliados. Apuestas abiertas sobre quién traiciona primero."],
+        },
+        "pact.broken": {
+            1: ["Se rompió el pacto entre {actor} y {target}."],
+            2: ["{actor} rompió el pacto con {target}. Se pudrió todo."],
+            3: ["¡TRAICIÓN! {actor} apuñaló a {target}. El TEG en su máxima expresión."],
+        },
+        "cards.traded": {
+            1: ["{actor} canjeó tarjetas."],
+            2: ["{actor} canjeó tarjetas y suma refuerzos frescos."],
+            3: ["{actor} canjeó tarjetas. Ahora tiene ejércitos y delirios de grandeza."],
+        },
         "game.finished": {
             1: ["La partida terminó."],
             2: ["Fin de la partida. Hubo estrategia, hubo suerte, hubo de todo."],
             3: ["Se terminó. Los perdedores ya están pidiendo la revancha."],
+            4: ["Se terminó. Los que perdieron ya culpan al lag, a los dados y al arbitraje."],
         },
     }
-    # TODO(humor-4): frases nivel 4 (bardeo entre amigos) se definen con el
-    # grupo; deshabilitado por defecto vía humor_level_max.
+
+    BARDEO_4: dict[str, list[str]] = {
+        "dice.rolled": [
+            "{actor} tiró {dice}. Con esa mano ni al Ludo, papá.",
+            "{actor} sacó {dice}. Los dados le tienen la misma fe que nosotros: ninguna.",
+        ],
+        "attack.resolved": [
+            "{actor} atacó a {target} y perdió {al}. Estrategia nivel tutorial.",
+            "{actor} vs {target}: {al} a {dl}. Alguien avise que esto no es solitario.",
+        ],
+        "territory.conquered": [
+            "{actor} le afanó un país a {target}, que sigue mirando el manual.",
+            "{actor} avanza sobre {target}. Esto ya es bullying territorial.",
+        ],
+        "player.eliminated": [
+            "{target} eliminado. Que apague la cámara y traiga hielo, total ya no juega.",
+            "Chau {target}. El grupo de WhatsApp ya tiene tema para la semana.",
+        ],
+    }
 
     def __init__(self) -> None:
         self._rotation: dict[str, int] = {}
         self._streaks: dict[str, dict[str, int]] = {}
 
     def _pick(self, event_type: str, level: int, key: str) -> str | None:
+        if level >= 4 and event_type in self.BARDEO_4:
+            options = self.BARDEO_4[event_type]
+            idx = self._rotation.get(key, 0)
+            self._rotation[key] = idx + 1
+            return options[idx % len(options)]
         by_level = self.TEMPLATES.get(event_type)
         if not by_level:
             return None
-        for lvl in range(min(level, 3), 0, -1):
+        for lvl in range(min(level, 4), 0, -1):
             options = by_level.get(lvl)
             if options:
                 idx = self._rotation.get(key, 0)
@@ -210,11 +254,129 @@ class OllamaCommentator:
         return Comment(text=text.splitlines()[0], emotion="neutral")
 
 
+def _chain_prompt(request: CommentRequest, recent_phrases: list[str]) -> str:
+    ev = request.event
+    players = {p["id"]: p["nickname"] for p in request.players}
+    avoid = "\n".join(f"- {p}" for p in recent_phrases[-10:]) or "- (ninguna)"
+    return (
+        "Sos el relator de una partida de TEG entre amigos argentinos. "
+        f"Nivel de humor {request.humor_level}/4 "
+        "(1 neutral, 2 suave, 3 picante, 4 bardeo sin piedad pero entre amigos, "
+        "jamás insultos discriminatorios).\n"
+        "Respondé con UNA sola frase corta en castellano rioplatense, sin comillas.\n"
+        f"Evento: {ev['event_type']}\n"
+        f"Jugadores: {players}\n"
+        f"Actor: {players.get(ev.get('actor_id'), '—')} | "
+        f"Afectado: {players.get(ev.get('target_id'), '—')}\n"
+        f"Datos del evento: {ev.get('payload')}\n"
+        f"Historia reciente: {[e['event_type'] for e in request.recent_events[-8:]]}\n"
+        "Frases que YA dijiste (no las repitas ni parecido):\n"
+        f"{avoid}\n"
+    )
+
+
+class ClaudeCLICommentator:
+    """Usa el Claude CLI local (suscripción OAuth, sin API key). Solo funciona
+    donde el binario está instalado y autenticado; si no, el health falla y la
+    cadena degrada al siguiente proveedor."""
+
+    name = "claude-cli"
+
+    def __init__(self, timeout_seconds: float = 15.0) -> None:
+        self.timeout = timeout_seconds
+
+    def available(self) -> bool:
+        import shutil
+
+        return shutil.which("claude") is not None
+
+    async def generate(self, request: CommentRequest) -> Comment | None:
+        prompt = _chain_prompt(request, [])
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                "claude", "-p", prompt, "--output-format", "text",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.DEVNULL,
+            )
+            stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=self.timeout)
+        except Exception:
+            log.info("claude CLI no disponible para comentar", exc_info=True)
+            return None
+        text = (stdout or b"").decode("utf-8", "replace").strip()
+        if not text:
+            return None
+        emotion = "mocking" if request.humor_level >= 3 else "neutral"
+        return Comment(text=text.splitlines()[0], emotion=emotion)
+
+
+class ChainCommentator:
+    """Cadena con degradación en caliente: claude-cli → ollama → mock.
+
+    Un proveedor que falla queda en penitencia un rato (no se lo reintenta en
+    cada evento) y la cadena sigue con el siguiente. La memoria de frases
+    emitidas por partida alimenta el anti-repetición del prompt.
+    """
+
+    name = "chain"
+    RETRY_SECONDS = 300.0
+
+    def __init__(self, providers: list[AICommentatorProvider]) -> None:
+        self.providers = providers
+        self._benched_until: dict[str, float] = {}
+        self._phrases: dict[str, deque] = {}
+
+    async def generate(self, request: CommentRequest) -> Comment | None:
+        loop = asyncio.get_running_loop()
+        phrases = self._phrases.setdefault(request.game_id, deque(maxlen=20))
+        for provider in self.providers:
+            benched = self._benched_until.get(provider.name, 0.0)
+            if loop.time() < benched:
+                continue
+            if provider.name == "claude-cli" and not provider.available():  # type: ignore[attr-defined]
+                self._benched_until[provider.name] = loop.time() + self.RETRY_SECONDS
+                continue
+            try:
+                if provider.name in ("claude-cli", "ollama"):
+                    # el prompt lleva las frases ya dichas para no repetirse
+                    comment = await provider.generate(_with_avoid(request, list(phrases)))
+                else:
+                    comment = await provider.generate(request)
+            except Exception:
+                log.warning("proveedor %s falló, degrada la cadena", provider.name, exc_info=True)
+                comment = None
+            if comment is None or not comment.text.strip():
+                if provider.name != "mock":
+                    self._benched_until[provider.name] = loop.time() + self.RETRY_SECONDS
+                continue
+            text = comment.text.strip()
+            if any(text.lower() == p.lower() for p in phrases):
+                continue  # repetida textual: probar el siguiente proveedor
+            phrases.append(text)
+            return comment
+        return None
+
+
+def _with_avoid(request: CommentRequest, phrases: list[str]) -> CommentRequest:
+    """Copia liviana del request con las frases a evitar en el prompt."""
+    return CommentRequest(
+        game_id=request.game_id,
+        event={**request.event, "frases_ya_dichas_no_repetir": phrases[-10:]},
+        recent_events=request.recent_events,
+        players=request.players,
+        humor_level=request.humor_level,
+        relationship_context=request.relationship_context,
+    )
+
+
 def build_provider(name: str, *, ollama_url: str, ollama_model: str) -> AICommentatorProvider:
     if name == "ollama":
         return OllamaCommentator(ollama_url, ollama_model)
-    # TODO(ai-providers): adaptador a CLI autenticado local (claude/codex) u
-    # otro proveedor configurable, siempre opcional y sin API key obligatoria.
+    if name == "chain":
+        return ChainCommentator([
+            ClaudeCLICommentator(),
+            OllamaCommentator(ollama_url, ollama_model),
+            MockCommentator(),
+        ])
     return MockCommentator()
 
 

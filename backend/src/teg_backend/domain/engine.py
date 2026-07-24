@@ -125,6 +125,10 @@ class GameEngine:
         self.objectives: dict[str, Objective] = {}
         self.eliminated_by: dict[str, str] = {}
         self.conquered_this_turn = False
+        # pactos de no agresión (no vinculantes): clave ordenada "a|b";
+        # proposals: destinatario -> proponente pendiente
+        self.pacts: set[str] = set()
+        self.pact_proposals: dict[str, str] = {}
 
     @property
     def map(self) -> GameMap:
@@ -299,6 +303,39 @@ class GameEngine:
         return {"value": value, "cards": [c.to_dict() for c in picked],
                 "country_bonuses": country_bonuses}
 
+    @staticmethod
+    def _pact_key(a: str, b: str) -> str:
+        return "|".join(sorted((a, b)))
+
+    def has_pact(self, a: str, b: str) -> bool:
+        return self._pact_key(a, b) in self.pacts
+
+    def propose_pact(self, from_id: str, to_id: str) -> None:
+        if from_id == to_id:
+            raise EngineError("no podés pactar con vos mismo")
+        if to_id not in self.turn.order:
+            raise EngineError("ese jugador no está en la partida")
+        if self.has_pact(from_id, to_id):
+            raise EngineError("ya tienen un pacto vigente")
+        if self.pact_proposals.get(to_id) == from_id:
+            raise EngineError("ya le propusiste un pacto: esperá su respuesta")
+        self.pact_proposals[to_id] = from_id
+
+    def respond_pact(self, to_id: str, accept: bool) -> str:
+        """El destinatario acepta o rechaza. Retorna el proponente."""
+        from_id = self.pact_proposals.pop(to_id, None)
+        if from_id is None:
+            raise EngineError("no tenés propuestas de pacto pendientes")
+        if accept:
+            self.pacts.add(self._pact_key(from_id, to_id))
+        return from_id
+
+    def break_pact(self, breaker_id: str, other_id: str) -> None:
+        key = self._pact_key(breaker_id, other_id)
+        if key not in self.pacts:
+            raise EngineError("no hay pacto vigente con ese jugador")
+        self.pacts.discard(key)
+
     def register_conquest(self, conqueror_id: str) -> None:
         self.conquered_this_turn = True
 
@@ -441,6 +478,8 @@ class GameEngine:
             "objectives": {pid: o.to_dict() for pid, o in self.objectives.items()},
             "eliminated_by": dict(self.eliminated_by),
             "conquered_this_turn": self.conquered_this_turn,
+            "pacts": sorted(self.pacts),
+            "pact_proposals": dict(self.pact_proposals),
         }
 
     @classmethod
@@ -472,6 +511,8 @@ class GameEngine:
         }
         engine.eliminated_by = dict(data.get("eliminated_by", {}))
         engine.conquered_this_turn = bool(data.get("conquered_this_turn", False))
+        engine.pacts = set(data.get("pacts", []))
+        engine.pact_proposals = dict(data.get("pact_proposals", {}))
         return engine
 
 

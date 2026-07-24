@@ -58,6 +58,8 @@ export const AttackResolvedPayload = z.object({
 export const ChatMessagePayload = z.object({ text: z.string() });
 export const TauntTriggeredPayload = z.object({
   audio_asset_id: z.string(),
+  // audio grabado por un jugador: URL directa (/api/media/taunts/...)
+  audio_url: z.string().optional(),
   source_event_type: z.string(),
   source_event_id: z.string().nullable().optional(),
 });
@@ -103,6 +105,21 @@ export const CardsTradedPayload = z.object({
   turn: TurnState.optional(),
 });
 export const CardAwardedPayload = z.object({ player_id: z.string() });
+export const PactPayload = z.object({}).passthrough();
+export const Trophy = z.object({
+  id: z.string(),
+  title: z.string(),
+  icon: z.string(),
+  blurb: z.string(),
+  value: z.string(),
+});
+export type Trophy = z.infer<typeof Trophy>;
+export const StatsReadyPayload = z.object({
+  stats: z.record(z.string(), z.record(z.string(), z.unknown())),
+  trophies: z.record(z.string(), z.array(Trophy)),
+});
+export type StatsReadyPayload = z.infer<typeof StatsReadyPayload>;
+export const PactBrokenPayload = z.object({ betrayal: z.boolean().optional() });
 export const ObjectiveAssignedPayload = z.object({ objective: SecretObjective });
 export const LegalActionsPayload = z.object({
   actions: z.array(
@@ -165,6 +182,11 @@ export const EVENT_PAYLOAD_SCHEMAS = {
   'card.awarded': CardAwardedPayload,
   'objective.assigned': ObjectiveAssignedPayload,
   'legal.actions': LegalActionsPayload,
+  'pact.proposed': PactPayload,
+  'pact.accepted': PactPayload,
+  'pact.rejected': PactPayload,
+  'pact.broken': PactBrokenPayload,
+  'stats.ready': StatsReadyPayload,
   'error': ErrorPayload,
 } as const;
 export type KnownEventType = keyof typeof EVENT_PAYLOAD_SCHEMAS;
@@ -211,6 +233,18 @@ export const ClientMessage = z.discriminatedUnion('type', [
       territory_id: z.string(),
       count: z.number().int().min(1).max(5),
     }),
+  }),
+  z.object({
+    type: z.literal('pact.propose'),
+    payload: z.object({ target_player_id: z.string() }),
+  }),
+  z.object({
+    type: z.literal('pact.respond'),
+    payload: z.object({ accept: z.boolean() }),
+  }),
+  z.object({
+    type: z.literal('pact.break'),
+    payload: z.object({ target_player_id: z.string() }),
   }),
 ]);
 export type ClientMessage = z.infer<typeof ClientMessage>;

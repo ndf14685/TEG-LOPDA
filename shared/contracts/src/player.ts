@@ -17,6 +17,7 @@ export const PublicPlayer = z.object({
   eliminated: z.boolean(),
   joined: z.boolean(),
   presence: Presence.optional(), // presente en snapshot y GET admin
+  profile_id: z.string().nullable().optional(), // perfil persistente del grupo
 });
 export type PublicPlayer = z.infer<typeof PublicPlayer>;
 

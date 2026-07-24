@@ -27,10 +27,17 @@ class CreateGameBody(BaseModel):
 
 
 class InvitePlayerBody(BaseModel):
-    nickname: str = Field(min_length=1, max_length=64)
+    nickname: str = Field(default="", max_length=64)
     role: str = "player"
     color: str | None = Field(default=None, max_length=16)
     nickname_editable: bool | None = None
+    # invitar por perfil: el apodo/color salen del perfil si no se pisan
+    profile_id: str | None = None
+
+
+class CreateProfileBody(BaseModel):
+    nickname: str = Field(min_length=1, max_length=64)
+    color: str | None = Field(default=None, max_length=16)
 
 
 class PatchPlayerBody(BaseModel):
@@ -111,7 +118,8 @@ async def invite_player(game_id: str, body: InvitePlayerBody, request: Request) 
     service = request.app.state.service
     try:
         result = await service.invite_player(
-            game_id, body.nickname, body.role, body.color, body.nickname_editable
+            game_id, body.nickname, body.role, body.color, body.nickname_editable,
+            profile_id=body.profile_id,
         )
     except ServiceError as exc:
         raise to_http(exc)
@@ -230,3 +238,49 @@ async def set_taunt(game_id: str, body: TauntBody, request: Request) -> dict:
     except ServiceError as exc:
         raise to_http(exc)
     return {"taunt": taunt}
+
+
+# --- perfiles persistentes del grupo ---------------------------------------
+
+@router.post("/profiles")
+async def create_profile(body: CreateProfileBody, request: Request) -> dict:
+    service = request.app.state.service
+    try:
+        return await service.create_profile(body.nickname, body.color)
+    except ServiceError as exc:
+        raise to_http(exc)
+
+
+@router.get("/profiles")
+async def list_profiles(request: Request) -> dict:
+    service = request.app.state.service
+    return {"profiles": await service.list_profiles()}
+
+
+@router.post("/profiles/{profile_id}/regenerate-token")
+async def regenerate_profile_token(profile_id: str, request: Request) -> dict:
+    service = request.app.state.service
+    try:
+        return await service.regenerate_profile_token(profile_id)
+    except ServiceError as exc:
+        raise to_http(exc)
+
+
+@router.post("/games/{game_id}/players/{player_id}/convert-to-ai")
+async def convert_seat_to_ai(game_id: str, player_id: str, request: Request) -> dict:
+    """Un ausente se convierte en bot; al reabrir su link recupera el asiento."""
+    try:
+        await request.app.state.service.convert_seat_to_ai(game_id, player_id)
+    except ServiceError as exc:
+        raise to_http(exc)
+    return {"ok": True}
+
+
+@router.get("/games/{game_id}/stats")
+async def game_stats(game_id: str, request: Request) -> dict:
+    service = request.app.state.service
+    try:
+        await service.get_game_or_404(game_id)
+    except ServiceError as exc:
+        raise to_http(exc)
+    return {"stats": await repo.get_game_stats(service.db, game_id)}

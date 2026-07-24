@@ -10,6 +10,7 @@ import asyncio
 import logging
 from typing import Any
 
+from ..ai import bot
 from ..ai.ai_player import MoveRequest, build_ai_player, request_move
 from ..ai.commentator import Comment, CommentatorService
 from ..config import Settings
@@ -158,23 +159,61 @@ class GameService:
                 and event.actor_id
                 and event.target_id
             ):
-                asset_id = await repo.find_taunt(
-                    self.db, game_id, event.actor_id, event.target_id, event.event_type
+                await self._fire_taunt(
+                    game_id, players, event.actor_id, event.target_id,
+                    event.event_type, event.event_id,
                 )
-                if asset_id:
-                    await self.emit(
-                        game_id,
-                        EventType.TAUNT_TRIGGERED,
-                        actor_id=event.actor_id,
-                        target_id=event.target_id,
-                        payload={
-                            "audio_asset_id": asset_id,
-                            "source_event_type": event.event_type,
-                            "source_event_id": event.event_id,
-                        },
-                    )
+            if event.event_type == EventType.GAME_STARTED:
+                # saludos grabados: cada par jugador→rival con audio de inicio
+                seated = [p for p in players if p["role"] in PLAYING_ROLES and p.get("profile_id")]
+                for owner in seated:
+                    for target in seated:
+                        if owner["id"] == target["id"]:
+                            continue
+                        await self._fire_taunt(
+                            game_id, players, owner["id"], target["id"],
+                            EventType.GAME_STARTED, event.event_id,
+                        )
         except Exception:
             log.warning("fallo en efectos post-evento", exc_info=True)
+
+    async def _fire_taunt(
+        self,
+        game_id: str,
+        players: list[dict],
+        actor_id: str,
+        target_id: str,
+        event_type: str,
+        source_event_id: str,
+    ) -> None:
+        """Prioridad: audio grabado del perfil > asset legado por partida."""
+        by_id = {p["id"]: p for p in players}
+        actor, target = by_id.get(actor_id), by_id.get(target_id)
+        payload: dict | None = None
+        if actor and target and actor.get("profile_id") and target.get("profile_id"):
+            taunt = await repo.find_profile_taunt(
+                self.db, actor["profile_id"], target["profile_id"], event_type
+            )
+            if taunt:
+                payload = {
+                    "audio_asset_id": taunt["filename"],
+                    "audio_url": f"/api/media/taunts/{taunt['filename']}",
+                    "source_event_type": event_type,
+                    "source_event_id": source_event_id,
+                }
+        if payload is None:
+            asset_id = await repo.find_taunt(self.db, game_id, actor_id, target_id, event_type)
+            if asset_id:
+                payload = {
+                    "audio_asset_id": asset_id,
+                    "source_event_type": event_type,
+                    "source_event_id": source_event_id,
+                }
+        if payload:
+            await self.emit(
+                game_id, EventType.TAUNT_TRIGGERED,
+                actor_id=actor_id, target_id=target_id, payload=payload,
+            )
 
     async def _emit_ai_comment(self, game_id: str, comment: Comment) -> None:
         await self.emit(
@@ -188,6 +227,37 @@ class GameService:
                 "audio_asset": comment.audio_asset,
             },
         )
+
+    # --- perfiles persistentes ---------------------------------------------
+
+    async def create_profile(self, nickname: str, color: str | None = None) -> dict:
+        clean = sanitize_nickname(nickname)
+        if not clean:
+            raise ServiceError(ErrorCode.INVALID_PAYLOAD, "apodo vacío")
+        token = tok.new_player_token()
+        profile = await repo.create_profile(self.db, clean, tok.hash_token(token), color)
+        return {
+            "profile": repo.public_profile(profile),
+            "token": token,
+            "profile_url": f"{self.settings.public_base_url}/p/{token}",
+        }
+
+    async def list_profiles(self) -> list[dict]:
+        return [repo.public_profile(p) for p in await repo.list_profiles(self.db)]
+
+    async def regenerate_profile_token(self, profile_id: str) -> dict:
+        profile = await repo.get_profile(self.db, profile_id)
+        if profile is None:
+            raise ServiceError(ErrorCode.NOT_FOUND, "perfil inexistente")
+        token = tok.new_player_token()
+        await repo.update_profile(self.db, profile_id, token_hash=tok.hash_token(token))
+        return {"token": token, "profile_url": f"{self.settings.public_base_url}/p/{token}"}
+
+    async def resolve_profile(self, token: str) -> dict:
+        profile = await repo.find_profile_by_token_hash(self.db, tok.hash_token(token))
+        if profile is None:
+            raise ServiceError(ErrorCode.NOT_FOUND, "link de perfil inválido")
+        return repo.public_profile(profile)
 
     # --- admin: partidas ---------------------------------------------------
 
@@ -239,12 +309,22 @@ class GameService:
         role: str = Role.PLAYER,
         color: str | None = None,
         nickname_editable: bool | None = None,
+        profile_id: str | None = None,
     ) -> dict:
         game = await self.get_game_or_404(game_id)
         if game["status"] not in ACTIVE_STATUSES:
             raise ServiceError(ErrorCode.GAME_STATE_CONFLICT, "la partida no admite invitaciones")
         if role not in (Role.ADMIN, Role.PLAYER, Role.SPECTATOR, Role.AI_PLAYER):
             raise ServiceError(ErrorCode.INVALID_PAYLOAD, f"rol inválido: {role}")
+        if profile_id:
+            profile = await repo.get_profile(self.db, profile_id)
+            if profile is None:
+                raise ServiceError(ErrorCode.NOT_FOUND, "perfil inexistente")
+            # el perfil manda: apodo y color del amigo, siempre iguales
+            nickname = nickname or profile["nickname"]
+            if not nickname.strip():
+                nickname = profile["nickname"]
+            color = color or profile["color"]
         nickname = sanitize_nickname(nickname)
         if not nickname:
             raise ServiceError(ErrorCode.INVALID_PAYLOAD, "apodo vacío")
@@ -259,7 +339,8 @@ class GameService:
             token = tok.new_player_token()
             token_hash = tok.hash_token(token)
         player = await repo.create_player(
-            self.db, game_id, nickname, role, token_hash, color, editable
+            self.db, game_id, nickname, role, token_hash, color, editable,
+            profile_id=profile_id,
         )
         if role == Role.AI_PLAYER:
             # los jugadores IA no tienen link: quedan "unidos" desde el alta
@@ -467,7 +548,30 @@ class GameService:
         }
         await self._set_status(game_id, GameStatus.FINISHED)
         await self.emit(game_id, EventType.GAME_FINISHED, target_id=winner_player_id, payload=summary)
+        await self._publish_stats(game_id)
         return summary
+
+    async def _publish_stats(self, game_id: str) -> None:
+        """Calcula las estadísticas reales del event log y las publica."""
+        try:
+            from .stats import assign_trophies, compute_stats
+
+            players = await repo.get_players(self.db, game_id)
+            events = await repo.get_events(self.db, game_id, limit=100000)
+            stats = compute_stats(events, players)
+            trophies = assign_trophies(stats)
+            by_id = {p["id"]: p for p in players}
+            for pid, s in stats.items():
+                await repo.save_game_stats(
+                    self.db, game_id, pid, by_id.get(pid, {}).get("profile_id"),
+                    s, trophies.get(pid, []),
+                )
+            await self.emit(
+                game_id, EventType.STATS_READY,
+                payload={"stats": stats, "trophies": trophies},
+            )
+        except Exception:
+            log.warning("fallo publicando estadísticas", exc_info=True)
 
     async def cancel_game(self, game_id: str) -> None:
         game = await self.get_game_or_404(game_id)
@@ -498,6 +602,14 @@ class GameService:
             if clean:
                 await repo.update_player(self.db, player["id"], nickname=clean)
                 player["nickname"] = clean
+        if player["role"] == Role.AI_PLAYER and player["token_hash"]:
+            # el humano vuelve: recupera el asiento que jugaba la IA
+            await repo.update_player(self.db, player["id"], role=Role.PLAYER)
+            player["role"] = Role.PLAYER
+            await self.emit(
+                game["id"], EventType.PLAYER_JOINED, actor_id=player["id"],
+                payload={"player": repo.public_player(player)},
+            )
         first_join = player["joined_at"] is None
         if first_join:
             from ..domain.events import utcnow_iso
@@ -546,6 +658,8 @@ class GameService:
                 if engine.stage in ("placement_1", "placement_2")
                 else None
             ),
+            "pacts": [k.split("|") for k in sorted(engine.pacts)],
+            "pact_proposal_from": engine.pact_proposals.get(for_player_id),
             "your_cards": [c.to_dict() for c in engine.cards.hands.get(for_player_id, [])],
             "your_objective": (
                 engine.objectives[for_player_id].public_view()
@@ -638,6 +752,51 @@ class GameService:
             payload={"text": clean},
         )
 
+    async def propose_pact(self, game_id: str, player_id: str, target_id: str) -> None:
+        async with self.lock(game_id):
+            game = await self.get_game_or_404(game_id)
+            if game["status"] != GameStatus.RUNNING:
+                raise ServiceError(ErrorCode.GAME_NOT_RUNNING, "la partida no está en curso")
+            engine = await self._engine(game)
+            try:
+                engine.propose_pact(player_id, target_id)
+            except EngineError as exc:
+                raise ServiceError(ErrorCode.INVALID_ACTION, str(exc)) from exc
+            await self._save_engine(game_id)
+            await self.emit(
+                game_id, EventType.PACT_PROPOSED, actor_id=player_id,
+                target_id=target_id, payload={},
+            )
+
+    async def respond_pact(self, game_id: str, player_id: str, accept: bool) -> None:
+        async with self.lock(game_id):
+            game = await self.get_game_or_404(game_id)
+            engine = await self._engine(game)
+            try:
+                from_id = engine.respond_pact(player_id, accept)
+            except EngineError as exc:
+                raise ServiceError(ErrorCode.INVALID_ACTION, str(exc)) from exc
+            await self._save_engine(game_id)
+            await self.emit(
+                game_id,
+                EventType.PACT_ACCEPTED if accept else EventType.PACT_REJECTED,
+                actor_id=player_id, target_id=from_id, payload={},
+            )
+
+    async def break_pact(self, game_id: str, player_id: str, other_id: str) -> None:
+        async with self.lock(game_id):
+            game = await self.get_game_or_404(game_id)
+            engine = await self._engine(game)
+            try:
+                engine.break_pact(player_id, other_id)
+            except EngineError as exc:
+                raise ServiceError(ErrorCode.INVALID_ACTION, str(exc)) from exc
+            await self._save_engine(game_id)
+            await self.emit(
+                game_id, EventType.PACT_BROKEN, actor_id=player_id,
+                target_id=other_id, payload={"betrayal": False},
+            )
+
     async def _require_running_turn(self, game_id: str, player_id: str) -> GameEngine:
         game = await self.get_game_or_404(game_id)
         if game["status"] != GameStatus.RUNNING:
@@ -727,6 +886,15 @@ class GameService:
             if def_dice_count < 1:
                 def_dice_count = 1
             defender_dice = eng.roll_dice(def_dice_count)
+
+            # atacar a un aliado rompe el pacto: TRAICIÓN pública
+            if engine.has_pact(player_id, target_player_id):
+                engine.break_pact(player_id, target_player_id)
+                await self.emit(
+                    game_id, EventType.PACT_BROKEN, actor_id=player_id,
+                    target_id=target_player_id,
+                    payload={"betrayal": True},
+                )
 
             await self.emit(
                 game_id, EventType.ATTACK_STARTED, actor_id=player_id,
@@ -957,9 +1125,7 @@ class GameService:
                 if pid not in ai_ids:
                     continue
                 while engine.placement_pools.get(pid, 0) > 0:
-                    own = [t.territory_id for t in engine.territories.values()
-                           if t.owner_player_id == pid]
-                    tid = eng._rng.choice(own)
+                    tid = bot.choose_placement(engine, pid)
                     await self.place_initial(game_id, pid, tid, 1)
         except ServiceError as exc:
             log.info("colocación IA rechazada", extra={"ctx": {"code": exc.code}})
@@ -969,57 +1135,126 @@ class GameService:
     def _schedule_ai_turn(self, game_id: str, player_id: str) -> None:
         key = f"{game_id}:{player_id}"
         old = self._ai_tasks.get(key)
-        if old and not old.done():
-            return
-        self._ai_tasks[key] = asyncio.create_task(self._ai_turn(game_id, player_id))
+
+        async def _run() -> None:
+            # si el turno volvió al bot mientras su tarea anterior terminaba,
+            # esperarla y jugar igual: descartar la jugada trababa la partida
+            if old is not None and not old.done():
+                try:
+                    await old
+                except Exception:
+                    pass
+            await self._ai_turn(game_id, player_id)
+
+        self._ai_tasks[key] = asyncio.create_task(_run())
 
     async def _ai_turn(self, game_id: str, player_id: str) -> None:
+        """El bot juega el turno completo: canje, refuerzos, ataques y fortify.
+
+        Ante cualquier rechazo o error, cierra el turno: nunca traba la partida.
+        """
         try:
             await asyncio.sleep(self.settings.ai_player_think_seconds)
             game = await repo.get_game(self.db, game_id)
             if game is None or game["status"] != GameStatus.RUNNING:
                 return
             engine = await self._engine(game)
-            if engine.turn.current_player_id != player_id:
+            if engine.turn.current_player_id != player_id or engine.stage != "turns":
                 return
-            # canje forzado y refuerzos: la IA nunca deja el turno trabado
-            hand = engine.cards.hands.get(player_id, [])
-            if len(hand) >= 5:
-                trio = _first_valid_trio(hand)
-                if trio:
-                    await self.trade_cards(game_id, player_id, trio)
-            engine = await self._engine(game)
+
+            # 1. canje: siempre que haya trío (más ejércitos = mejor)
+            trio = _first_valid_trio(engine.cards.hands.get(player_id, []))
+            if trio and engine.turn.phase == "reinforcement":
+                await self.trade_cards(game_id, player_id, trio)
+
+            # 2. refuerzos a la frontera más caliente (sesgo al objetivo)
             while (
                 engine.turn.current_player_id == player_id
                 and engine.turn.phase == "reinforcement"
                 and engine.turn.reinforcements_available > 0
             ):
-                own = [t.territory_id for t in engine.territories.values()
-                       if t.owner_player_id == player_id]
+                tid = bot.choose_reinforcement(engine, player_id)
                 await self.place_reinforcement(
-                    game_id, player_id, eng._rng.choice(own),
-                    engine.turn.reinforcements_available,
+                    game_id, player_id, tid, engine.turn.reinforcements_available
                 )
-            legal = [
-                {"action": "dice.roll", "payload": {"count": 3}},
-                {"action": "turn.end", "payload": {}},
-            ]
-            request = MoveRequest(
-                game_id=game_id, player_id=player_id,
-                snapshot={"turn": engine.turn.to_dict(), "status": game["status"]},
-                legal_actions=legal,
-            )
-            move = await request_move(
-                self._ai_provider, request, self.settings.ai_player_timeout_seconds
-            )
-            if move.action == "dice.roll":
-                await self.roll_dice(game_id, player_id, int(move.payload.get("count", 1)))
-            # tras la jugada (o directamente), la IA cierra su turno
-            await self.end_turn(game_id, player_id)
+
+            # 3. ataques con ventaja (tope defensivo de 15 por turno)
+            attacks = 0
+            while attacks < 15 and engine.turn.current_player_id == player_id:
+                game = await repo.get_game(self.db, game_id)
+                if game is None or game["status"] != GameStatus.RUNNING:
+                    return
+                if engine.turn.phase != "attack":
+                    break
+                pick = bot.choose_attack(engine, player_id)
+                if pick is None:
+                    break
+                src, tgt = pick
+                await asyncio.sleep(self.settings.ai_player_think_seconds)
+                await self.attack(
+                    game_id, player_id,
+                    source_territory_id=src, target_territory_id=tgt,
+                    attacker_dice_count=3,
+                )
+                attacks += 1
+
+            # la partida pudo terminar con el último ataque
+            game = await repo.get_game(self.db, game_id)
+            if game is None or game["status"] != GameStatus.RUNNING:
+                return
+            if engine.turn.current_player_id != player_id:
+                return
+
+            # 4. reagrupar tropas ociosas hacia la frontera
+            if engine.turn.phase in ("reinforcement", "attack"):
+                move = bot.choose_fortify(engine, player_id)
+                if move is not None:
+                    if engine.turn.phase == "reinforcement":
+                        await self.next_phase(game_id, player_id)  # → attack
+                    await self.next_phase(game_id, player_id)      # → fortify
+                    src, tgt, count = move
+                    await self.fortify(game_id, player_id, src, tgt, count)
+
+            # 5. fin de turno (otorga tarjeta si conquistó)
+            if engine.turn.current_player_id == player_id:
+                await self.end_turn(game_id, player_id)
         except ServiceError as exc:
             log.info("jugada IA rechazada", extra={"ctx": {"code": exc.code}})
+            await self._ai_close_turn(game_id, player_id)
         except Exception:
             log.warning("fallo en turno IA", exc_info=True)
+            await self._ai_close_turn(game_id, player_id)
+
+    async def _ai_close_turn(self, game_id: str, player_id: str) -> None:
+        """Pase lo que pase, el bot suelta el turno: la partida jamás se traba."""
+        try:
+            game = await repo.get_game(self.db, game_id)
+            if game is None or game["status"] != GameStatus.RUNNING:
+                return
+            engine = await self._engine(game)
+            if engine.stage == "turns" and engine.turn.current_player_id == player_id:
+                await self.end_turn(game_id, player_id)
+        except Exception:
+            log.warning("la IA no pudo cerrar su turno", exc_info=True)
+
+    async def convert_seat_to_ai(self, game_id: str, player_id: str) -> None:
+        """El admin convierte el asiento de un ausente en bot; su link sigue
+        siendo válido y al volver a entrar recupera el asiento."""
+        game = await self.get_game_or_404(game_id)
+        player = await repo.get_player(self.db, player_id)
+        if player is None or player["game_id"] != game_id:
+            raise ServiceError(ErrorCode.NOT_FOUND, "jugador inexistente")
+        if player["role"] != Role.PLAYER:
+            raise ServiceError(ErrorCode.INVALID_ACTION, "solo un jugador humano se convierte en IA")
+        await repo.update_player(self.db, player_id, role=Role.AI_PLAYER)
+        await self.emit(
+            game_id, EventType.PLAYER_JOINED, actor_id=player_id,
+            payload={"player": repo.public_player(
+                {**player, "role": Role.AI_PLAYER})},
+        )
+        engine = await self._engine(game)
+        if game["status"] == GameStatus.RUNNING and engine.turn.current_player_id == player_id:
+            self._schedule_ai_turn(game_id, player_id)
 
     # --- métricas -----------------------------------------------------------
 

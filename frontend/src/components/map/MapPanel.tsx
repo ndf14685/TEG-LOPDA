@@ -8,6 +8,19 @@ import { FloatingEmotes } from '../chat/FloatingEmotes';
 
 const RUNTIME_STYLE = `
   .territory.attackable { stroke: #22d3ee; stroke-width: 6; stroke-dasharray: 6 6; }
+  .territory.can-attack { stroke: #f59e0b; stroke-width: 5; stroke-dasharray: 10 6; cursor: crosshair; }
+  @keyframes teg-conquest-flash {
+    0% { fill-opacity: 1; stroke: #fbbf24; stroke-width: 14; }
+    50% { fill-opacity: 0.4; stroke: #fde68a; stroke-width: 8; }
+    100% { fill-opacity: 0.75; stroke-width: 2; }
+  }
+  .territory.conquest-flash { animation: teg-conquest-flash 1.1s ease-out; }
+  @keyframes teg-badge-pop {
+    0% { transform: scale(0.4); opacity: 0; }
+    70% { transform: scale(1.15); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  #tactical-overlay .army-badge { transform-box: fill-box; transform-origin: center; animation: teg-badge-pop 0.25s ease-out; }
 `;
 
 export function MapPanel({ mode }: { mode?: GameMode }) {
@@ -106,7 +119,8 @@ export function MapPanel({ mode }: { mode?: GameMode }) {
       }
 
       // 2. Estado de Selección + vecinos atacables del origen elegido
-      path.classList.remove('selected', 'attack-source', 'attack-target', 'attackable');
+      const myTurn = turn && turn.order[turn.index] === youId;
+      path.classList.remove('selected', 'attack-source', 'attack-target', 'attackable', 'can-attack');
       if (id === selectedSource) {
         path.classList.add('attack-source', 'selected');
       } else if (id === selectedTarget) {
@@ -119,6 +133,18 @@ export function MapPanel({ mode }: { mode?: GameMode }) {
         tState.owner_player_id !== youId
       ) {
         path.classList.add('attackable');
+      } else if (
+        !selectedSource &&
+        myTurn &&
+        stage === 'turns' &&
+        turn?.phase === 'attack' &&
+        tState &&
+        tState.owner_player_id === youId &&
+        tState.armies > 1 &&
+        (mapAdjacency[id] ?? []).some((n) => territories[n]?.owner_player_id !== youId)
+      ) {
+        // desde acá PODÉS atacar: el mapa te lo muestra solo
+        path.classList.add('can-attack');
       }
 
       // 3. Event Listener para interacción según Fase del Turno
@@ -236,6 +262,117 @@ export function MapPanel({ mode }: { mode?: GameMode }) {
       overlayGroup.appendChild(line);
     }
   }, [state, territories, players, youId, playerById, selectedSource, selectedTarget, setSelectedSource, setSelectedTarget, turn, mapAdjacency, stage, placementRemaining, placementPending]);
+
+  // Flash de conquista: animación breve sobre el territorio recién tomado
+  const conquestFlash = useGameStore((s) => s.conquestFlash);
+  useEffect(() => {
+    if (!conquestFlash || !containerRef.current) return;
+    if (Date.now() - conquestFlash.ts > 2000) return;
+    const path = containerRef.current.querySelector<SVGPathElement>(
+      `#${CSS.escape(conquestFlash.territoryId)}`
+    );
+    if (!path) return;
+    path.classList.remove('conquest-flash');
+    // reinicia la animación aunque el mismo territorio caiga dos veces seguidas
+    void path.getBoundingClientRect();
+    path.classList.add('conquest-flash');
+    const t = window.setTimeout(() => path.classList.remove('conquest-flash'), 1200);
+    return () => window.clearTimeout(t);
+  }, [conquestFlash]);
+
+  // Zoom (rueda / pinch) y paneo (arrastre) manipulando el viewBox del SVG
+  useEffect(() => {
+    const container = containerRef.current;
+    if (state !== 'ready' || !container) return;
+    const svg = container.querySelector('svg');
+    if (!svg) return;
+    const BASE = { x: 0, y: 0, w: 2560, h: 1440 };
+    if (!svg.getAttribute('viewBox')) svg.setAttribute('viewBox', '0 0 2560 1440');
+
+    const view = () => {
+      const [x, y, w, h] = (svg.getAttribute('viewBox') ?? '0 0 2560 1440').split(' ').map(Number);
+      return { x, y, w, h };
+    };
+    const apply = (v: { x: number; y: number; w: number; h: number }) => {
+      const w = Math.min(BASE.w, Math.max(BASE.w / 8, v.w));
+      const h = (w / BASE.w) * BASE.h;
+      const x = Math.min(BASE.w - w, Math.max(0, v.x));
+      const y = Math.min(BASE.h - h, Math.max(0, v.y));
+      svg.setAttribute('viewBox', `${x} ${y} ${w} ${h}`);
+    };
+
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const v = view();
+      const rect = container.getBoundingClientRect();
+      const px = (e.clientX - rect.left) / rect.width;
+      const py = (e.clientY - rect.top) / rect.height;
+      const factor = e.deltaY > 0 ? 1.15 : 1 / 1.15;
+      const w = v.w * factor;
+      apply({ x: v.x + (v.w - w) * px, y: v.y + (v.h - w * (BASE.h / BASE.w)) * py, w, h: 0 });
+    };
+
+    // arrastre con umbral: un click corto sigue siendo click en el territorio
+    const pointers = new Map<number, { x: number; y: number }>();
+    let dragging = false;
+    let pinchDist = 0;
+    const onDown = (e: PointerEvent) => {
+      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pointers.size === 2) {
+        const [a, b] = [...pointers.values()];
+        pinchDist = Math.hypot(a.x - b.x, a.y - b.y);
+      }
+    };
+    const onMove = (e: PointerEvent) => {
+      const prev = pointers.get(e.pointerId);
+      if (!prev) return;
+      const dx = e.clientX - prev.x;
+      const dy = e.clientY - prev.y;
+      if (pointers.size === 2) {
+        pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        const [a, b] = [...pointers.values()];
+        const dist = Math.hypot(a.x - b.x, a.y - b.y);
+        if (pinchDist > 0 && Math.abs(dist - pinchDist) > 2) {
+          const v = view();
+          apply({ ...v, w: v.w * (pinchDist / dist), h: 0 });
+          pinchDist = dist;
+        }
+        return;
+      }
+      if (!dragging && Math.hypot(dx, dy) < 6) return;
+      dragging = true;
+      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      const v = view();
+      const rect = container.getBoundingClientRect();
+      apply({ ...v, x: v.x - dx * (v.w / rect.width), y: v.y - dy * (v.h / rect.height) });
+    };
+    const onUp = (e: PointerEvent) => {
+      pointers.delete(e.pointerId);
+      if (dragging && pointers.size === 0) {
+        dragging = false;
+        // suprime el click fantasma post-arrastre
+        const swallow = (ev: Event) => { ev.stopPropagation(); ev.preventDefault(); };
+        container.addEventListener('click', swallow, { capture: true, once: true });
+        window.setTimeout(() => container.removeEventListener('click', swallow, { capture: true }), 0);
+      }
+    };
+    const onDblClick = () => apply({ ...BASE });
+
+    container.addEventListener('wheel', onWheel, { passive: false });
+    container.addEventListener('pointerdown', onDown);
+    container.addEventListener('pointermove', onMove);
+    container.addEventListener('pointerup', onUp);
+    container.addEventListener('pointercancel', onUp);
+    container.addEventListener('dblclick', onDblClick);
+    return () => {
+      container.removeEventListener('wheel', onWheel);
+      container.removeEventListener('pointerdown', onDown);
+      container.removeEventListener('pointermove', onMove);
+      container.removeEventListener('pointerup', onUp);
+      container.removeEventListener('pointercancel', onUp);
+      container.removeEventListener('dblclick', onDblClick);
+    };
+  }, [state]);
 
   return (
     <div

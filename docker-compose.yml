@@ -12,6 +12,13 @@ services:
     environment:
       TEG_HOST: 0.0.0.0            # dentro del contenedor; el host solo publica loopback
       TEG_DB_PATH: /app/data/teg.db
+      TEG_MEDIA_DIR: /app/data/media
+      # el comentarista usa el Ollama del host (GPU); claude-cli no existe en
+      # el contenedor, la cadena degrada sola a ollama → plantillas
+      TEG_OLLAMA_URL: http://host.docker.internal:11434
+      TEG_OLLAMA_MODEL: ${TEG_OLLAMA_MODEL:-qwen2.5:7b}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "127.0.0.1:${TEG_PORT:-8123}:8123"
     volumes:

@@ -1,11 +1,18 @@
 {
   "schema_version": "1.0",
   "ui": {
-    "click": { "path": "audio/ui/sound-ui-click-001.ogg", "type": "audio/ogg" }
+    "click": { "path": "audio/ui/sound-ui-click-001.wav", "type": "audio/wav" },
+    "notify": { "path": "audio/ui/sound-notify-001.wav", "type": "audio/wav" },
+    "reinforce": { "path": "audio/ui/sound-reinforce-001.wav", "type": "audio/wav" }
   },
   "gameplay": {
-    "dice_roll": { "path": "audio/dice/sound-dice-roll-001.ogg", "type": "audio/ogg" },
-    "conquest_success": { "path": "audio/battles/sound-battle-win-001.ogg", "type": "audio/ogg" },
-    "traitor_alert": { "path": "audio/alerts/sound-alert-traitor-001.ogg", "type": "audio/ogg" }
+    "dice_roll": { "path": "audio/dice/sound-dice-roll-001.wav", "type": "audio/wav" },
+    "battle_clash": { "path": "audio/battles/sound-battle-clash-001.wav", "type": "audio/wav" },
+    "conquest_success": { "path": "audio/battles/sound-battle-win-001.wav", "type": "audio/wav" },
+    "territory_lost": { "path": "audio/battles/sound-battle-lose-001.wav", "type": "audio/wav" },
+    "player_eliminated": { "path": "audio/alerts/sound-player-eliminated-001.wav", "type": "audio/wav" },
+    "traitor_alert": { "path": "audio/alerts/sound-alert-traitor-001.wav", "type": "audio/wav" },
+    "victory_fanfare": { "path": "audio/victory/sound-victory-fanfare-001.wav", "type": "audio/wav" },
+    "defeat_sad": { "path": "audio/victory/sound-defeat-sad-001.wav", "type": "audio/wav" }
   }
 }

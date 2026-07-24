@@ -87,6 +87,55 @@ def test_commentator_can_be_disabled_per_game(client):
 
 
 def test_humor_level_capped(client):
-    game = create_game(client, config={"humor_level": 4})
-    # el nivel 4 está deshabilitado por defecto (humor_level_max=3)
-    assert game["config"]["humor_level"] == 3
+    game = create_game(client, config={"humor_level": 9})
+    # el bardeo (nivel 4) está habilitado; más que eso se recorta
+    assert game["config"]["humor_level"] == 4
+
+
+@pytest.mark.anyio
+async def test_chain_degrades_to_mock_and_avoids_repeats():
+    from teg_backend.ai.commentator import (
+        ChainCommentator, ClaudeCLICommentator, CommentRequest, MockCommentator,
+    )
+
+    class BrokenProvider:
+        name = "ollama"  # simula un ollama caído
+
+        async def generate(self, request):
+            raise RuntimeError("sin conexión")
+
+    chain = ChainCommentator([ClaudeCLICommentator(), BrokenProvider(), MockCommentator()])
+    # claude-cli puede o no existir en la máquina de test: forzar penitencia
+    chain._benched_until["claude-cli"] = float("inf")
+
+    req = CommentRequest(
+        game_id="g1",
+        event={"event_type": "territory.conquered", "actor_id": "a",
+               "target_id": "b", "payload": {}},
+        recent_events=[],
+        players=[{"id": "a", "nickname": "Daro", "role": "player"},
+                 {"id": "b", "nickname": "Lord", "role": "player"}],
+        humor_level=4,
+    )
+    first = await chain.generate(req)
+    assert first is not None and "Daro" in first.text
+    second = await chain.generate(req)
+    assert second is not None and second.text != first.text  # anti-repetición
+
+
+@pytest.mark.anyio
+async def test_mock_level_4_bardea():
+    from teg_backend.ai.commentator import CommentRequest, MockCommentator
+
+    mock = MockCommentator()
+    req = CommentRequest(
+        game_id="g1",
+        event={"event_type": "player.eliminated", "actor_id": "a",
+               "target_id": "b", "payload": {}},
+        recent_events=[],
+        players=[{"id": "a", "nickname": "Daro", "role": "player"},
+                 {"id": "b", "nickname": "Lord", "role": "player"}],
+        humor_level=4,
+    )
+    comment = await mock.generate(req)
+    assert comment is not None and "Lord" in comment.text

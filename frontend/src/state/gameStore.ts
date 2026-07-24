@@ -60,6 +60,10 @@ interface GameState {
   placementDone: string[];
   legalActions: LegalAction[];
   finishedObjective: SecretObjective | null;
+  pacts: string[][];
+  pactProposalFrom: string | null;
+  conquestFlash: { territoryId: string; ts: number } | null;
+  trophies: Record<string, { id: string; title: string; icon: string; blurb: string; value: string }[]> | null;
   mapAdjacency: Record<string, string[]>;
   selectedSourceTerritory: string | null;
   selectedTargetTerritory: string | null;
@@ -93,6 +97,13 @@ interface GameState {
   setPlacementDone: (players: string[]) => void;
   setLegalActions: (actions: LegalAction[]) => void;
   setFinishedObjective: (objective: SecretObjective | null) => void;
+  setPacts: (pacts: string[][]) => void;
+  addPact: (pact: string[]) => void;
+  removePact: (pact: string[]) => void;
+  setPactProposalFrom: (playerId: string | null) => void;
+  setConquestFlash: (territoryId: string) => void;
+  setTrophies: (trophies: Record<string, { id: string; title: string; icon: string; blurb: string; value: string }[]>) => void;
+  hasPactWith: (playerId: string | null | undefined) => boolean;
   updateTerritory: (territory: TerritoryStateData) => void;
   setSelectedSourceTerritory: (tid: string | null) => void;
   setSelectedTargetTerritory: (tid: string | null) => void;
@@ -124,6 +135,10 @@ export const useGameStore = create<GameState>((set, get) => ({
   placementDone: [],
   legalActions: [],
   finishedObjective: null,
+  pacts: [],
+  pactProposalFrom: null,
+  conquestFlash: null,
+  trophies: null,
   mapAdjacency: {},
   selectedSourceTerritory: null,
   selectedTargetTerritory: null,
@@ -167,6 +182,20 @@ export const useGameStore = create<GameState>((set, get) => ({
   setPlacementDone: (placementDone) => set({ placementDone }),
   setLegalActions: (legalActions) => set({ legalActions }),
   setFinishedObjective: (finishedObjective) => set({ finishedObjective }),
+  setPacts: (pacts) => set({ pacts }),
+  addPact: (pact) =>
+    set((s) => ({ pacts: [...s.pacts.filter((p) => p.join('|') !== [...pact].sort().join('|')), [...pact].sort()] })),
+  removePact: (pact) =>
+    set((s) => ({ pacts: s.pacts.filter((p) => [...p].sort().join('|') !== [...pact].sort().join('|')) })),
+  setPactProposalFrom: (pactProposalFrom) => set({ pactProposalFrom }),
+  setConquestFlash: (territoryId) => set({ conquestFlash: { territoryId, ts: Date.now() } }),
+  setTrophies: (trophies) => set({ trophies }),
+  hasPactWith: (playerId) => {
+    const you = get().youId;
+    if (!you || !playerId) return false;
+    const key = [you, playerId].sort().join('|');
+    return get().pacts.some((p) => [...p].sort().join('|') === key);
+  },
   updateTerritory: (t) => set((s) => ({ territories: { ...s.territories, [t.id]: t } })),
   setSelectedSourceTerritory: (selectedSourceTerritory) => set({ selectedSourceTerritory }),
   setSelectedTargetTerritory: (selectedTargetTerritory) => set({ selectedTargetTerritory }),

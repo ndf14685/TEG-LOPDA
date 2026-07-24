@@ -37,6 +37,7 @@ def _row_to_player(row: aiosqlite.Row) -> dict[str, Any]:
         "nickname_editable": bool(row["nickname_editable"]),
         "is_ready": bool(row["is_ready"]),
         "eliminated": bool(row["eliminated"]),
+        "profile_id": row["profile_id"] if "profile_id" in row.keys() else None,
         "joined_at": row["joined_at"],
         "created_at": row["created_at"],
     }
@@ -66,6 +67,18 @@ def public_player(player: dict[str, Any]) -> dict[str, Any]:
         "is_ready": player["is_ready"],
         "eliminated": player["eliminated"],
         "joined": player["joined_at"] is not None,
+        "profile_id": player.get("profile_id"),
+    }
+
+
+def public_profile(profile: dict[str, Any]) -> dict[str, Any]:
+    """Vista de perfil sin el hash del token."""
+    return {
+        "id": profile["id"],
+        "nickname": profile["nickname"],
+        "color": profile["color"],
+        "avatar_asset_id": profile["avatar_asset_id"],
+        "created_at": profile["created_at"],
     }
 
 
@@ -128,12 +141,14 @@ async def create_player(
     token_hash: str | None,
     color: str | None = None,
     nickname_editable: bool = True,
+    profile_id: str | None = None,
 ) -> dict:
     player_id = str(uuid.uuid4())
     await db.execute(
         "INSERT INTO players (id, game_id, nickname, role, color, token_hash,"
-        " nickname_editable) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (player_id, game_id, nickname, role, color, token_hash, int(nickname_editable)),
+        " nickname_editable, profile_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        (player_id, game_id, nickname, role, color, token_hash,
+         int(nickname_editable), profile_id),
     )
     row = await db.fetchone("SELECT * FROM players WHERE id = ?", (player_id,))
     assert row is not None
@@ -163,7 +178,7 @@ async def find_player_by_token_hash(db: Database, game_id: str, token_hash: str)
 async def update_player(db: Database, player_id: str, **fields: Any) -> None:
     allowed = {
         "nickname", "color", "avatar_asset_id", "token_hash", "token_revoked",
-        "nickname_editable", "is_ready", "eliminated", "joined_at",
+        "nickname_editable", "is_ready", "eliminated", "joined_at", "role",
     }
     updates = {k: v for k, v in fields.items() if k in allowed}
     if not updates:
@@ -171,6 +186,59 @@ async def update_player(db: Database, player_id: str, **fields: Any) -> None:
     cols = ", ".join(f"{k} = ?" for k in updates)
     params = tuple(int(v) if isinstance(v, bool) else v for v in updates.values())
     await db.execute(f"UPDATE players SET {cols} WHERE id = ?", params + (player_id,))
+
+
+# --- profiles ---------------------------------------------------------------
+
+def _row_to_profile(row: aiosqlite.Row) -> dict[str, Any]:
+    return {
+        "id": row["id"],
+        "nickname": row["nickname"],
+        "color": row["color"],
+        "avatar_asset_id": row["avatar_asset_id"],
+        "token_hash": row["token_hash"],
+        "created_at": row["created_at"],
+    }
+
+
+async def create_profile(
+    db: Database, nickname: str, token_hash: str, color: str | None = None
+) -> dict:
+    profile_id = str(uuid.uuid4())
+    await db.execute(
+        "INSERT INTO profiles (id, nickname, color, token_hash) VALUES (?, ?, ?, ?)",
+        (profile_id, nickname, color, token_hash),
+    )
+    row = await db.fetchone("SELECT * FROM profiles WHERE id = ?", (profile_id,))
+    assert row is not None
+    return _row_to_profile(row)
+
+
+async def get_profile(db: Database, profile_id: str) -> dict | None:
+    row = await db.fetchone("SELECT * FROM profiles WHERE id = ?", (profile_id,))
+    return _row_to_profile(row) if row else None
+
+
+async def find_profile_by_token_hash(db: Database, token_hash: str) -> dict | None:
+    row = await db.fetchone("SELECT * FROM profiles WHERE token_hash = ?", (token_hash,))
+    return _row_to_profile(row) if row else None
+
+
+async def list_profiles(db: Database) -> list[dict]:
+    rows = await db.fetchall("SELECT * FROM profiles ORDER BY created_at")
+    return [_row_to_profile(r) for r in rows]
+
+
+async def update_profile(db: Database, profile_id: str, **fields: Any) -> None:
+    allowed = {"nickname", "color", "avatar_asset_id", "token_hash"}
+    updates = {k: v for k, v in fields.items() if k in allowed}
+    if not updates:
+        return
+    cols = ", ".join(f"{k} = ?" for k in updates)
+    await db.execute(
+        f"UPDATE profiles SET {cols} WHERE id = ?",
+        tuple(updates.values()) + (profile_id,),
+    )
 
 
 # --- events ----------------------------------------------------------------
@@ -285,3 +353,123 @@ async def list_snapshot_turns(db: Database, game_id: str) -> list[int]:
         (game_id,),
     )
     return [int(r["turn_number"]) for r in rows]
+
+
+# --- audios personalizados por perfil ---------------------------------------
+
+def _row_to_profile_taunt(row: aiosqlite.Row) -> dict[str, Any]:
+    return {
+        "id": row["id"],
+        "owner_profile_id": row["owner_profile_id"],
+        "target_profile_id": row["target_profile_id"],
+        "event_type": row["event_type"],
+        "filename": row["filename"],
+        "created_at": row["created_at"],
+    }
+
+
+async def upsert_profile_taunt(
+    db: Database, owner_id: str, target_id: str, event_type: str, filename: str
+) -> dict:
+    taunt_id = str(uuid.uuid4())
+    await db.execute(
+        "INSERT INTO profile_taunts (id, owner_profile_id, target_profile_id,"
+        " event_type, filename) VALUES (?, ?, ?, ?, ?)"
+        " ON CONFLICT(owner_profile_id, target_profile_id, event_type)"
+        " DO UPDATE SET filename = excluded.filename",
+        (taunt_id, owner_id, target_id, event_type, filename),
+    )
+    row = await db.fetchone(
+        "SELECT * FROM profile_taunts WHERE owner_profile_id = ?"
+        " AND target_profile_id = ? AND event_type = ?",
+        (owner_id, target_id, event_type),
+    )
+    assert row is not None
+    return _row_to_profile_taunt(row)
+
+
+async def find_profile_taunt(
+    db: Database, owner_id: str, target_id: str, event_type: str
+) -> dict | None:
+    row = await db.fetchone(
+        "SELECT * FROM profile_taunts WHERE owner_profile_id = ?"
+        " AND target_profile_id = ? AND event_type = ?",
+        (owner_id, target_id, event_type),
+    )
+    return _row_to_profile_taunt(row) if row else None
+
+
+async def list_profile_taunts(db: Database, owner_id: str) -> list[dict]:
+    rows = await db.fetchall(
+        "SELECT * FROM profile_taunts WHERE owner_profile_id = ? ORDER BY created_at",
+        (owner_id,),
+    )
+    return [_row_to_profile_taunt(r) for r in rows]
+
+
+async def count_profile_taunts(db: Database, owner_id: str) -> int:
+    row = await db.fetchone(
+        "SELECT COUNT(*) AS n FROM profile_taunts WHERE owner_profile_id = ?", (owner_id,)
+    )
+    return int(row["n"]) if row else 0
+
+
+async def delete_profile_taunt(db: Database, owner_id: str, taunt_id: str) -> str | None:
+    row = await db.fetchone(
+        "SELECT filename FROM profile_taunts WHERE id = ? AND owner_profile_id = ?",
+        (taunt_id, owner_id),
+    )
+    if row is None:
+        return None
+    await db.execute("DELETE FROM profile_taunts WHERE id = ?", (taunt_id,))
+    return row["filename"]
+
+
+# --- estadísticas por partida ------------------------------------------------
+
+async def save_game_stats(
+    db: Database, game_id: str, player_id: str, profile_id: str | None,
+    stats: dict, trophies: list[dict],
+) -> None:
+    await db.execute(
+        "INSERT OR REPLACE INTO game_stats (game_id, player_id, profile_id,"
+        " stats_json, trophies_json) VALUES (?, ?, ?, ?, ?)",
+        (game_id, player_id, profile_id,
+         json.dumps(stats, ensure_ascii=False), json.dumps(trophies, ensure_ascii=False)),
+    )
+
+
+async def get_game_stats(db: Database, game_id: str) -> list[dict]:
+    rows = await db.fetchall("SELECT * FROM game_stats WHERE game_id = ?", (game_id,))
+    return [
+        {
+            "game_id": r["game_id"],
+            "player_id": r["player_id"],
+            "profile_id": r["profile_id"],
+            "stats": json.loads(r["stats_json"]),
+            "trophies": json.loads(r["trophies_json"]),
+        }
+        for r in rows
+    ]
+
+
+async def get_profile_stats(db: Database, profile_id: str) -> dict:
+    """Acumulado histórico de un perfil: suma de contadores + trofeos ganados."""
+    rows = await db.fetchall(
+        "SELECT stats_json, trophies_json FROM game_stats WHERE profile_id = ?",
+        (profile_id,),
+    )
+    totals: dict = {}
+    trophies: dict[str, int] = {}
+    games = 0
+    for r in rows:
+        games += 1
+        for k, v in json.loads(r["stats_json"]).items():
+            if isinstance(v, bool):
+                totals[k] = totals.get(k, 0) + (1 if v else 0)
+            elif isinstance(v, (int, float)):
+                totals[k] = totals.get(k, 0) + v
+    for r in rows:
+        for t in json.loads(r["trophies_json"]):
+            trophies[t["title"]] = trophies.get(t["title"], 0) + 1
+    return {"games_played": games, "totals": totals, "trophies": trophies}
