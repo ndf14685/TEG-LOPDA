@@ -423,3 +423,53 @@ async def delete_profile_taunt(db: Database, owner_id: str, taunt_id: str) -> st
         return None
     await db.execute("DELETE FROM profile_taunts WHERE id = ?", (taunt_id,))
     return row["filename"]
+
+
+# --- estadísticas por partida ------------------------------------------------
+
+async def save_game_stats(
+    db: Database, game_id: str, player_id: str, profile_id: str | None,
+    stats: dict, trophies: list[dict],
+) -> None:
+    await db.execute(
+        "INSERT OR REPLACE INTO game_stats (game_id, player_id, profile_id,"
+        " stats_json, trophies_json) VALUES (?, ?, ?, ?, ?)",
+        (game_id, player_id, profile_id,
+         json.dumps(stats, ensure_ascii=False), json.dumps(trophies, ensure_ascii=False)),
+    )
+
+
+async def get_game_stats(db: Database, game_id: str) -> list[dict]:
+    rows = await db.fetchall("SELECT * FROM game_stats WHERE game_id = ?", (game_id,))
+    return [
+        {
+            "game_id": r["game_id"],
+            "player_id": r["player_id"],
+            "profile_id": r["profile_id"],
+            "stats": json.loads(r["stats_json"]),
+            "trophies": json.loads(r["trophies_json"]),
+        }
+        for r in rows
+    ]
+
+
+async def get_profile_stats(db: Database, profile_id: str) -> dict:
+    """Acumulado histórico de un perfil: suma de contadores + trofeos ganados."""
+    rows = await db.fetchall(
+        "SELECT stats_json, trophies_json FROM game_stats WHERE profile_id = ?",
+        (profile_id,),
+    )
+    totals: dict = {}
+    trophies: dict[str, int] = {}
+    games = 0
+    for r in rows:
+        games += 1
+        for k, v in json.loads(r["stats_json"]).items():
+            if isinstance(v, bool):
+                totals[k] = totals.get(k, 0) + (1 if v else 0)
+            elif isinstance(v, (int, float)):
+                totals[k] = totals.get(k, 0) + v
+    for r in rows:
+        for t in json.loads(r["trophies_json"]):
+            trophies[t["title"]] = trophies.get(t["title"], 0) + 1
+    return {"games_played": games, "totals": totals, "trophies": trophies}

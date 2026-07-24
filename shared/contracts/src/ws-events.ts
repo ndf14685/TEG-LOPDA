@@ -106,6 +106,19 @@ export const CardsTradedPayload = z.object({
 });
 export const CardAwardedPayload = z.object({ player_id: z.string() });
 export const PactPayload = z.object({}).passthrough();
+export const Trophy = z.object({
+  id: z.string(),
+  title: z.string(),
+  icon: z.string(),
+  blurb: z.string(),
+  value: z.string(),
+});
+export type Trophy = z.infer<typeof Trophy>;
+export const StatsReadyPayload = z.object({
+  stats: z.record(z.string(), z.record(z.string(), z.unknown())),
+  trophies: z.record(z.string(), z.array(Trophy)),
+});
+export type StatsReadyPayload = z.infer<typeof StatsReadyPayload>;
 export const PactBrokenPayload = z.object({ betrayal: z.boolean().optional() });
 export const ObjectiveAssignedPayload = z.object({ objective: SecretObjective });
 export const LegalActionsPayload = z.object({
@@ -173,6 +186,7 @@ export const EVENT_PAYLOAD_SCHEMAS = {
   'pact.accepted': PactPayload,
   'pact.rejected': PactPayload,
   'pact.broken': PactBrokenPayload,
+  'stats.ready': StatsReadyPayload,
   'error': ErrorPayload,
 } as const;
 export type KnownEventType = keyof typeof EVENT_PAYLOAD_SCHEMAS;

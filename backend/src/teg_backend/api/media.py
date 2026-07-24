@@ -138,3 +138,11 @@ async def serve_taunt(filename: str, request: Request) -> FileResponse:
         raise HTTPException(404, detail={"code": "NOT_FOUND", "message": "audio inexistente"})
     ext = filename.rsplit(".", 1)[1]
     return FileResponse(path, media_type=ALLOWED_EXT[ext])
+
+
+@router.get("/profile/{token}/stats")
+async def profile_stats(token: str, request: Request) -> dict:
+    """Histórico del perfil: acumulados y trofeos de todas sus partidas."""
+    service = request.app.state.service
+    profile = await _profile_or_404(request, token)
+    return {"stats": await repo.get_profile_stats(service.db, profile["id"])}

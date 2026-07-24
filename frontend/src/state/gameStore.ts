@@ -63,6 +63,7 @@ interface GameState {
   pacts: string[][];
   pactProposalFrom: string | null;
   conquestFlash: { territoryId: string; ts: number } | null;
+  trophies: Record<string, { id: string; title: string; icon: string; blurb: string; value: string }[]> | null;
   mapAdjacency: Record<string, string[]>;
   selectedSourceTerritory: string | null;
   selectedTargetTerritory: string | null;
@@ -101,6 +102,7 @@ interface GameState {
   removePact: (pact: string[]) => void;
   setPactProposalFrom: (playerId: string | null) => void;
   setConquestFlash: (territoryId: string) => void;
+  setTrophies: (trophies: Record<string, { id: string; title: string; icon: string; blurb: string; value: string }[]>) => void;
   hasPactWith: (playerId: string | null | undefined) => boolean;
   updateTerritory: (territory: TerritoryStateData) => void;
   setSelectedSourceTerritory: (tid: string | null) => void;
@@ -136,6 +138,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   pacts: [],
   pactProposalFrom: null,
   conquestFlash: null,
+  trophies: null,
   mapAdjacency: {},
   selectedSourceTerritory: null,
   selectedTargetTerritory: null,
@@ -186,6 +189,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     set((s) => ({ pacts: s.pacts.filter((p) => [...p].sort().join('|') !== [...pact].sort().join('|')) })),
   setPactProposalFrom: (pactProposalFrom) => set({ pactProposalFrom }),
   setConquestFlash: (territoryId) => set({ conquestFlash: { territoryId, ts: Date.now() } }),
+  setTrophies: (trophies) => set({ trophies }),
   hasPactWith: (playerId) => {
     const you = get().youId;
     if (!you || !playerId) return false;

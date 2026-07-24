@@ -22,6 +22,7 @@ import {
   CardsTradedPayload,
   ObjectiveAssignedPayload,
   LegalActionsPayload,
+  StatsReadyPayload,
 } from '@teg/contracts';
 import { wsClient } from './wsClient';
 import { useGameStore } from '../../state/gameStore';
@@ -317,6 +318,11 @@ export function bindWsToStores(): void {
         : 'audio.gameplay.player_eliminated',
       [392, 523, 659, 784],
     );
+  });
+
+  wsClient.on('stats.ready', (p) => {
+    const payload = p as z.infer<typeof StatsReadyPayload>;
+    game().setTrophies(payload.trophies);
   });
 
   wsClient.on('error', (p) => {

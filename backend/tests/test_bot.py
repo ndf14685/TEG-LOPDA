@@ -93,3 +93,10 @@ def test_full_game_between_bots_reaches_victory(client):
     types = {e["event_type"] for e in events}
     assert "territory.conquered" in types
     assert "game.finished" in types
+    assert "stats.ready" in types
+
+    # las estadísticas quedaron persistidas con trofeos reales
+    stats = client.get(f"/api/admin/games/{game['id']}/stats", headers=ADMIN).json()["stats"]
+    assert len(stats) == 3
+    all_trophies = [t["title"] for s in stats for t in s["trophies"]]
+    assert all_trophies, "una partida completa siempre reparte algún trofeo"

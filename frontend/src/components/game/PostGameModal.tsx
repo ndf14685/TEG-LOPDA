@@ -24,11 +24,15 @@ function Confetti() {
 export function PostGameModal() {
   const finished = useGameStore((s) => s.finished);
   const finishedObjective = useGameStore((s) => s.finishedObjective);
+  const trophies = useGameStore((s) => s.trophies);
   const playerById = useGameStore((s) => s.playerById);
 
   if (!finished) return null;
 
   const winner = finished.winnerPlayerId ? playerById(finished.winnerPlayerId) : undefined;
+  const trophyEntries = trophies
+    ? Object.entries(trophies).flatMap(([pid, list]) => list.map((t) => ({ pid, ...t })))
+    : [];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-war-950/95 p-4 backdrop-blur-lg">
@@ -66,6 +70,30 @@ export function PostGameModal() {
             )}
           </div>
         </div>
+
+        {/* Trofeos absurdos REALES: cada uno respaldado por el event log */}
+        {trophyEntries.length > 0 && (
+          <div className="mt-5">
+            <h2 className="mb-2 text-center text-xs font-semibold tracking-wider text-stone-400">
+              🏅 TROFEOS DE LA NOCHE
+            </h2>
+            <div className="grid max-h-56 grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-3">
+              {trophyEntries.map((t) => {
+                const p = playerById(t.pid);
+                return (
+                  <div key={`${t.pid}-${t.id}`} className="rounded-xl border border-war-700 bg-war-950/60 p-3 text-center">
+                    <span className="text-2xl">{t.icon}</span>
+                    <h3 className="mt-0.5 text-xs font-bold text-gold-400">{t.title}</h3>
+                    <p className="text-sm font-semibold" style={{ color: colorValue(p?.color) }}>
+                      {p?.nickname ?? '???'} <span className="text-xs text-stone-500">({t.value})</span>
+                    </p>
+                    <p className="mt-0.5 text-[10px] leading-tight text-stone-400">{t.blurb}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Botón de Salir */}
         <div className="mt-6 flex justify-center">

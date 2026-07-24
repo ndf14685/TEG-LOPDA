@@ -274,3 +274,13 @@ async def convert_seat_to_ai(game_id: str, player_id: str, request: Request) -> 
     except ServiceError as exc:
         raise to_http(exc)
     return {"ok": True}
+
+
+@router.get("/games/{game_id}/stats")
+async def game_stats(game_id: str, request: Request) -> dict:
+    service = request.app.state.service
+    try:
+        await service.get_game_or_404(game_id)
+    except ServiceError as exc:
+        raise to_http(exc)
+    return {"stats": await repo.get_game_stats(service.db, game_id)}

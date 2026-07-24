@@ -76,6 +76,8 @@ class EventType(StrEnum):
     PACT_REJECTED = "pact.rejected"
     PACT_BROKEN = "pact.broken"  # ruptura explícita o traición al atacar
 
+    STATS_READY = "stats.ready"  # estadísticas y trofeos reales de la partida
+
     TAUNT_TRIGGERED = "taunt.triggered"
     AI_COMMENT_GENERATED = "ai.comment.generated"
 

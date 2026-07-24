@@ -548,7 +548,30 @@ class GameService:
         }
         await self._set_status(game_id, GameStatus.FINISHED)
         await self.emit(game_id, EventType.GAME_FINISHED, target_id=winner_player_id, payload=summary)
+        await self._publish_stats(game_id)
         return summary
+
+    async def _publish_stats(self, game_id: str) -> None:
+        """Calcula las estadísticas reales del event log y las publica."""
+        try:
+            from .stats import assign_trophies, compute_stats
+
+            players = await repo.get_players(self.db, game_id)
+            events = await repo.get_events(self.db, game_id, limit=100000)
+            stats = compute_stats(events, players)
+            trophies = assign_trophies(stats)
+            by_id = {p["id"]: p for p in players}
+            for pid, s in stats.items():
+                await repo.save_game_stats(
+                    self.db, game_id, pid, by_id.get(pid, {}).get("profile_id"),
+                    s, trophies.get(pid, []),
+                )
+            await self.emit(
+                game_id, EventType.STATS_READY,
+                payload={"stats": stats, "trophies": trophies},
+            )
+        except Exception:
+            log.warning("fallo publicando estadísticas", exc_info=True)
 
     async def cancel_game(self, game_id: str) -> None:
         game = await self.get_game_or_404(game_id)
