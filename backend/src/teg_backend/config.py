@@ -54,13 +54,13 @@ class Settings:
     rest_requests_per_minute: int = 240
 
     commentator_enabled: bool = True
-    commentator_provider: str = "mock"  # mock | ollama
+    commentator_provider: str = "chain"  # chain | mock | ollama
     commentator_cooldown_seconds: float = 15.0
     commentator_max_chars: int = 280
-    humor_level_default: int = 2
-    # Nivel 4 (bardeo entre amigos) deshabilitado por defecto: subir este tope
-    # explícitamente por env para permitirlo.
-    humor_level_max: int = 3
+    humor_level_default: int = 3
+    # Nivel 4 = bardeo entre amigos, habilitado: bajar por env si un grupo
+    # prefiere un relator más tranquilo.
+    humor_level_max: int = 4
 
     ollama_url: str = "http://127.0.0.1:11434"
     ollama_model: str = "llama3.2"
@@ -96,11 +96,11 @@ def load_settings() -> Settings:
         ws_window_seconds=_float("TEG_WS_WINDOW_SECONDS", 5.0),
         rest_requests_per_minute=_int("TEG_REST_REQUESTS_PER_MINUTE", 240),
         commentator_enabled=_bool("TEG_COMMENTATOR_ENABLED", True),
-        commentator_provider=os.environ.get("TEG_COMMENTATOR_PROVIDER", "mock"),
+        commentator_provider=os.environ.get("TEG_COMMENTATOR_PROVIDER", "chain"),
         commentator_cooldown_seconds=_float("TEG_COMMENTATOR_COOLDOWN_SECONDS", 15.0),
         commentator_max_chars=_int("TEG_COMMENTATOR_MAX_CHARS", 280),
-        humor_level_default=_int("TEG_HUMOR_LEVEL_DEFAULT", 2),
-        humor_level_max=_int("TEG_HUMOR_LEVEL_MAX", 3),
+        humor_level_default=_int("TEG_HUMOR_LEVEL_DEFAULT", 3),
+        humor_level_max=_int("TEG_HUMOR_LEVEL_MAX", 4),
         ollama_url=os.environ.get("TEG_OLLAMA_URL", "http://127.0.0.1:11434").rstrip("/"),
         ollama_model=os.environ.get("TEG_OLLAMA_MODEL", "llama3.2"),
         ai_player_timeout_seconds=_float("TEG_AI_PLAYER_TIMEOUT_SECONDS", 5.0),
