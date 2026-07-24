@@ -34,7 +34,7 @@ services:
     image: caddy:2-alpine
     profiles: ["edge"]
     restart: unless-stopped
-    depends_on: [backend]
+    depends_on: [frontend]
     # SOLO 443: el puerto 80 del host lo ocupa Apache (Nextcloud) y no se toca.
     # Caddy obtiene el certificado por TLS-ALPN-01 (no necesita el 80).
     ports:
