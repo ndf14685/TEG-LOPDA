@@ -4,6 +4,7 @@ import type { Profile } from '@teg/contracts';
 import { api } from '../services/api/apiClient';
 import { colorValue } from '../utils/playerColors';
 import { PlayerAvatar } from '../components/players/PlayerAvatar';
+import { TauntStudio } from '../components/taunts/TauntStudio';
 
 const PROFILE_TOKEN_KEY = 'teg.profileToken';
 
@@ -16,6 +17,7 @@ export function ProfilePage() {
   const { token = '' } = useParams();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [studioOpen, setStudioOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -63,10 +65,19 @@ export function ProfilePage() {
         <p className="text-sm text-stone-300">
           Cuando el organizador te invite a una partida, tus audios y estadísticas quedan ligados a este perfil.
         </p>
+        <button
+          onClick={() => setStudioOpen(true)}
+          data-testid="open-taunt-studio"
+          className="mt-4 rounded-xl bg-gold-500 px-5 py-2.5 text-sm font-bold text-war-950 hover:bg-gold-400"
+        >
+          🎙️ Grabar mis audios de guerra
+        </button>
         <p className="mt-2 text-xs text-stone-500">
           Tus estadísticas históricas aparecen acá al terminar cada partida.
         </p>
       </section>
+
+      {studioOpen && <TauntStudio profileToken={token} onClose={() => setStudioOpen(false)} />}
     </main>
   );
 }

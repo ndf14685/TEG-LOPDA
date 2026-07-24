@@ -228,7 +228,7 @@ export function bindWsToStores(): void {
   });
 
   wsClient.on('taunt.triggered', (p, env) => {
-    const payload = p as z.infer<typeof TauntTriggeredPayload>;
+    const payload = p as z.infer<typeof TauntTriggeredPayload> & { audio_url?: string };
     game().setTaunt({
       fromPlayerId: env.actor_id ?? null,
       toPlayerId: env.target_id ?? null,
@@ -236,7 +236,12 @@ export function bindWsToStores(): void {
       sourceEventType: payload.source_event_type,
       receivedAt: Date.now(),
     });
-    audioService.playTauntAsset(payload.audio_asset_id);
+    if (payload.audio_url) {
+      // audio grabado por el jugador: se sirve directo del backend
+      audioService.playTauntUrl(payload.audio_url);
+    } else {
+      audioService.playTauntAsset(payload.audio_asset_id);
+    }
   });
 
   wsClient.on('ai.comment.generated', (p, env) => {

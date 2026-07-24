@@ -12,7 +12,7 @@ from fastapi.responses import FileResponse, JSONResponse
 
 from . import __version__
 from .ai.commentator import CommentatorService, build_provider
-from .api import admin, health, join
+from .api import admin, health, join, media
 from .application.game_service import GameService
 from .config import Settings, load_settings
 from .infrastructure.db import Database
@@ -98,6 +98,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(health.router)
     app.include_router(join.router)
     app.include_router(join.profile_router)
+    app.include_router(media.router)
     app.include_router(admin.router)
     app.include_router(ws.router)
 

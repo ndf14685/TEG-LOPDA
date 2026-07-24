@@ -158,23 +158,61 @@ class GameService:
                 and event.actor_id
                 and event.target_id
             ):
-                asset_id = await repo.find_taunt(
-                    self.db, game_id, event.actor_id, event.target_id, event.event_type
+                await self._fire_taunt(
+                    game_id, players, event.actor_id, event.target_id,
+                    event.event_type, event.event_id,
                 )
-                if asset_id:
-                    await self.emit(
-                        game_id,
-                        EventType.TAUNT_TRIGGERED,
-                        actor_id=event.actor_id,
-                        target_id=event.target_id,
-                        payload={
-                            "audio_asset_id": asset_id,
-                            "source_event_type": event.event_type,
-                            "source_event_id": event.event_id,
-                        },
-                    )
+            if event.event_type == EventType.GAME_STARTED:
+                # saludos grabados: cada par jugador→rival con audio de inicio
+                seated = [p for p in players if p["role"] in PLAYING_ROLES and p.get("profile_id")]
+                for owner in seated:
+                    for target in seated:
+                        if owner["id"] == target["id"]:
+                            continue
+                        await self._fire_taunt(
+                            game_id, players, owner["id"], target["id"],
+                            EventType.GAME_STARTED, event.event_id,
+                        )
         except Exception:
             log.warning("fallo en efectos post-evento", exc_info=True)
+
+    async def _fire_taunt(
+        self,
+        game_id: str,
+        players: list[dict],
+        actor_id: str,
+        target_id: str,
+        event_type: str,
+        source_event_id: str,
+    ) -> None:
+        """Prioridad: audio grabado del perfil > asset legado por partida."""
+        by_id = {p["id"]: p for p in players}
+        actor, target = by_id.get(actor_id), by_id.get(target_id)
+        payload: dict | None = None
+        if actor and target and actor.get("profile_id") and target.get("profile_id"):
+            taunt = await repo.find_profile_taunt(
+                self.db, actor["profile_id"], target["profile_id"], event_type
+            )
+            if taunt:
+                payload = {
+                    "audio_asset_id": taunt["filename"],
+                    "audio_url": f"/api/media/taunts/{taunt['filename']}",
+                    "source_event_type": event_type,
+                    "source_event_id": source_event_id,
+                }
+        if payload is None:
+            asset_id = await repo.find_taunt(self.db, game_id, actor_id, target_id, event_type)
+            if asset_id:
+                payload = {
+                    "audio_asset_id": asset_id,
+                    "source_event_type": event_type,
+                    "source_event_id": source_event_id,
+                }
+        if payload:
+            await self.emit(
+                game_id, EventType.TAUNT_TRIGGERED,
+                actor_id=actor_id, target_id=target_id, payload=payload,
+            )
 
     async def _emit_ai_comment(self, game_id: str, comment: Comment) -> None:
         await self.emit(

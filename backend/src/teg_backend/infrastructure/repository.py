@@ -353,3 +353,73 @@ async def list_snapshot_turns(db: Database, game_id: str) -> list[int]:
         (game_id,),
     )
     return [int(r["turn_number"]) for r in rows]
+
+
+# --- audios personalizados por perfil ---------------------------------------
+
+def _row_to_profile_taunt(row: aiosqlite.Row) -> dict[str, Any]:
+    return {
+        "id": row["id"],
+        "owner_profile_id": row["owner_profile_id"],
+        "target_profile_id": row["target_profile_id"],
+        "event_type": row["event_type"],
+        "filename": row["filename"],
+        "created_at": row["created_at"],
+    }
+
+
+async def upsert_profile_taunt(
+    db: Database, owner_id: str, target_id: str, event_type: str, filename: str
+) -> dict:
+    taunt_id = str(uuid.uuid4())
+    await db.execute(
+        "INSERT INTO profile_taunts (id, owner_profile_id, target_profile_id,"
+        " event_type, filename) VALUES (?, ?, ?, ?, ?)"
+        " ON CONFLICT(owner_profile_id, target_profile_id, event_type)"
+        " DO UPDATE SET filename = excluded.filename",
+        (taunt_id, owner_id, target_id, event_type, filename),
+    )
+    row = await db.fetchone(
+        "SELECT * FROM profile_taunts WHERE owner_profile_id = ?"
+        " AND target_profile_id = ? AND event_type = ?",
+        (owner_id, target_id, event_type),
+    )
+    assert row is not None
+    return _row_to_profile_taunt(row)
+
+
+async def find_profile_taunt(
+    db: Database, owner_id: str, target_id: str, event_type: str
+) -> dict | None:
+    row = await db.fetchone(
+        "SELECT * FROM profile_taunts WHERE owner_profile_id = ?"
+        " AND target_profile_id = ? AND event_type = ?",
+        (owner_id, target_id, event_type),
+    )
+    return _row_to_profile_taunt(row) if row else None
+
+
+async def list_profile_taunts(db: Database, owner_id: str) -> list[dict]:
+    rows = await db.fetchall(
+        "SELECT * FROM profile_taunts WHERE owner_profile_id = ? ORDER BY created_at",
+        (owner_id,),
+    )
+    return [_row_to_profile_taunt(r) for r in rows]
+
+
+async def count_profile_taunts(db: Database, owner_id: str) -> int:
+    row = await db.fetchone(
+        "SELECT COUNT(*) AS n FROM profile_taunts WHERE owner_profile_id = ?", (owner_id,)
+    )
+    return int(row["n"]) if row else 0
+
+
+async def delete_profile_taunt(db: Database, owner_id: str, taunt_id: str) -> str | None:
+    row = await db.fetchone(
+        "SELECT filename FROM profile_taunts WHERE id = ? AND owner_profile_id = ?",
+        (taunt_id, owner_id),
+    )
+    if row is None:
+        return None
+    await db.execute("DELETE FROM profile_taunts WHERE id = ?", (taunt_id,))
+    return row["filename"]

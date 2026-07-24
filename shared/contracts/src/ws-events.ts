@@ -58,6 +58,8 @@ export const AttackResolvedPayload = z.object({
 export const ChatMessagePayload = z.object({ text: z.string() });
 export const TauntTriggeredPayload = z.object({
   audio_asset_id: z.string(),
+  // audio grabado por un jugador: URL directa (/api/media/taunts/...)
+  audio_url: z.string().optional(),
   source_event_type: z.string(),
   source_event_id: z.string().nullable().optional(),
 });

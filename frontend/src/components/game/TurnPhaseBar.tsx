@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useGameStore } from '../../state/gameStore';
 import { useSessionStore } from '../../state/sessionStore';
 import { wsClient } from '../../services/websocket/wsClient';
@@ -5,8 +6,12 @@ import { audioService } from '../../services/audio/AudioService';
 import { CountryCardsModal } from '../cards/CountryCardsModal';
 import { SecretObjectiveModal } from '../objectives/SecretObjectiveModal';
 import { HowToPlayModal } from './HowToPlayModal';
+import { TauntStudio } from '../taunts/TauntStudio';
+import { getStoredProfileToken } from '../../pages/ProfilePage';
 
 export function TurnPhaseBar() {
+  const [studioOpen, setStudioOpen] = useState(false);
+  const profileToken = getStoredProfileToken();
   const turn = useGameStore((s) => s.turn);
   const session = useSessionStore((s) => s.session);
   const currentPlayerId = useGameStore((s) => s.currentPlayerId);
@@ -33,6 +38,17 @@ export function TurnPhaseBar() {
           <SecretObjectiveModal />
           <CountryCardsModal />
           <HowToPlayModal />
+          {profileToken && (
+            <button
+              onClick={() => setStudioOpen(true)}
+              className="flex items-center gap-1.5 rounded-lg border border-red-500/40 bg-red-950/40 px-3 py-1.5 text-xs font-bold text-red-300 hover:bg-red-900/50 shadow-md"
+            >
+              🎙️ Mis audios
+            </button>
+          )}
+          {studioOpen && profileToken && (
+            <TauntStudio profileToken={profileToken} onClose={() => setStudioOpen(false)} />
+          )}
         </div>
         {myTurn && (
           <button

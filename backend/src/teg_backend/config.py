@@ -37,6 +37,10 @@ class Settings:
     host: str = "127.0.0.1"
     port: int = 8123
     db_path: str = "data/teg.db"
+    media_dir: str = "data/media"
+    # disco al límite en el host: audios cortos y con tope duro
+    taunt_max_bytes: int = 512 * 1024
+    taunt_max_per_profile: int = 40
     admin_token: str = ""
     admin_token_generated: bool = False
     public_base_url: str = "http://localhost:8123"
@@ -78,6 +82,9 @@ def load_settings() -> Settings:
         host=os.environ.get("TEG_HOST", "127.0.0.1"),
         port=_int("TEG_PORT", 8123),
         db_path=os.environ.get("TEG_DB_PATH", "data/teg.db"),
+        media_dir=os.environ.get("TEG_MEDIA_DIR", "data/media"),
+        taunt_max_bytes=_int("TEG_TAUNT_MAX_BYTES", 512 * 1024),
+        taunt_max_per_profile=_int("TEG_TAUNT_MAX_PER_PROFILE", 40),
         admin_token=admin_token,
         admin_token_generated=generated,
         public_base_url=os.environ.get("TEG_PUBLIC_BASE_URL", "http://localhost:8123").rstrip("/"),

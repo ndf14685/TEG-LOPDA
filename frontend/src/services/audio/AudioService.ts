@@ -67,6 +67,14 @@ class AudioService {
     });
   }
 
+  /** Audio grabado por un jugador (URL directa del backend). Encolado. */
+  playTauntUrl(url: string): void {
+    this.tauntQueue.enqueue({
+      id: url,
+      play: () => this.playFile(url, 'taunts').catch(() => Promise.resolve()),
+    });
+  }
+
   /** Sonido de botón del soundboard (path del taunts-manifest), si existe. */
   playSoundboardSound(soundPath: string | null): void {
     if (!soundPath) return;
