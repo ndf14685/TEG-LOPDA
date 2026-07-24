@@ -95,8 +95,18 @@ export function PostGameModal() {
           </div>
         )}
 
-        {/* Botón de Salir */}
-        <div className="mt-6 flex justify-center">
+        {/* Salir o revivir la guerra */}
+        <div className="mt-6 flex justify-center gap-3">
+          <button
+            onClick={() => {
+              const code = window.location.pathname.split('/').pop();
+              window.location.href = `/replay/${code}`;
+            }}
+            data-testid="open-replay"
+            className="rounded-xl border border-gold-500/60 px-6 py-2.5 text-sm font-bold text-gold-400 hover:bg-war-800 transition"
+          >
+            🎬 Ver replay
+          </button>
           <button
             onClick={() => (window.location.href = '/')}
             className="rounded-xl bg-gold-500 px-6 py-2.5 text-sm font-bold text-war-950 hover:bg-gold-400 transition"
