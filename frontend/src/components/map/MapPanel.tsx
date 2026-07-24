@@ -17,6 +17,9 @@ export function MapPanel({ mode }: { mode?: GameMode }) {
   const gameMode = useGameStore((s) => s.game?.game_mode);
   const effectiveMode = (mode ?? gameMode ?? 'classic_26') as GameMode;
   const turn = useGameStore((s) => s.turn);
+  const stage = useGameStore((s) => s.stage);
+  const placementRemaining = useGameStore((s) => s.placementRemaining);
+  const placementPending = useGameStore((s) => s.placementPending);
   const mapAdjacency = useGameStore((s) => s.mapAdjacency);
   const territories = useGameStore((s) => s.territories);
   const players = useGameStore((s) => s.players);
@@ -91,6 +94,7 @@ export function MapPanel({ mode }: { mode?: GameMode }) {
       const tState = territories[id];
       const owner = tState ? playerById(tState.owner_player_id) : undefined;
       const ownerColorHex = owner ? colorValue(owner.color) : 'rgba(30, 35, 45, 0.85)';
+      path.dataset.mine = String(tState?.owner_player_id === youId);
 
       // 1. Pintar territorio según dueño
       if (tState && tState.owner_player_id) {
@@ -120,6 +124,18 @@ export function MapPanel({ mode }: { mode?: GameMode }) {
       // 3. Event Listener para interacción según Fase del Turno
       path.onclick = (e) => {
         e.stopPropagation();
+
+        // colocación inicial: cada click suma 1 ejército oculto en tu país
+        if (stage === 'placement_1' || stage === 'placement_2') {
+          if (tState && tState.owner_player_id === youId && placementRemaining > 0) {
+            wsClient.send({
+              type: 'placement.place',
+              payload: { territory_id: id, count: 1 },
+            });
+          }
+          return;
+        }
+
         const currentPhase = turn?.phase ?? 'attack';
 
         if (currentPhase === 'reinforcement') {
@@ -166,7 +182,9 @@ export function MapPanel({ mode }: { mode?: GameMode }) {
     // 5. Inyectar Insignias de Ejércitos
     Object.entries(centers).forEach(([id, center]) => {
       const tState = territories[id];
-      const armies = tState ? tState.armies : 1;
+      // durante la colocación, tus pendientes ocultos se te muestran a vos
+      const pendingHere = placementPending[id] ?? 0;
+      const armies = (tState ? tState.armies : 1) + pendingHere;
       const owner = tState ? playerById(tState.owner_player_id) : undefined;
       const badgeColor = owner ? colorValue(owner.color) : '#94a3b8';
 
@@ -217,7 +235,7 @@ export function MapPanel({ mode }: { mode?: GameMode }) {
       line.setAttribute('pointer-events', 'none');
       overlayGroup.appendChild(line);
     }
-  }, [state, territories, players, youId, playerById, selectedSource, selectedTarget, setSelectedSource, setSelectedTarget, turn, mapAdjacency]);
+  }, [state, territories, players, youId, playerById, selectedSource, selectedTarget, setSelectedSource, setSelectedTarget, turn, mapAdjacency, stage, placementRemaining, placementPending]);
 
   return (
     <div

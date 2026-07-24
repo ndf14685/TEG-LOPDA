@@ -41,33 +41,38 @@ def test_join_exposes_game_mode(client):
 
 def test_attack_blocked_outside_attack_phase(client):
     """El ataque territorial se rechaza durante la fase de refuerzos."""
-    from conftest import ADMIN, confirm_join, invite
+    from conftest import ADMIN, complete_placement, confirm_join, invite, recv_until
 
     game = create_game(client, config={"commentator_enabled": False})
     inv1 = invite(client, game["id"], "A")
     inv2 = invite(client, game["id"], "B")
     confirm_join(client, game["code"], inv1["token"])
     confirm_join(client, game["code"], inv2["token"])
+    p1, p2 = inv1["player"]["id"], inv2["player"]["id"]
     client.post(f"/api/admin/games/{game['id']}/start", headers=ADMIN)
 
-    detail = client.get(f"/api/admin/games/{game['id']}", headers=ADMIN).json()
-    state = detail["game"]["state"]
-    assert state["turn"]["phase"] == "reinforcement"
-    current = state["turn"]["order"][state["turn"]["index"]]
-    territories = state["territories"]
-    mine = next(t for t, d in territories.items() if d["owner_player_id"] == current)
-    enemy = next(t for t, d in territories.items() if d["owner_player_id"] != current)
-    token = inv1["token"] if inv1["player"]["id"] == current else inv2["token"]
-
-    with client.websocket_connect(f"/ws/{game['code']}?token={token}") as ws:
-        from conftest import recv_until
-
-        snap = recv_until(ws, "game.snapshot")
+    with client.websocket_connect(f"/ws/{game['code']}?token={inv1['token']}") as ws1, \
+         client.websocket_connect(f"/ws/{game['code']}?token={inv2['token']}") as ws2:
+        snap = recv_until(ws1, "game.snapshot")
+        recv_until(ws2, "game.snapshot")
         # el snapshot lleva el estado completo de territorios con "id"
         # (contrato TS shared/contracts/src/map.ts) para pintar el mapa
         snap_terr = snap["payload"]["territories"]
         assert len(snap_terr) == 26
         assert all(td["id"] == tid for tid, td in snap_terr.items())
+        assert snap["payload"]["stage"] == "placement_1"
+
+        reveal = complete_placement({p1: ws1, p2: ws2}, {"territories": snap_terr})
+
+        detail = client.get(f"/api/admin/games/{game['id']}", headers=ADMIN).json()
+        state = detail["game"]["state"]
+        assert state["turn"]["phase"] == "reinforcement"
+        current = state["turn"]["order"][state["turn"]["index"]]
+        territories = reveal["territories"]
+        mine = next(t for t, d in territories.items() if d["owner_player_id"] == current)
+        enemy = next(t for t, d in territories.items() if d["owner_player_id"] != current)
+        ws = ws1 if p1 == current else ws2
+
         ws.send_json({"type": "attack", "payload": {
             "source_territory_id": mine, "target_territory_id": enemy, "attacker_dice": 3,
         }})

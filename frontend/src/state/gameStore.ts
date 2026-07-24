@@ -1,5 +1,12 @@
 import { create } from 'zustand';
-import type { GameRef, PublicPlayer, TurnState, AICommentView, CountryCard, SecretObjective } from '@teg/contracts';
+import type {
+  GameRef, PublicPlayer, TurnState, AICommentView, CountryCard, SecretObjective, GameStage,
+} from '@teg/contracts';
+
+export interface LegalAction {
+  action: string;
+  params: Record<string, unknown>;
+}
 
 export interface ChatEntry {
   id: string;
@@ -47,6 +54,12 @@ interface GameState {
   territories: Record<string, TerritoryStateData>;
   cards: CountryCard[];
   secretObjective: SecretObjective | null;
+  stage: GameStage | null;
+  placementRemaining: number;
+  placementPending: Record<string, number>;
+  placementDone: string[];
+  legalActions: LegalAction[];
+  finishedObjective: SecretObjective | null;
   mapAdjacency: Record<string, string[]>;
   selectedSourceTerritory: string | null;
   selectedTargetTerritory: string | null;
@@ -75,6 +88,11 @@ interface GameState {
   setTerritories: (territories: Record<string, TerritoryStateData>) => void;
   setCards: (cards: CountryCard[]) => void;
   setSecretObjective: (objective: SecretObjective | null) => void;
+  setStage: (stage: GameStage | null) => void;
+  setPlacement: (remaining: number, pending: Record<string, number>) => void;
+  setPlacementDone: (players: string[]) => void;
+  setLegalActions: (actions: LegalAction[]) => void;
+  setFinishedObjective: (objective: SecretObjective | null) => void;
   updateTerritory: (territory: TerritoryStateData) => void;
   setSelectedSourceTerritory: (tid: string | null) => void;
   setSelectedTargetTerritory: (tid: string | null) => void;
@@ -100,6 +118,12 @@ export const useGameStore = create<GameState>((set, get) => ({
   territories: {},
   cards: [],
   secretObjective: null,
+  stage: null,
+  placementRemaining: 0,
+  placementPending: {},
+  placementDone: [],
+  legalActions: [],
+  finishedObjective: null,
   mapAdjacency: {},
   selectedSourceTerritory: null,
   selectedTargetTerritory: null,
@@ -137,6 +161,12 @@ export const useGameStore = create<GameState>((set, get) => ({
   setTerritories: (territories) => set({ territories }),
   setCards: (cards) => set({ cards }),
   setSecretObjective: (secretObjective) => set({ secretObjective }),
+  setStage: (stage) => set({ stage }),
+  setPlacement: (placementRemaining, placementPending) =>
+    set({ placementRemaining, placementPending }),
+  setPlacementDone: (placementDone) => set({ placementDone }),
+  setLegalActions: (legalActions) => set({ legalActions }),
+  setFinishedObjective: (finishedObjective) => set({ finishedObjective }),
   updateTerritory: (t) => set((s) => ({ territories: { ...s.territories, [t.id]: t } })),
   setSelectedSourceTerritory: (selectedSourceTerritory) => set({ selectedSourceTerritory }),
   setSelectedTargetTerritory: (selectedTargetTerritory) => set({ selectedTargetTerritory }),

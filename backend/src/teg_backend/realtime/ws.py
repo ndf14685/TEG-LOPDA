@@ -1,7 +1,9 @@
 """Endpoint WebSocket: /ws/{code}?token=...
 
 Protocolo cliente→servidor (JSON): {"type": "...", "payload": {...}}
-Tipos: ping, ready.set, chat.send, dice.roll, attack, turn.end
+Tipos: ping, ready.set, chat.send, dice.roll, attack, turn.end,
+turn.place_reinforcement, turn.fortify, turn.next_phase,
+placement.place, cards.trade
 Servidor→cliente: siempre el envelope de GameEvent (ver shared/contracts).
 """
 
@@ -146,5 +148,16 @@ async def _dispatch(
             )
         case "turn.next_phase":
             await service.next_phase(game["id"], player["id"])
+        case "placement.place":
+            await service.place_initial(
+                game["id"], player["id"],
+                str(payload.get("territory_id", "")),
+                int(payload.get("count", 1)),
+            )
+        case "cards.trade":
+            ids = payload.get("card_ids")
+            if not isinstance(ids, list):
+                raise ServiceError(ErrorCode.INVALID_PAYLOAD, "card_ids debe ser lista")
+            await service.trade_cards(game["id"], player["id"], [str(c) for c in ids])
         case _:
             raise ServiceError(ErrorCode.INVALID_ACTION, f"tipo desconocido: {mtype}")

@@ -1,5 +1,9 @@
 import { z } from 'zod';
-import { SnapshotPayload, GameStatus, TurnState, TurnPhase } from './game';
+import {
+  SnapshotPayload, GameStatus, TurnState, TurnPhase,
+  CountryCard, SecretObjective,
+} from './game';
+import { TerritoryState } from './map';
 import { PublicPlayer, Presence } from './player';
 
 /**
@@ -30,7 +34,11 @@ export const PongMessage = z.object({ type: z.literal('pong') });
 export const PlayerJoinedPayload = z.object({ player: PublicPlayer });
 export const PlayerReadyPayload = z.object({ ready: z.boolean(), all_ready: z.boolean(), game_status: GameStatus });
 export const PresenceChangedPayload = z.object({ presence: Presence });
-export const GameStartedPayload = z.object({ turn_order: z.array(z.string()), players: z.array(PublicPlayer) });
+export const GameStartedPayload = z.object({
+  turn_order: z.array(z.string()),
+  players: z.array(PublicPlayer),
+  stage: z.string().optional(),
+});
 // phase y reinforcements_available deben estar declarados: zod descarta los
 // campos no declarados y el contador de refuerzos quedaba en 0 al iniciar turno
 export const TurnStartedPayload = z.object({
@@ -62,7 +70,54 @@ export const GameFinishedPayload = z.object({
   turns_played: z.number().int(),
   winner_player_id: z.string().nullable(),
   total_events: z.number().int(),
+  objective: SecretObjective.nullable().optional(),
 });
+
+// ---- flujo canónico: colocación, tarjetas, objetivos, acciones legales ----
+
+export const PlacementStartedPayload = z.object({
+  stage: z.string(),
+  pool_size: z.number().int(),
+  players: z.array(z.string()),
+});
+export const PlacementUpdatedPayload = z.object({
+  remaining: z.number().int(),
+  pending: z.record(z.string(), z.number().int()),
+});
+export const PlacementProgressPayload = z.object({
+  player_id: z.string(),
+  done: z.boolean(),
+});
+export const PlacementRevealedPayload = z.object({
+  stage_completed: z.string(),
+  next_stage: z.string(),
+  territories: z.record(z.string(), TerritoryState),
+});
+export const CardsHandPayload = z.object({ your_cards: z.array(CountryCard) });
+export const CardsTradedPayload = z.object({
+  value: z.number().int(),
+  cards: z.array(CountryCard),
+  country_bonuses: z.array(
+    z.object({ territory_id: z.string(), armies_added: z.number().int() }),
+  ),
+  turn: TurnState.optional(),
+});
+export const CardAwardedPayload = z.object({ player_id: z.string() });
+export const ObjectiveAssignedPayload = z.object({ objective: SecretObjective });
+export const LegalActionsPayload = z.object({
+  actions: z.array(
+    z.object({ action: z.string(), params: z.record(z.string(), z.unknown()) }),
+  ),
+});
+export type PlacementStartedPayload = z.infer<typeof PlacementStartedPayload>;
+export type PlacementUpdatedPayload = z.infer<typeof PlacementUpdatedPayload>;
+export type PlacementProgressPayload = z.infer<typeof PlacementProgressPayload>;
+export type PlacementRevealedPayload = z.infer<typeof PlacementRevealedPayload>;
+export type CardsHandPayload = z.infer<typeof CardsHandPayload>;
+export type CardsTradedPayload = z.infer<typeof CardsTradedPayload>;
+export type CardAwardedPayload = z.infer<typeof CardAwardedPayload>;
+export type ObjectiveAssignedPayload = z.infer<typeof ObjectiveAssignedPayload>;
+export type LegalActionsPayload = z.infer<typeof LegalActionsPayload>;
 export const ErrorPayload = z.object({ code: z.string(), message: z.string() });
 
 export const TerritoryUpdatedPayload = z.object({
@@ -101,6 +156,15 @@ export const EVENT_PAYLOAD_SCHEMAS = {
   'taunt.triggered': TauntTriggeredPayload,
   'ai.comment.generated': AICommentGeneratedPayload,
   'game.finished': GameFinishedPayload,
+  'placement.started': PlacementStartedPayload,
+  'placement.updated': PlacementUpdatedPayload,
+  'placement.progress': PlacementProgressPayload,
+  'placement.revealed': PlacementRevealedPayload,
+  'cards.hand': CardsHandPayload,
+  'cards.traded': CardsTradedPayload,
+  'card.awarded': CardAwardedPayload,
+  'objective.assigned': ObjectiveAssignedPayload,
+  'legal.actions': LegalActionsPayload,
   'error': ErrorPayload,
 } as const;
 export type KnownEventType = keyof typeof EVENT_PAYLOAD_SCHEMAS;
@@ -140,6 +204,13 @@ export const ClientMessage = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('cards.trade'),
     payload: z.object({ card_ids: z.array(z.string()).length(3) }),
+  }),
+  z.object({
+    type: z.literal('placement.place'),
+    payload: z.object({
+      territory_id: z.string(),
+      count: z.number().int().min(1).max(5),
+    }),
   }),
 ]);
 export type ClientMessage = z.infer<typeof ClientMessage>;

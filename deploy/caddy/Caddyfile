@@ -3,7 +3,7 @@
 #
 # Uso en contenedor: docker compose --profile edge up -d
 # Uso con Caddy instalado en el host: caddy run --config deploy/caddy/Caddyfile
-#   (en ese caso reemplazar backend:8123 por 127.0.0.1:8123)
+#   (en ese caso reemplazar frontend:80 por 127.0.0.1:8130)
 
 {$TEG_DOMAIN} {
     encode gzip
@@ -12,8 +12,8 @@
     @metrics path /metrics
     respond @metrics 404
 
-    # /docs y /openapi.json solo existen en dev
-    reverse_proxy backend:8123
+    # el frontend nginx sirve la SPA y proxya /api, /ws y /health al backend
+    reverse_proxy frontend:80
 
     header {
         Strict-Transport-Security "max-age=31536000"

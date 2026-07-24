@@ -26,6 +26,9 @@ export function GamePage() {
   const game = useGameStore((s) => s.game);
   const players = useGameStore((s) => s.players);
   const turn = useGameStore((s) => s.turn);
+  const stage = useGameStore((s) => s.stage);
+  const placementRemaining = useGameStore((s) => s.placementRemaining);
+  const placementDone = useGameStore((s) => s.placementDone);
   const lastDice = useGameStore((s) => s.lastDice);
   const lastAttack = useGameStore((s) => s.lastAttack);
   const finished = useGameStore((s) => s.finished);
@@ -96,7 +99,23 @@ export function GamePage() {
 
         {/* centro: mapa y barra de fases */}
         <section className="relative flex min-h-0 flex-col gap-2">
-          <TurnPhaseBar />
+          {stage === 'placement_1' || stage === 'placement_2' ? (
+            <div className="rounded-lg border border-amber-700 bg-amber-950/60 px-4 py-2 text-center" data-testid="placement-banner">
+              <p className="font-bold text-amber-300">
+                {stage === 'placement_1' ? 'Colocación inicial: 5 ejércitos' : 'Segunda ronda: 3 ejércitos'}
+              </p>
+              <p className="text-sm text-stone-300">
+                {placementRemaining > 0
+                  ? `Te quedan ${placementRemaining} por colocar — tocá tus países`
+                  : 'Listo. Esperando al resto…'}
+              </p>
+              <p className="text-xs text-stone-400">
+                {placementDone.length}/{combatants.length} jugadores terminaron
+              </p>
+            </div>
+          ) : (
+            <TurnPhaseBar />
+          )}
           <div className="relative min-h-0 flex-1 rounded-xl border border-war-700 bg-war-900 overflow-hidden">
             <MapPanel />
             {actionsBlocked && game?.status === 'paused' && (
@@ -126,7 +145,7 @@ export function GamePage() {
             )}
           </div>
 
-          {session.role !== 'spectator' && (
+          {session.role !== 'spectator' && stage !== 'placement_1' && stage !== 'placement_2' && (
             <div className="rounded-lg border border-war-700 bg-war-900 p-3" data-testid="actions-panel">
               <h2 className="mb-2 text-xs font-semibold tracking-wider text-stone-400">ACCIONES</h2>
               <div className="flex flex-col gap-2">

@@ -2,6 +2,24 @@ import { test, expect, type Page } from '@playwright/test';
 
 const ADMIN_TOKEN = 'dev-admin';
 
+async function placeArmies(page: Page, count: number) {
+  for (let i = 0; i < count; i++) {
+    await page.locator('path.territory[data-mine="true"]').first().click();
+    await page.waitForTimeout(200); // el WS confirma con placement.updated
+  }
+}
+
+/** Colocación inicial canónica 5+3 en ambas pantallas. */
+async function completePlacement(admin: Page, player: Page) {
+  await expect(admin.getByTestId('placement-banner')).toContainText('5 ejércitos');
+  await placeArmies(admin, 5);
+  await placeArmies(player, 5);
+  await expect(admin.getByTestId('placement-banner')).toContainText('Segunda ronda', { timeout: 10_000 });
+  await placeArmies(admin, 3);
+  await placeArmies(player, 3);
+  await expect(admin.getByTestId('placement-banner')).toHaveCount(0, { timeout: 10_000 });
+}
+
 async function createGameAsAdmin(admin: Page, nickname: string) {
   await admin.goto('/');
   await expect(admin.getByTestId('server-status')).toContainText('servidor operativo');
@@ -72,7 +90,10 @@ test('slice real: crear, invitar, lobby, iniciar, IA y dados sincronizados', asy
   expect(adminComment).toBeTruthy();
   expect(playerComment).toBe(adminComment);
 
-  // 10. mismo estado: quien tiene el turno tira dados y AMBOS ven el resultado
+  // 10. colocación inicial canónica (5+3) en ambas pantallas
+  await completePlacement(admin, player);
+
+  // 11. mismo estado: quien tiene el turno tira dados y AMBOS ven el resultado
   const adminHasTurn = (await admin.getByTestId('turn-panel').textContent())?.includes('sos vos');
   const roller = adminHasTurn ? admin : player;
   await roller.getByTestId('roll-dice').click();

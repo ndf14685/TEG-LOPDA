@@ -2,7 +2,9 @@
 
 import time
 
-from conftest import ADMIN, confirm_join, create_game, invite, recv_until
+from conftest import (
+    ADMIN, complete_placement, confirm_join, create_game, invite, recv_until,
+)
 
 
 def test_full_game_flow(client):
@@ -51,7 +53,9 @@ def test_full_game_flow(client):
             order = resp.json()["turn_order"]
             assert set(order) == {p1_id, p2_id}
 
-            recv_until(ws1, "game.started")
+            started = recv_until(ws1, "game.started")
+            recv_until(ws2, "game.started")
+            complete_placement({p1_id: ws1, p2_id: ws2}, started["payload"])
             turn = recv_until(ws1, "turn.started")
             current = turn["actor_id"]
             ws_current = ws1 if current == p1_id else ws2
@@ -162,6 +166,9 @@ def test_taunt_triggered_on_attack(client):
         recv_until(ws1, "game.snapshot")
         recv_until(ws2, "game.snapshot")
         client.post(f"/api/admin/games/{game['id']}/start", headers=ADMIN)
+        started = recv_until(ws1, "game.started")
+        recv_until(ws2, "game.started")
+        complete_placement({p1: ws1, p2: ws2}, started["payload"])
         turn = recv_until(ws1, "turn.started")
         if turn["actor_id"] != p1:
             # cede el turno para que ataque quien tiene el taunt configurado

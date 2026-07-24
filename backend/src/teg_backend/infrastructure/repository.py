@@ -259,3 +259,29 @@ async def find_taunt(
         (game_id, owner_id, target_id, event_type),
     )
     return row["asset_id"] if row else None
+
+
+# --- snapshots por turno (replay) ------------------------------------------
+
+async def save_turn_snapshot(db: Database, game_id: str, turn_number: int, state: dict) -> None:
+    await db.execute(
+        "INSERT OR REPLACE INTO turn_snapshots (game_id, turn_number, state_json)"
+        " VALUES (?, ?, ?)",
+        (game_id, int(turn_number), json.dumps(state, ensure_ascii=False)),
+    )
+
+
+async def get_turn_snapshot(db: Database, game_id: str, turn_number: int) -> dict | None:
+    row = await db.fetchone(
+        "SELECT state_json FROM turn_snapshots WHERE game_id = ? AND turn_number = ?",
+        (game_id, int(turn_number)),
+    )
+    return json.loads(row["state_json"]) if row else None
+
+
+async def list_snapshot_turns(db: Database, game_id: str) -> list[int]:
+    rows = await db.fetchall(
+        "SELECT turn_number FROM turn_snapshots WHERE game_id = ? ORDER BY turn_number",
+        (game_id,),
+    )
+    return [int(r["turn_number"]) for r in rows]
