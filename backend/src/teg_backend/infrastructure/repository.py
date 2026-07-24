@@ -178,7 +178,7 @@ async def find_player_by_token_hash(db: Database, game_id: str, token_hash: str)
 async def update_player(db: Database, player_id: str, **fields: Any) -> None:
     allowed = {
         "nickname", "color", "avatar_asset_id", "token_hash", "token_revoked",
-        "nickname_editable", "is_ready", "eliminated", "joined_at",
+        "nickname_editable", "is_ready", "eliminated", "joined_at", "role",
     }
     updates = {k: v for k, v in fields.items() if k in allowed}
     if not updates:

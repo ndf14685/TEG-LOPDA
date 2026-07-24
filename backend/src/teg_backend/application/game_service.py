@@ -10,6 +10,7 @@ import asyncio
 import logging
 from typing import Any
 
+from ..ai import bot
 from ..ai.ai_player import MoveRequest, build_ai_player, request_move
 from ..ai.commentator import Comment, CommentatorService
 from ..config import Settings
@@ -578,6 +579,14 @@ class GameService:
             if clean:
                 await repo.update_player(self.db, player["id"], nickname=clean)
                 player["nickname"] = clean
+        if player["role"] == Role.AI_PLAYER and player["token_hash"]:
+            # el humano vuelve: recupera el asiento que jugaba la IA
+            await repo.update_player(self.db, player["id"], role=Role.PLAYER)
+            player["role"] = Role.PLAYER
+            await self.emit(
+                game["id"], EventType.PLAYER_JOINED, actor_id=player["id"],
+                payload={"player": repo.public_player(player)},
+            )
         first_join = player["joined_at"] is None
         if first_join:
             from ..domain.events import utcnow_iso
@@ -1037,9 +1046,7 @@ class GameService:
                 if pid not in ai_ids:
                     continue
                 while engine.placement_pools.get(pid, 0) > 0:
-                    own = [t.territory_id for t in engine.territories.values()
-                           if t.owner_player_id == pid]
-                    tid = eng._rng.choice(own)
+                    tid = bot.choose_placement(engine, pid)
                     await self.place_initial(game_id, pid, tid, 1)
         except ServiceError as exc:
             log.info("colocación IA rechazada", extra={"ctx": {"code": exc.code}})
@@ -1054,52 +1061,104 @@ class GameService:
         self._ai_tasks[key] = asyncio.create_task(self._ai_turn(game_id, player_id))
 
     async def _ai_turn(self, game_id: str, player_id: str) -> None:
+        """El bot juega el turno completo: canje, refuerzos, ataques y fortify.
+
+        Ante cualquier rechazo o error, cierra el turno: nunca traba la partida.
+        """
         try:
             await asyncio.sleep(self.settings.ai_player_think_seconds)
             game = await repo.get_game(self.db, game_id)
             if game is None or game["status"] != GameStatus.RUNNING:
                 return
             engine = await self._engine(game)
-            if engine.turn.current_player_id != player_id:
+            if engine.turn.current_player_id != player_id or engine.stage != "turns":
                 return
-            # canje forzado y refuerzos: la IA nunca deja el turno trabado
-            hand = engine.cards.hands.get(player_id, [])
-            if len(hand) >= 5:
-                trio = _first_valid_trio(hand)
-                if trio:
-                    await self.trade_cards(game_id, player_id, trio)
-            engine = await self._engine(game)
+
+            # 1. canje: siempre que haya trío (más ejércitos = mejor)
+            trio = _first_valid_trio(engine.cards.hands.get(player_id, []))
+            if trio and engine.turn.phase == "reinforcement":
+                await self.trade_cards(game_id, player_id, trio)
+
+            # 2. refuerzos a la frontera más caliente (sesgo al objetivo)
             while (
                 engine.turn.current_player_id == player_id
                 and engine.turn.phase == "reinforcement"
                 and engine.turn.reinforcements_available > 0
             ):
-                own = [t.territory_id for t in engine.territories.values()
-                       if t.owner_player_id == player_id]
+                tid = bot.choose_reinforcement(engine, player_id)
                 await self.place_reinforcement(
-                    game_id, player_id, eng._rng.choice(own),
-                    engine.turn.reinforcements_available,
+                    game_id, player_id, tid, engine.turn.reinforcements_available
                 )
-            legal = [
-                {"action": "dice.roll", "payload": {"count": 3}},
-                {"action": "turn.end", "payload": {}},
-            ]
-            request = MoveRequest(
-                game_id=game_id, player_id=player_id,
-                snapshot={"turn": engine.turn.to_dict(), "status": game["status"]},
-                legal_actions=legal,
-            )
-            move = await request_move(
-                self._ai_provider, request, self.settings.ai_player_timeout_seconds
-            )
-            if move.action == "dice.roll":
-                await self.roll_dice(game_id, player_id, int(move.payload.get("count", 1)))
-            # tras la jugada (o directamente), la IA cierra su turno
-            await self.end_turn(game_id, player_id)
+
+            # 3. ataques con ventaja (tope defensivo de 15 por turno)
+            attacks = 0
+            while attacks < 15 and engine.turn.current_player_id == player_id:
+                game = await repo.get_game(self.db, game_id)
+                if game is None or game["status"] != GameStatus.RUNNING:
+                    return
+                if engine.turn.phase != "attack":
+                    break
+                pick = bot.choose_attack(engine, player_id)
+                if pick is None:
+                    break
+                src, tgt = pick
+                await asyncio.sleep(self.settings.ai_player_think_seconds)
+                await self.attack(
+                    game_id, player_id,
+                    source_territory_id=src, target_territory_id=tgt,
+                    attacker_dice_count=3,
+                )
+                attacks += 1
+
+            # la partida pudo terminar con el último ataque
+            game = await repo.get_game(self.db, game_id)
+            if game is None or game["status"] != GameStatus.RUNNING:
+                return
+            if engine.turn.current_player_id != player_id:
+                return
+
+            # 4. reagrupar tropas ociosas hacia la frontera
+            if engine.turn.phase in ("reinforcement", "attack"):
+                move = bot.choose_fortify(engine, player_id)
+                if move is not None:
+                    if engine.turn.phase == "reinforcement":
+                        await self.next_phase(game_id, player_id)  # → attack
+                    await self.next_phase(game_id, player_id)      # → fortify
+                    src, tgt, count = move
+                    await self.fortify(game_id, player_id, src, tgt, count)
+
+            # 5. fin de turno (otorga tarjeta si conquistó)
+            if engine.turn.current_player_id == player_id:
+                await self.end_turn(game_id, player_id)
         except ServiceError as exc:
             log.info("jugada IA rechazada", extra={"ctx": {"code": exc.code}})
+            try:
+                engine = self._engines.get(game_id)
+                if engine and engine.turn.current_player_id == player_id:
+                    await self.end_turn(game_id, player_id)
+            except Exception:
+                log.warning("la IA no pudo cerrar su turno", exc_info=True)
         except Exception:
             log.warning("fallo en turno IA", exc_info=True)
+
+    async def convert_seat_to_ai(self, game_id: str, player_id: str) -> None:
+        """El admin convierte el asiento de un ausente en bot; su link sigue
+        siendo válido y al volver a entrar recupera el asiento."""
+        game = await self.get_game_or_404(game_id)
+        player = await repo.get_player(self.db, player_id)
+        if player is None or player["game_id"] != game_id:
+            raise ServiceError(ErrorCode.NOT_FOUND, "jugador inexistente")
+        if player["role"] != Role.PLAYER:
+            raise ServiceError(ErrorCode.INVALID_ACTION, "solo un jugador humano se convierte en IA")
+        await repo.update_player(self.db, player_id, role=Role.AI_PLAYER)
+        await self.emit(
+            game_id, EventType.PLAYER_JOINED, actor_id=player_id,
+            payload={"player": repo.public_player(
+                {**player, "role": Role.AI_PLAYER})},
+        )
+        engine = await self._engine(game)
+        if game["status"] == GameStatus.RUNNING and engine.turn.current_player_id == player_id:
+            self._schedule_ai_turn(game_id, player_id)
 
     # --- métricas -----------------------------------------------------------
 

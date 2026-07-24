@@ -264,3 +264,13 @@ async def regenerate_profile_token(profile_id: str, request: Request) -> dict:
         return await service.regenerate_profile_token(profile_id)
     except ServiceError as exc:
         raise to_http(exc)
+
+
+@router.post("/games/{game_id}/players/{player_id}/convert-to-ai")
+async def convert_seat_to_ai(game_id: str, player_id: str, request: Request) -> dict:
+    """Un ausente se convierte en bot; al reabrir su link recupera el asiento."""
+    try:
+        await request.app.state.service.convert_seat_to_ai(game_id, player_id)
+    except ServiceError as exc:
+        raise to_http(exc)
+    return {"ok": True}

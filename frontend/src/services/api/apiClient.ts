@@ -78,6 +78,12 @@ export const api = {
       headers: adminHeaders(adminToken),
     }),
 
+  convertToAi: (adminToken: string, gameId: string, playerId: string) =>
+    request(OkResponse, `/api/admin/games/${gameId}/players/${playerId}/convert-to-ai`, {
+      method: 'POST',
+      headers: adminHeaders(adminToken),
+    }),
+
   kickPlayer: (adminToken: string, gameId: string, playerId: string) =>
     request(OkResponse, `/api/admin/games/${gameId}/players/${playerId}/kick`, {
       method: 'POST',

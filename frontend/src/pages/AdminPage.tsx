@@ -277,6 +277,15 @@ export function AdminPage() {
                 {p.role !== 'admin' && p.role !== 'ai_player' && p.id !== selfPlayerId && (
                   <>
                     <button onClick={() => regenerate(p.id)} className="rounded border border-war-700 px-2 py-1 text-xs hover:border-gold-500">♻️ regenerar</button>
+                    {detail.game.status === 'running' && (
+                      <button
+                        onClick={async () => { if (adminToken) { await api.convertToAi(adminToken, gameId, p.id); await refresh(); } }}
+                        title="El bot juega por él hasta que vuelva a entrar con su link"
+                        className="rounded border border-war-700 px-2 py-1 text-xs hover:border-sky-500"
+                      >
+                        🤖 que siga la IA
+                      </button>
+                    )}
                     <button onClick={() => kick(p.id)} className="rounded border border-war-700 px-2 py-1 text-xs hover:border-red-500">🚫 expulsar</button>
                   </>
                 )}
