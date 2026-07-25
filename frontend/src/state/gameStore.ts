@@ -71,6 +71,7 @@ interface GameState {
   chat: ChatEntry[];
   lastDice: DiceResult | null;
   lastAttack: AttackResult | null;
+  lastReaction: { id: number; emoji: string; fromPlayerId: string | null } | null;
   aiComments: AICommentView[];
   aiMuted: boolean;
   lastTaunt: TauntView | null;
@@ -113,6 +114,7 @@ interface GameState {
   addChat: (entry: ChatEntry) => void;
   setDice: (dice: DiceResult) => void;
   setAttack: (attack: AttackResult) => void;
+  pushReaction: (emoji: string, fromPlayerId: string | null) => void;
   addAiComment: (comment: AICommentView) => void;
   setAiMuted: (muted: boolean) => void;
   setTaunt: (taunt: TauntView | null) => void;
@@ -149,6 +151,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   chat: [],
   lastDice: null,
   lastAttack: null,
+  lastReaction: null,
   aiComments: [],
   aiMuted: false,
   lastTaunt: null,
@@ -221,6 +224,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   addChat: (entry) => set((s) => ({ chat: [...s.chat.slice(-99), entry] })),
   setDice: (lastDice) => set({ lastDice }),
   setAttack: (lastAttack) => set({ lastAttack }),
+  pushReaction: (emoji, fromPlayerId) =>
+    set((s) => ({ lastReaction: { id: (s.lastReaction?.id ?? 0) + 1, emoji, fromPlayerId } })),
   addAiComment: (comment) => set((s) => ({ aiComments: [...s.aiComments.slice(-4), comment] })),
   setAiMuted: (aiMuted) => set({ aiMuted }),
   setTaunt: (lastTaunt) => set({ lastTaunt }),

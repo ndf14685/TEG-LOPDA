@@ -25,6 +25,7 @@ import {
   StatsReadyPayload,
 } from '@teg/contracts';
 import { wsClient } from './wsClient';
+import { REACTION_SET } from '../../config/reactions';
 import { useGameStore } from '../../state/gameStore';
 import { useConnectionStore } from '../../state/connectionStore';
 import { audioService } from '../audio/AudioService';
@@ -225,6 +226,7 @@ export function bindWsToStores(): void {
   wsClient.on('territory.conquered', (p, env) => {
     const payload = p as { territory?: { id?: string } };
     if (payload.territory?.id) game().setConquestFlash(payload.territory.id);
+    game().pushReaction('🔥', env.actor_id ?? null); // momento compartido para todos
     const you = game().youId;
     if (env.target_id === you) {
       audioService.playGameSound('audio.gameplay.territory_lost', [330, 220]);
@@ -234,6 +236,7 @@ export function bindWsToStores(): void {
   });
 
   wsClient.on('player.eliminated', (_p, env) => {
+    game().pushReaction('💀', env.target_id ?? null); // se lo ve toda la mesa
     const you = game().youId;
     audioService.playGameSound(
       env.target_id === you ? 'audio.gameplay.defeat_sad' : 'audio.gameplay.player_eliminated',
@@ -266,10 +269,17 @@ export function bindWsToStores(): void {
   });
 
   wsClient.on('chat.message', (p, env) => {
+    const text = (p as z.infer<typeof ChatMessagePayload>).text;
+    // Una reacción (emoji suelto) flota en la pantalla de TODOS y no ensucia
+    // el chat: es efímera y compartida, para los que esperan turno también.
+    if (REACTION_SET.has(text.trim())) {
+      game().pushReaction(text.trim(), env.actor_id ?? null);
+      return;
+    }
     game().addChat({
       id: env.event_id,
       playerId: env.actor_id ?? null,
-      text: (p as z.infer<typeof ChatMessagePayload>).text,
+      text,
       private: env.visibility === 'private',
       ts: env.timestamp,
     });

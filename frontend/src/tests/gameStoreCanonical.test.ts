@@ -43,6 +43,20 @@ describe('estado canónico', () => {
     useGameStore.getState().setReinforceBatch(1);
   });
 
+  it('pushReaction incrementa id y guarda emoji + autor (reacciones compartidas)', () => {
+    const s = useGameStore.getState();
+    const before = useGameStore.getState().lastReaction?.id ?? 0;
+    s.pushReaction('🔥', 'p1');
+    let r = useGameStore.getState().lastReaction!;
+    expect(r.emoji).toBe('🔥');
+    expect(r.fromPlayerId).toBe('p1');
+    expect(r.id).toBe(before + 1);
+    s.pushReaction('💀', null);
+    r = useGameStore.getState().lastReaction!;
+    expect(r.id).toBe(before + 2);
+    expect(r.fromPlayerId).toBeNull();
+  });
+
   it('guarda acciones legales y objetivo del ganador', () => {
     const s = useGameStore.getState();
     s.setLegalActions([{ action: 'attack', params: {} }]);
