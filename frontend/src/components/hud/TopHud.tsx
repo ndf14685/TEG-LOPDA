@@ -52,7 +52,7 @@ export function TopHud() {
 
       <div className="flex min-w-0 flex-1 flex-wrap items-center justify-center gap-1.5" data-testid="hud-players">
         {combatants.map((p) => {
-          const active = p.id === currentId;
+          const active = !inPlacement && p.id === currentId;
           const me = p.id === session?.playerId;
           const { terr, troops } = statsFor(p.id);
           const done = inPlacement && placementDone.includes(p.id);
@@ -68,6 +68,14 @@ export function TopHud() {
               style={active ? { boxShadow: `0 0 14px ${colorValue(p.color)}55`, ['--tw-ring-color' as string]: colorValue(p.color) } : undefined}
             >
               {active && <span className="animate-pulse rounded bg-gold-500 px-1 text-[8px] font-black text-war-950" aria-label="jugador activo">JUEGA</span>}
+              {inPlacement && (
+                <span
+                  className={`rounded px-1 text-[8px] font-black ${done ? 'bg-emerald-600 text-war-950' : 'animate-pulse bg-amber-500 text-war-950'}`}
+                  aria-label={done ? 'terminó de colocar' : 'colocando tropas'}
+                >
+                  {done ? 'LISTO' : 'COLOCANDO'}
+                </span>
+              )}
               <PlayerAvatar avatarAssetId={p.avatar_asset_id} role={p.role} color={p.color} size="sm" />
               <div className="min-w-0 leading-tight">
                 <p className="max-w-24 truncate text-xs font-bold" style={{ color: colorValue(p.color) }}>
@@ -75,7 +83,6 @@ export function TopHud() {
                 </p>
                 <p className="text-[10px] text-stone-400">
                   {terr} países · {troops} tropas
-                  {inPlacement && <span className={done ? 'text-emerald-400' : 'text-amber-400'}> {done ? '✓' : '…'}</span>}
                 </p>
               </div>
               {/* punto de conexión en CSS puro: nunca depende de fuentes emoji */}

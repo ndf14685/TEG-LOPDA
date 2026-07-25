@@ -95,6 +95,73 @@ export function CombatArena() {
 
   const dieStyle = rollMs > 0 ? ({ ['--die-roll-ms' as string]: `${rollMs}ms` }) : undefined;
 
+  // DEF-01: solo el ATACANTE necesita la Arena modal (toma decisiones).
+  // Defensor y espectadores la ven como tarjeta acoplada NO bloqueante:
+  // pueden seguir usando mapa, Tribuna y chat mientras miran la batalla.
+  if (!iAmAttacker) {
+    return (
+      <div
+        className="fixed bottom-3 left-3 z-40 w-[420px] max-w-[92vw] rounded-xl border-2 border-gold-600/80 bg-war-950/95 p-3 shadow-2xl backdrop-blur-md"
+        data-testid="combat-arena"
+        role="status"
+        aria-label="Batalla en curso"
+      >
+        <div className="mb-2 flex items-center justify-between border-b border-war-700 pb-1.5">
+          <h3 className="font-display text-sm font-bold text-gold-400">BATALLA EN CURSO</h3>
+          <button onClick={stop} className="rounded border border-war-700 px-2 py-0.5 text-xs hover:border-gold-500">
+            ✕ Cerrar
+          </button>
+        </div>
+        <p className="text-xs text-stone-200">
+          <strong className="capitalize" style={{ color: colorValue(attacker?.color) }}>
+            {name(battle.sourceId)} ({attacker?.nickname ?? '???'})
+          </strong>{' '}
+          ataca{' '}
+          <strong className="capitalize" style={{ color: colorValue(defender?.color) }}>
+            {name(battle.targetId)} ({defender?.nickname ?? '???'})
+          </strong>
+        </p>
+        <div className="my-2 flex items-center justify-center gap-4">
+          <div className="flex gap-1">
+            {last.attackerDice.map((d, i) => (
+              <span key={`${battle.rounds.length}-a-${i}`} className={rollMs > 0 ? 'arena-die' : ''} style={dieStyle}>
+                <Dice3D value={d} variant="attacker" size="sm" />
+              </span>
+            ))}
+          </div>
+          <span className="text-xs font-black text-stone-500">VS</span>
+          <div className="flex gap-1">
+            {last.defenderDice.map((d, i) => (
+              <span key={`${battle.rounds.length}-d-${i}`} className={rollMs > 0 ? 'arena-die' : ''} style={dieStyle}>
+                <Dice3D value={d} variant="defender" size="sm" />
+              </span>
+            ))}
+          </div>
+        </div>
+        {!rolling && (
+          <ul className="space-y-0.5 text-[11px] text-stone-400">
+            {last.comparisons.map((c, i) => (
+              <li key={i}>
+                {c.attacker} vs {c.defender}:{' '}
+                {c.attacker > c.defender
+                  ? 'gana atacante → defensor pierde 1'
+                  : c.attacker === c.defender
+                    ? 'EMPATE (favorece al defensor) → atacante pierde 1'
+                    : 'gana defensor → atacante pierde 1'}
+              </li>
+            ))}
+          </ul>
+        )}
+        <p className="mt-1.5 border-t border-war-800 pt-1.5 text-[11px] text-stone-300" data-testid="battle-summary">
+          <span className="text-stone-500">RESUMEN ACUMULADO ({battle.rounds.length} ronda{battle.rounds.length !== 1 ? 's' : ''}):</span>{' '}
+          <span className="capitalize">{name(battle.sourceId)}</span> {battle.attackerInitial} → {attackerNow} (−{totalAttLoss}) ·{' '}
+          <span className="capitalize">{name(battle.targetId)}</span> {battle.defenderInitial} → {defenderNow} (−{totalDefLoss})
+          {battle.conquered && <strong className="text-gold-400"> — ¡CONQUISTADO!</strong>}
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-war-950/85 p-4 backdrop-blur-sm" data-testid="combat-arena">
       <div

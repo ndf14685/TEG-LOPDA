@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useGameStore } from '../../state/gameStore';
 import { useConnectionStore } from '../../state/connectionStore';
 import { useSessionStore } from '../../state/sessionStore';
@@ -85,6 +85,35 @@ export function TribunePanel() {
   const wager = turn?.wager ?? 0;
   const canWager = myTurn && phase === 'reinforcement' && (turn?.reinforcements_available ?? 0) > 0;
 
+  // DEF-02: recibo de apuesta — compara lo pedido contra lo que el server
+  // efectivamente acreditó (delta de turn.wager tras el evento wager.placed)
+  const [wagerRequest, setWagerRequest] = useState<{
+    amount: number;
+    baseline: number;
+    accepted: number | null;
+    mismatch: boolean;
+  } | null>(null);
+
+  function requestWager(amount: number) {
+    audioService.unlock();
+    setWagerRequest({ amount, baseline: wager, accepted: null, mismatch: false });
+    wsClient.send({ type: 'turn.wager', payload: { amount } });
+  }
+
+  useEffect(() => {
+    if (!wagerRequest || wagerRequest.accepted !== null) return;
+    if (wager !== wagerRequest.baseline) {
+      const accepted = wager - wagerRequest.baseline;
+      setWagerRequest({ ...wagerRequest, accepted, mismatch: accepted !== wagerRequest.amount });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wager]);
+
+  useEffect(() => {
+    // el recibo muere con el turno
+    if (!myTurn) setWagerRequest(null);
+  }, [myTurn]);
+
   return (
     <aside
       className="flex min-h-0 flex-col gap-3 overflow-y-auto border-l-2 border-war-800 bg-war-900/95 p-3"
@@ -143,7 +172,9 @@ export function TribunePanel() {
           <p className="mt-1 text-xs text-stone-500">Sin batallas en curso.</p>
         )}
 
-        {/* apuesta real del turno: refuerzos arriesgados (backend autoritativo) */}
+        {/* apuesta real del turno: refuerzos arriesgados (backend autoritativo).
+            DEF-02: el monto pedido y el aceptado por el server se muestran
+            SIEMPRE por separado — si difieren, se marca en rojo. */}
         <div className="mt-2 rounded-md border border-gold-600/40 bg-war-900 p-2">
           <p className="text-[11px] font-bold text-gold-400">APUESTA DE REFUERZOS</p>
           <p className="text-[10px] text-stone-400">
@@ -151,7 +182,19 @@ export function TribunePanel() {
           </p>
           {wager > 0 && (
             <p className="mt-1 text-xs font-bold text-amber-300" data-testid="wager-current">
-              En juego: {wager} tropa{wager !== 1 ? 's' : ''} → paga {wager * 2}
+              Aceptado por el server: {wager} tropa{wager !== 1 ? 's' : ''} en juego → paga {wager * 2}
+            </p>
+          )}
+          {wagerRequest && (
+            <p
+              className={`mt-0.5 text-[10px] ${wagerRequest.mismatch ? 'font-bold text-red-400' : 'text-stone-400'}`}
+              data-testid="wager-receipt"
+            >
+              {wagerRequest.mismatch
+                ? `⚠ Pediste +${wagerRequest.amount} y el server aceptó +${wagerRequest.accepted}. Reportalo: es un defecto.`
+                : wagerRequest.accepted === null
+                  ? `Pedido +${wagerRequest.amount} enviado — esperando confirmación…`
+                  : `Pedido +${wagerRequest.amount} → aceptado +${wagerRequest.accepted}.`}
             </p>
           )}
           {canWager ? (
@@ -160,7 +203,7 @@ export function TribunePanel() {
                 <button
                   key={n}
                   disabled={(turn?.reinforcements_available ?? 0) < n}
-                  onClick={() => { audioService.unlock(); wsClient.send({ type: 'turn.wager', payload: { amount: n } }); }}
+                  onClick={() => requestWager(n)}
                   data-testid={`wager-${n}`}
                   className="flex-1 rounded bg-gold-500/90 px-2 py-1 text-[11px] font-bold text-war-950 hover:bg-gold-400 disabled:opacity-30"
                 >

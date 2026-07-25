@@ -263,7 +263,7 @@ export function MapPanel({ mode }: { mode?: GameMode }) {
         const bbox = path.getBBox();
         centers[id] = {
           x: bbox.x + bbox.width / 2,
-          y: bbox.y + bbox.height / 2 + Math.min(bbox.height * 0.18, 42),
+          y: bbox.y + bbox.height / 2 + Math.min(bbox.height * 0.26, 62),
         };
       } catch {
         // Fallback si no está renderizado en screen
@@ -288,20 +288,20 @@ export function MapPanel({ mode }: { mode?: GameMode }) {
       const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
       circle.setAttribute('cx', String(center.x));
       circle.setAttribute('cy', String(center.y));
-      circle.setAttribute('r', '44');
+      circle.setAttribute('r', '34');
       circle.setAttribute('fill', '#0f172a');
       circle.setAttribute('fill-opacity', '0.92');
       circle.setAttribute('stroke', badgeColor);
-      circle.setAttribute('stroke-width', id === selectedSource || id === selectedTarget ? '9' : '5');
+      circle.setAttribute('stroke-width', id === selectedSource || id === selectedTarget ? '7' : '4');
       badgeGroup.appendChild(circle);
 
       // Texto con cantidad de ejércitos
       const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       text.setAttribute('x', String(center.x));
-      text.setAttribute('y', String(center.y + 16));
+      text.setAttribute('y', String(center.y + 13));
       text.setAttribute('text-anchor', 'middle');
       text.setAttribute('fill', '#f8fafc');
-      text.setAttribute('font-size', '46');
+      text.setAttribute('font-size', '36');
       text.setAttribute('font-weight', '900');
       text.setAttribute('font-family', 'sans-serif');
       text.textContent = String(armies);

@@ -50,6 +50,7 @@ test('slice real: lobby, colocación radial, turno y fases sincronizadas', async
 
   // 1-2. partida + link personalizado
   await createGameAsAdmin(admin, 'Nessi');
+  const adminUrl = admin.url();
   await admin.getByTestId('new-player-nickname').fill('Daro');
   await admin.getByTestId('create-player').click();
   await expect(admin.getByTestId('link-row-Daro')).toBeVisible();
@@ -127,16 +128,46 @@ test('slice real: lobby, colocación radial, turno y fases sincronizadas', async
   await admin.screenshot({ path: 'test-results/product-1920x1080-turn.png' });
   await player.screenshot({ path: 'test-results/product-player-view.png' });
 
-  // 13. combate real: radial → ATACAR → objetivo resaltado → Arena en AMBOS
+  // 13. sumar un ESPECTADOR real antes del combate (rol spectator)
+  const code = new URL(joinUrl).pathname.split('/')[2];
+  const spectatorCtx = await browser.newContext();
+  const spectator = await spectatorCtx.newPage();
+  await admin.goto(adminUrl);
+  await admin.getByTestId('new-player-nickname').fill('Miron');
+  await admin.getByLabel('Rol', { exact: true }).selectOption('spectator');
+  await admin.getByTestId('create-player').click();
+  await admin.getByTestId('copy-link-Miron').click();
+  const spectatorUrl = await admin.evaluate(() => navigator.clipboard.readText());
+  await spectator.goto(spectatorUrl);
+  await spectator.getByTestId('enter-lobby').click();
+  await spectator.waitForURL(`**/lobby/${code}`);
+  await spectator.goto(`/game/${code}`);
+  await expect(spectator.getByTestId('game-board')).toBeVisible({ timeout: 15_000 });
+  await admin.goto(`/game/${code}`);
+  await expect(admin.getByTestId('game-board')).toBeVisible({ timeout: 15_000 });
+  await expect(active.getByTestId('hud-phase')).toContainText('ATAQUE', { timeout: 10_000 });
+
+  // 14. combate real: radial → ATACAR → objetivo resaltado → Arena en TODOS
   await active.locator('path.territory.can-attack').first().click();
   await active.locator('.radial-menu button', { hasText: 'ATACAR' }).click();
   await active.locator('path.territory.attackable').first().click();
   await expect(active.getByTestId('combat-arena')).toBeVisible({ timeout: 10_000 });
   await expect(active.getByTestId('battle-summary')).toContainText('RESUMEN ACUMULADO');
-  await expect(passive.getByTestId('combat-arena')).toBeVisible({ timeout: 10_000 });
   await active.screenshot({ path: 'test-results/product-combat-arena.png' });
+
+  // DEF-01: defensor y espectador ven la batalla SIN bloqueo total —
+  // la tarjeta acoplada convive con Tribuna/chat/mapa usables
+  await expect(passive.getByTestId('combat-arena')).toBeVisible({ timeout: 10_000 });
+  await expect(passive.getByTestId('tribune-panel')).toBeVisible();
+  await passive.getByLabel('Mensaje de chat').fill('mirando la batalla sin bloqueo');
+  await passive.screenshot({ path: 'test-results/product-defender-battle.png' });
+  await expect(spectator.getByTestId('combat-arena')).toBeVisible({ timeout: 10_000 });
+  await spectator.getByLabel('Mensaje de chat').fill('espectador libre');
+  await spectator.screenshot({ path: 'test-results/product-spectator-battle.png' });
+
   await active.getByTestId('stop-attack').click();
   await expect(active.getByTestId('combat-arena')).toHaveCount(0);
+  await spectatorCtx.close();
 
   // 14. el mercado de espectadores se declara BLOQUEADO sin controles activos
   await expect(active.getByTestId('spectator-market')).toContainText('BLOQUEADO');
