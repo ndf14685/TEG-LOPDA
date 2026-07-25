@@ -82,7 +82,9 @@ test('slice real: crear, invitar, lobby, iniciar, IA y dados sincronizados', asy
   await expect(player.getByTestId('game-board')).toBeVisible({ timeout: 15_000 });
   await expect(admin.getByTestId('map-panel')).toBeVisible();
 
-  // 8-9. el backend emite el comentario (mock commentator, game.started) y ambos lo ven
+  // 8-9. el comentarista arranca silenciado por default: se activa y ambos lo ven
+  await admin.getByRole('button', { name: 'activar' }).click();
+  await player.getByRole('button', { name: 'activar' }).click();
   await expect(admin.getByTestId('ai-comment')).toBeVisible({ timeout: 20_000 });
   await expect(player.getByTestId('ai-comment')).toBeVisible({ timeout: 20_000 });
   const adminComment = await admin.getByTestId('ai-comment').locator('p').textContent();

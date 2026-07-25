@@ -10,6 +10,7 @@ import { TurnPhaseBar } from '../components/game/TurnPhaseBar';
 import { AICommentatorPanel } from '../components/ai-commentator/AICommentatorPanel';
 import { ChatPanel } from '../components/chat/ChatPanel';
 import { SoundboardBar } from '../components/audio/SoundboardBar';
+import { AudioControls } from '../components/audio/AudioControls';
 import { ConnectionBanner } from '../components/ConnectionBanner';
 import { PlayerAvatar } from '../components/players/PlayerAvatar';
 import { colorValue } from '../utils/playerColors';
@@ -325,6 +326,7 @@ export function GamePage() {
             </div>
           )}
 
+          <AudioControls />
           <AICommentatorPanel />
         </aside>
       </div>

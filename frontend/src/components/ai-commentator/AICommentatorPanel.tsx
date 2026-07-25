@@ -14,8 +14,14 @@ const AUTO_MINIMIZE_MS = 12_000;
 export function AICommentatorPanel() {
   const comments = useGameStore((s) => s.aiComments);
   const muted = useGameStore((s) => s.aiMuted);
-  const setMuted = useGameStore((s) => s.setAiMuted);
+  const setMutedStore = useGameStore((s) => s.setAiMuted);
   const playerById = useGameStore((s) => s.playerById);
+  // activar/silenciar también sincroniza el canal de voz del relator
+  const setMuted = (m: boolean) => {
+    setMutedStore(m);
+    audioService.unlock();
+    audioService.setMuted('ai', m);
+  };
   const [minimized, setMinimized] = useState(false);
 
   const latest = comments[comments.length - 1];

@@ -13,7 +13,9 @@ class AudioService {
   private unlocked = false;
   readonly tauntQueue = new TauntQueue();
   private volumes: Record<AudioChannel, number> = { master: 0.8, music: 0.6, sfx: 0.8, taunts: 0.9, ai: 0.8 };
-  private muted: Record<AudioChannel, boolean> = { master: false, music: false, sfx: false, taunts: false, ai: false };
+  // Por defecto TODO silenciado mientras buscamos el punto dulce: el que lo
+  // quiera oír lo activa (comentarista y sonidos tienen sus toggles en la UI).
+  private muted: Record<AudioChannel, boolean> = { master: false, music: true, sfx: true, taunts: true, ai: true };
 
   /** Llamar desde un handler de click/keydown. Idempotente. */
   unlock(): void {

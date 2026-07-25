@@ -74,6 +74,7 @@ interface GameState {
   lastReaction: { id: number; emoji: string; fromPlayerId: string | null } | null;
   aiComments: AICommentView[];
   aiMuted: boolean;
+  soundsMuted: boolean;
   lastTaunt: TauntView | null;
   gameStartedAt: number | null;
   finished: { winnerPlayerId: string | null; turnsPlayed: number } | null;
@@ -117,6 +118,7 @@ interface GameState {
   pushReaction: (emoji: string, fromPlayerId: string | null) => void;
   addAiComment: (comment: AICommentView) => void;
   setAiMuted: (muted: boolean) => void;
+  setSoundsMuted: (muted: boolean) => void;
   setTaunt: (taunt: TauntView | null) => void;
   markStarted: () => void;
   setFinished: (winnerPlayerId: string | null, turnsPlayed: number) => void;
@@ -153,7 +155,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   lastAttack: null,
   lastReaction: null,
   aiComments: [],
-  aiMuted: false,
+  aiMuted: true, // comentarista silenciado por default; se activa desde el panel
+  soundsMuted: true, // sonidos silenciados por default; toggle en el juego
   lastTaunt: null,
   gameStartedAt: null,
   finished: null,
@@ -228,6 +231,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     set((s) => ({ lastReaction: { id: (s.lastReaction?.id ?? 0) + 1, emoji, fromPlayerId } })),
   addAiComment: (comment) => set((s) => ({ aiComments: [...s.aiComments.slice(-4), comment] })),
   setAiMuted: (aiMuted) => set({ aiMuted }),
+  setSoundsMuted: (soundsMuted) => set({ soundsMuted }),
   setTaunt: (lastTaunt) => set({ lastTaunt }),
   markStarted: () => set({ gameStartedAt: Date.now() }),
   setFinished: (winnerPlayerId, turnsPlayed) => set({ finished: { winnerPlayerId, turnsPlayed } }),
