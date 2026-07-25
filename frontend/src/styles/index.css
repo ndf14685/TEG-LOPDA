@@ -75,3 +75,87 @@ button:not(:disabled):active {
   pointer-events: none;
   animation: teg-confetti-fall linear infinite;
 }
+
+/* --- menú radial táctico (sobre el mapa) --- */
+.radial-menu {
+  position: absolute;
+  transform: translate(-50%, -110%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(15, 23, 42, 0.96);
+  border: 2px solid #d97706;
+  padding: 6px 12px;
+  border-radius: 999px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.85);
+  z-index: 30;
+  white-space: nowrap;
+}
+.radial-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #fbbf24;
+  text-transform: capitalize;
+  margin-right: 2px;
+}
+.radial-btn {
+  padding: 5px 11px;
+  border-radius: 999px;
+  border: none;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  cursor: pointer;
+  transition: transform 0.12s ease;
+}
+.radial-btn:hover:not(:disabled) { transform: scale(1.1); }
+.radial-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.radial-hint {
+  font-size: 10px;
+  color: #94a3b8;
+  max-width: 150px;
+  white-space: normal;
+}
+
+/* --- viñeta ambiental del jugador activo --- */
+.ambient-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+  opacity: 0;
+  transition: opacity 0.5s ease, box-shadow 0.5s ease;
+}
+.ambient-vignette.active { opacity: 1; }
+
+/* --- banner central de turno --- */
+@keyframes teg-turn-banner-in {
+  0% { transform: translate(-50%, -50%) scale(0.7); opacity: 0; }
+  15% { transform: translate(-50%, -50%) scale(1.05); opacity: 1; }
+  20% { transform: translate(-50%, -50%) scale(1); }
+  85% { opacity: 1; }
+  100% { opacity: 0; }
+}
+.turn-banner-overlay {
+  position: fixed;
+  left: 50%;
+  top: 42%;
+  transform: translate(-50%, -50%);
+  z-index: 45; /* debajo de la arena de combate */
+  pointer-events: none;
+  animation: teg-turn-banner-in 3s ease-out forwards;
+  text-align: center;
+}
+
+/* --- dados de la arena: tirada corta con física visual CSS --- */
+@keyframes teg-die-roll {
+  0% { transform: rotateX(0) rotateY(0) translateY(-38px) scale(0.6); opacity: 0; }
+  55% { transform: rotateX(540deg) rotateY(360deg) translateY(4px) scale(1.05); opacity: 1; }
+  75% { transform: rotateX(710deg) rotateY(360deg) translateY(-3px) scale(1); }
+  100% { transform: rotateX(720deg) rotateY(360deg) translateY(0) scale(1); opacity: 1; }
+}
+.arena-die { display: inline-block; animation: teg-die-roll var(--die-roll-ms, 1200ms) cubic-bezier(0.22, 1, 0.36, 1) both; }
+@media (prefers-reduced-motion: reduce) {
+  .arena-die { animation: none; }
+  .turn-banner-overlay { animation-duration: 2s; }
+}

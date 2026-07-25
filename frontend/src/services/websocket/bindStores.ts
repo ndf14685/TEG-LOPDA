@@ -186,6 +186,11 @@ export function bindWsToStores(): void {
       phase?: 'reinforcement' | 'attack' | 'fortify';
       reinforcements_available?: number;
     };
+    // el turno nuevo cierra la arena y cualquier puntería pendiente
+    game().closeBattle();
+    game().setTargetingMode(null);
+    game().setRadialMenu(null);
+    game().setFortifyPicker(null);
     const turn = game().turn;
     if (turn && env.actor_id) {
       const index = turn.order.indexOf(env.actor_id);
@@ -224,7 +229,14 @@ export function bindWsToStores(): void {
   });
 
   wsClient.on('attack.resolved', (p, env) => {
-    const payload = p as z.infer<typeof AttackResolvedPayload>;
+    const payload = p as z.infer<typeof AttackResolvedPayload> & {
+      source_territory_id?: string | null;
+      target_territory_id?: string | null;
+      attacker_armies_before?: number | null;
+      defender_armies_before?: number | null;
+      attacker_armies_after?: number | null;
+      defender_armies_after?: number | null;
+    };
     game().setAttack({
       attackerId: env.actor_id ?? null,
       defenderId: env.target_id ?? null,
@@ -234,12 +246,37 @@ export function bindWsToStores(): void {
       defenderLosses: payload.defender_losses,
       ts: env.timestamp,
     });
+    // la Arena acumula rondas de la MISMA batalla (origen→destino)
+    if (payload.source_territory_id && payload.target_territory_id) {
+      game().startBattleRound(
+        {
+          attackerDice: payload.attacker_dice,
+          defenderDice: payload.defender_dice,
+          attackerLosses: payload.attacker_losses,
+          defenderLosses: payload.defender_losses,
+          comparisons: payload.comparisons,
+          attackerAfter: payload.attacker_armies_after ?? null,
+          defenderAfter: payload.defender_armies_after ?? null,
+        },
+        {
+          sourceId: payload.source_territory_id,
+          targetId: payload.target_territory_id,
+          attackerId: env.actor_id ?? null,
+          defenderId: env.target_id ?? null,
+          attackerBefore: payload.attacker_armies_before ?? 0,
+          defenderBefore: payload.defender_armies_before ?? 0,
+        },
+      );
+    }
     audioService.playGameSound('audio.gameplay.battle_clash', [140, 90]);
   });
 
   wsClient.on('territory.conquered', (p, env) => {
     const payload = p as { territory?: { id?: string } };
-    if (payload.territory?.id) game().setConquestFlash(payload.territory.id);
+    if (payload.territory?.id) {
+      game().setConquestFlash(payload.territory.id);
+      game().markBattleConquered(payload.territory.id);
+    }
     game().pushReaction('🔥', env.actor_id ?? null); // momento compartido para todos
     const you = game().youId;
     if (env.target_id === you) {

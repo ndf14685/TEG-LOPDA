@@ -5,6 +5,8 @@ import { useGameStore } from '../../state/gameStore';
 import { colorValue } from '../../utils/playerColors';
 import { wsClient } from '../../services/websocket/wsClient';
 import { FloatingEmotes } from '../chat/FloatingEmotes';
+import { RadialMenu } from './RadialMenu';
+import { territoryName } from '../../utils/territoryName';
 
 const RUNTIME_STYLE = `
   .territory.attackable { stroke: #22d3ee; stroke-width: 6; stroke-dasharray: 6 6; }
@@ -33,8 +35,6 @@ export function MapPanel({ mode }: { mode?: GameMode }) {
   const stage = useGameStore((s) => s.stage);
   const placementRemaining = useGameStore((s) => s.placementRemaining);
   const placementPending = useGameStore((s) => s.placementPending);
-  const optimisticPlace = useGameStore((s) => s.optimisticPlace);
-  const reinforceBatch = useGameStore((s) => s.reinforceBatch);
   const mapAdjacency = useGameStore((s) => s.mapAdjacency);
   const territories = useGameStore((s) => s.territories);
   const players = useGameStore((s) => s.players);
@@ -136,6 +136,15 @@ export function MapPanel({ mode }: { mode?: GameMode }) {
       ) {
         path.classList.add('attackable');
       } else if (
+        selectedSource &&
+        turn?.phase === 'fortify' &&
+        (mapAdjacency[selectedSource] ?? []).includes(id) &&
+        tState &&
+        tState.owner_player_id === youId
+      ) {
+        // destinos válidos del reagrupamiento
+        path.classList.add('attackable');
+      } else if (
         !selectedSource &&
         myTurn &&
         stage === 'turns' &&
@@ -149,53 +158,91 @@ export function MapPanel({ mode }: { mode?: GameMode }) {
         path.classList.add('can-attack');
       }
 
-      // 3. Event Listener para interacción según Fase del Turno
+      // 3. Tooltip nativo: nombre, dueño y tropas de un vistazo
+      const ownerName = owner?.nickname ?? 'neutral';
+      const prettyName = territoryName(id);
+      let titleEl = path.querySelector<SVGTitleElement>('title');
+      if (titleEl === null) {
+        titleEl = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+        path.appendChild(titleEl);
+      }
+      titleEl.textContent = `${prettyName} — ${ownerName} (${tState?.armies ?? 0} tropas)`;
+
+      // 4. Interacción directa: menú radial en territorios propios, puntería
+      //    directa cuando ya hay un origen elegido
       path.onclick = (e) => {
         e.stopPropagation();
-
-        // colocación inicial: cada click suma 1 ejército oculto en tu país
-        if (stage === 'placement_1' || stage === 'placement_2') {
-          if (tState && tState.owner_player_id === youId && placementRemaining > 0) {
-            optimisticPlace(id);
-            wsClient.send({
-              type: 'placement.place',
-              payload: { territory_id: id, count: 1 },
-            });
-          }
-          return;
-        }
-
+        const state = useGameStore.getState();
+        const container = containerRef.current;
+        const rect = container?.getBoundingClientRect();
+        const menuPos = rect
+          ? { x: e.clientX - rect.left, y: e.clientY - rect.top }
+          : { x: e.clientX, y: e.clientY };
+        const isMine = tState?.owner_player_id === youId;
         const currentPhase = turn?.phase ?? 'attack';
+        const adjacentToSource = state.selectedSourceTerritory
+          ? (mapAdjacency[state.selectedSourceTerritory] ?? []).includes(id)
+          : false;
 
+        // colocación / refuerzos: radial +1/+3/MAX sobre tu país
+        if (stage === 'placement_1' || stage === 'placement_2') {
+          if (isMine && placementRemaining > 0) {
+            state.setRadialMenu({ territoryId: id, ...menuPos });
+          }
+          return;
+        }
         if (currentPhase === 'reinforcement') {
-          if (tState && tState.owner_player_id === youId) {
-            const available = turn?.reinforcements_available ?? 0;
-            const count = Math.min(reinforceBatch, available);
-            if (count > 0) {
-              wsClient.send({
-                type: 'turn.place_reinforcement',
-                payload: { territory_id: id, count },
-              });
-            }
+          if (isMine) state.setRadialMenu({ territoryId: id, ...menuPos });
+          return;
+        }
+
+        // puntería activa: el click sobre un destino válido EJECUTA
+        if (state.targetingMode === 'attack' && state.selectedSourceTerritory) {
+          if (id === state.selectedSourceTerritory) {
+            state.setTargetingMode(null);
+            setSelectedSource(null);
+            return;
+          }
+          if (!isMine && adjacentToSource) {
+            setSelectedTarget(id);
+            wsClient.send({
+              type: 'attack',
+              payload: {
+                source_territory_id: state.selectedSourceTerritory,
+                target_territory_id: id,
+                attacker_dice: 3,
+              },
+            });
+            return;
+          }
+          if (isMine) {
+            // cambiar de origen sin salir del modo ataque
+            state.setRadialMenu({ territoryId: id, ...menuPos });
+            return;
+          }
+          return; // destino inválido: el resaltado ya explica cuáles valen
+        }
+        if (state.targetingMode === 'fortify' && state.selectedSourceTerritory) {
+          if (id === state.selectedSourceTerritory) {
+            state.setTargetingMode(null);
+            setSelectedSource(null);
+            return;
+          }
+          if (isMine && adjacentToSource) {
+            setSelectedTarget(id);
+            state.setFortifyPicker({ source: state.selectedSourceTerritory, target: id });
+            state.setRadialMenu({ territoryId: id, ...menuPos });
+            return;
           }
           return;
         }
 
-        if (id === selectedSource) {
+        // sin puntería: tu país abre el radial; ajeno no hace nada acá
+        if (isMine) {
+          state.setRadialMenu({ territoryId: id, ...menuPos });
+        } else {
           setSelectedSource(null);
           setSelectedTarget(null);
-          return;
-        }
-        if (tState && tState.owner_player_id === youId) {
-          // en reagrupamiento, un segundo territorio propio es el destino
-          if (currentPhase === 'fortify' && selectedSource) {
-            setSelectedTarget(id);
-          } else {
-            setSelectedSource(id);
-            if (selectedTarget === id) setSelectedTarget(null);
-          }
-        } else if (selectedSource && selectedSource !== id) {
-          setSelectedTarget(id);
         }
       };
 
@@ -268,7 +315,7 @@ export function MapPanel({ mode }: { mode?: GameMode }) {
       line.setAttribute('pointer-events', 'none');
       overlayGroup.appendChild(line);
     }
-  }, [state, territories, players, youId, playerById, selectedSource, selectedTarget, setSelectedSource, setSelectedTarget, turn, mapAdjacency, stage, placementRemaining, placementPending, optimisticPlace, reinforceBatch]);
+  }, [state, territories, players, youId, playerById, selectedSource, selectedTarget, setSelectedSource, setSelectedTarget, turn, mapAdjacency, stage, placementRemaining, placementPending]);
 
   // Flash de conquista: animación breve sobre el territorio recién tomado
   const conquestFlash = useGameStore((s) => s.conquestFlash);
@@ -386,6 +433,10 @@ export function MapPanel({ mode }: { mode?: GameMode }) {
       className="relative h-full w-full select-none overflow-hidden rounded-xl bg-war-950/90"
       data-testid="map-panel"
       onClick={() => {
+        const s = useGameStore.getState();
+        s.setRadialMenu(null);
+        s.setFortifyPicker(null);
+        s.setTargetingMode(null);
         setSelectedSource(null);
         setSelectedTarget(null);
       }}
@@ -409,21 +460,22 @@ export function MapPanel({ mode }: { mode?: GameMode }) {
       {/* Reacciones Flotantes & Emotes sobre el mapa */}
       {state === 'ready' && <FloatingEmotes />}
 
+      {/* Menú radial táctico (posicionado relativo a este contenedor) */}
+      {state === 'ready' && <RadialMenu />}
+
       {/* Leyenda Táctica del Mapa */}
       {state === 'ready' && (
         <div className="pointer-events-none absolute bottom-3 left-3 z-10 flex flex-wrap items-center gap-2 rounded-lg border border-war-700 bg-war-900/80 px-3 py-1.5 backdrop-blur-md">
           <span className="text-xs font-semibold text-stone-300">
             {turn?.phase === 'reinforcement'
-              ? '🪖 Tocá tus países para colocar refuerzos'
+              ? '🪖 Tocá tus países: el menú radial coloca +1, +3 o el máximo'
               : turn?.phase === 'fortify'
                 ? selectedSource
-                  ? '🛡️ Elegí otro país tuyo como destino'
-                  : '🛡️ Elegí el país tuyo de origen'
+                  ? '🛡️ Tocá el país resaltado que recibe las tropas'
+                  : '🛡️ Tocá un país tuyo y elegí Fortificar'
                 : selectedSource
-                  ? selectedTarget
-                    ? '⚔️ Listo para atacar (botón en el panel derecho)'
-                    : '🎯 Seleccioná un país objetivo'
-                  : '👉 Hacé click en tu país para atacar'}
+                  ? '🎯 Tocá el país enemigo resaltado: el combate arranca ahí mismo'
+                  : '👉 Tocá un país tuyo (borde dorado) y elegí ⚔️ Atacar'}
           </span>
         </div>
       )}

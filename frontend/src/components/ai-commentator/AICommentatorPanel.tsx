@@ -26,22 +26,14 @@ export function AICommentatorPanel() {
 
   const latest = comments[comments.length - 1];
 
+  // el zócalo con subtítulos se muestra SIEMPRE; "muted" solo apaga la voz
   useEffect(() => {
-    if (!latest || muted) return;
+    if (!latest) return;
     setMinimized(false);
-    audioService.speakText(latest.text);
+    if (!muted) audioService.speakText(latest.text);
     const t = setTimeout(() => setMinimized(true), AUTO_MINIMIZE_MS);
     return () => clearTimeout(t);
   }, [latest, muted]);
-
-  if (muted) {
-    return (
-      <div className="rounded-lg border border-war-700 bg-war-900 p-3 text-sm text-stone-500">
-        🔇 Comentarista silenciado
-        <button className="ml-2 underline hover:text-stone-300" onClick={() => setMuted(false)}>activar</button>
-      </div>
-    );
-  }
 
   const target = latest ? playerById(latest.targetPlayerId) : undefined;
 
@@ -54,7 +46,14 @@ export function AICommentatorPanel() {
           </span>
           <h3 className="font-display text-sm font-bold tracking-wide text-gold-400">EL RELATOR</h3>
         </div>
-        <button className="text-xs text-stone-400 hover:text-stone-200" onClick={() => setMuted(true)} aria-label="Silenciar comentarista">🔇</button>
+        <button
+          className="text-xs text-stone-400 hover:text-stone-200"
+          onClick={() => setMuted(!muted)}
+          aria-label={muted ? 'Activar voz del comentarista' : 'Silenciar voz del comentarista'}
+          title={muted ? 'Voz apagada — tocá para escucharlo' : 'Silenciar la voz (el texto sigue)'}
+        >
+          {muted ? '🔇 voz' : '🔊 voz'}
+        </button>
       </header>
 
       {!latest && <p className="text-sm italic text-stone-600">Afinando el micrófono…</p>}

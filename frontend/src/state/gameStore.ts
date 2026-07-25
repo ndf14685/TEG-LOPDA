@@ -8,6 +8,29 @@ export interface LegalAction {
   params: Record<string, unknown>;
 }
 
+export interface BattleRound {
+  attackerDice: number[];
+  defenderDice: number[];
+  attackerLosses: number;
+  defenderLosses: number;
+  comparisons: { attacker: number; defender: number }[];
+  attackerAfter: number | null;
+  defenderAfter: number | null;
+}
+
+/** Batalla acumulada para la Arena de Combate: se reconstruye de eventos. */
+export interface BattleState {
+  sourceId: string;
+  targetId: string;
+  attackerId: string | null;
+  defenderId: string | null;
+  attackerInitial: number;
+  defenderInitial: number;
+  rounds: BattleRound[];
+  conquered: boolean;
+  open: boolean;
+}
+
 export interface ChatEntry {
   id: string;
   playerId: string | null;
@@ -65,6 +88,10 @@ interface GameState {
   pactProposalFrom: string | null;
   conquestFlash: { territoryId: string; ts: number } | null;
   trophies: Record<string, { id: string; title: string; icon: string; blurb: string; value: string }[]> | null;
+  radialMenu: { territoryId: string; x: number; y: number } | null;
+  targetingMode: 'attack' | 'fortify' | null;
+  fortifyPicker: { source: string; target: string } | null;
+  battle: BattleState | null;
   mapAdjacency: Record<string, string[]>;
   selectedSourceTerritory: string | null;
   selectedTargetTerritory: string | null;
@@ -109,6 +136,15 @@ interface GameState {
   setPactProposalFrom: (playerId: string | null) => void;
   setConquestFlash: (territoryId: string) => void;
   setTrophies: (trophies: Record<string, { id: string; title: string; icon: string; blurb: string; value: string }[]>) => void;
+  setRadialMenu: (menu: { territoryId: string; x: number; y: number } | null) => void;
+  setTargetingMode: (mode: 'attack' | 'fortify' | null) => void;
+  setFortifyPicker: (picker: { source: string; target: string } | null) => void;
+  startBattleRound: (round: BattleRound, ctx: {
+    sourceId: string; targetId: string; attackerId: string | null; defenderId: string | null;
+    attackerBefore: number; defenderBefore: number;
+  }) => void;
+  markBattleConquered: (territoryId: string) => void;
+  closeBattle: () => void;
   hasPactWith: (playerId: string | null | undefined) => boolean;
   updateTerritory: (territory: TerritoryStateData) => void;
   setSelectedSourceTerritory: (tid: string | null) => void;
@@ -149,6 +185,10 @@ export const useGameStore = create<GameState>((set, get) => ({
   pactProposalFrom: null,
   conquestFlash: null,
   trophies: null,
+  radialMenu: null,
+  targetingMode: null,
+  fortifyPicker: null,
+  battle: null,
   mapAdjacency: {},
   selectedSourceTerritory: null,
   selectedTargetTerritory: null,
@@ -218,6 +258,37 @@ export const useGameStore = create<GameState>((set, get) => ({
   setPactProposalFrom: (pactProposalFrom) => set({ pactProposalFrom }),
   setConquestFlash: (territoryId) => set({ conquestFlash: { territoryId, ts: Date.now() } }),
   setTrophies: (trophies) => set({ trophies }),
+  setRadialMenu: (radialMenu) => set({ radialMenu }),
+  setTargetingMode: (targetingMode) => set({ targetingMode }),
+  setFortifyPicker: (fortifyPicker) => set({ fortifyPicker }),
+  startBattleRound: (round, ctx) =>
+    set((s) => {
+      const sameBattle =
+        s.battle && s.battle.sourceId === ctx.sourceId && s.battle.targetId === ctx.targetId && !s.battle.conquered;
+      if (sameBattle && s.battle) {
+        return { battle: { ...s.battle, rounds: [...s.battle.rounds, round], open: true } };
+      }
+      return {
+        battle: {
+          sourceId: ctx.sourceId,
+          targetId: ctx.targetId,
+          attackerId: ctx.attackerId,
+          defenderId: ctx.defenderId,
+          attackerInitial: ctx.attackerBefore,
+          defenderInitial: ctx.defenderBefore,
+          rounds: [round],
+          conquered: false,
+          open: true,
+        },
+      };
+    }),
+  markBattleConquered: (territoryId) =>
+    set((s) =>
+      s.battle && s.battle.targetId === territoryId
+        ? { battle: { ...s.battle, conquered: true } }
+        : {},
+    ),
+  closeBattle: () => set((s) => (s.battle ? { battle: { ...s.battle, open: false } } : {})),
   hasPactWith: (playerId) => {
     const you = get().youId;
     if (!you || !playerId) return false;

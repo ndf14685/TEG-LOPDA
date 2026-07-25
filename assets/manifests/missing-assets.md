@@ -37,3 +37,9 @@ Este documento detalla el inventario de activos multimedia del proyecto **TEG LO
 | `animation.dice.roll-attack.001` | `assets/dice/animations/animation-dice-roll-attack-001.webm` | WEBM | Dados CSS 3D con animación keyframes. |
 | `animation.bet.won.001` | `assets/betting/animations/animation-bet-won-001.webm` | WEBM | Partículas CSS flotantes de Monedas. |
 | `avatar.commentator.mocking.001` | `assets/ai-commentator/avatars/avatar-commentator-mocking-001.webp` | WEBP | Icono emoji dinámico (`🎙️`, `🤡`, `🔥`). |
+
+## Detectados en integración frontend productivo (2026-07-25)
+- `assets/taunts/stamps/overlay-stamp-classified-001.webp`: referenciado por `assets/manifest/taunts-manifest.json`, el directorio está vacío. Fallback actual: sin stamp visual.
+- `taunts-manifest.json` referencia audios `.ogg` (`sound-alert-traitor-001.ogg`, `sound-dice-fail-001.ogg`) que existen solo como `.wav` en `assets/audio/`. Fallback actual: tonos sintéticos del AudioService.
+- Iconografía emoji (🪖⚔️🏟️ etc.): en navegadores sin fuente emoji renderiza como cuadros. Pendiente de Dirección de Arte: set de iconos SVG propios (`assets/ui/icons/`).
+- Música de fondo: no existe ningún track; el canal `music` del AudioService queda listo esperando assets.
