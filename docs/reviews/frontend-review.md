@@ -4,7 +4,7 @@ Fecha: 2026-07-25
 
 ## Resultado
 
-Aprobado para esta tanda fast-track posterior al hotfix Windows, mini-regresion y mapa Modo 50. No es cierre final del producto, pero los defectos DEF-01, DEF-02, DEF-03 y el bloqueo P0 del mapa quedaron corregidos o saneados para playtest privado.
+Aprobado para hotfixes DEF-01, DEF-02 y DEF-03. Aprobacion del mapa Modo 50 revocada el 2026-07-25: los e2e prueban interaccion, pero la captura no cumple calidad visual de mapamundi ni responsive QHD/4K.
 
 ## Evidencia
 
@@ -45,6 +45,9 @@ Aprobado para esta tanda fast-track posterior al hotfix Windows, mini-regresion 
 
 ## Correcciones pendientes
 
+- P0 mapa: la capa geografica actual no es un mapamundi real reconocible; no alcanza con rutas, brujula, grilla ni masas abstractas.
+- P0/P1 responsive: falta demostrar aprovechamiento correcto en 2560x1440 y 3840x2160, sin areas negras vacias ni UI concentrada en una esquina.
+- P1 integracion assets: `AssetRegistry.ts` carga `/assets/manifest/assets-manifest.json`, donde la base geografica no esta declarada; la base aparece en `assets/manifests/assets-manifest.json`, manifest que no consume el runtime.
 - P1 post-playtest: nombres largos del HUD pueden quedar truncados; aceptable para candidata, revisar si molesta jugando.
 - P1 post-playtest: mercado de espectadores sigue bloqueado hasta ledger Backend; no tratar como bug de Frontend.
 - P2: banner central de turno puede tapar temporalmente parte del mapa en capturas de espera; no bloquea flujo.
@@ -56,4 +59,4 @@ Aprobado para esta tanda fast-track posterior al hotfix Windows, mini-regresion 
 
 ## Proxima accion
 
-Frontend aprobado para playtest privado con Modo 50 y base geografica. Siguiente agente activo: tester Windows debe ejecutar mini-regresion sobre URL real enfocada en mapa, no-labels, refuerzo, ataque, reconexion y legibilidad. Backend no entra por esta entrega.
+Frontend no queda aprobado para playtest privado por mapa. Siguiente accion: diagnostico de carga de base en deploy y medicion responsive; despues integrar la nueva base geografica que entregue Arte. Backend no entra por esta entrega.

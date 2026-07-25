@@ -4,7 +4,7 @@ Fecha: 2026-07-25
 
 ## Resultado
 
-Aprobacion parcial fuerte del prototipo de direccion UX para turno, combate y Tribuna. Actualizacion P0 mapa: Modo 50 aprobado para playtest privado. La base geografica continua ya esta integrada debajo de territorios/hitboxes, las masas continentales se leen en captura y la suite e2e pasa. Modo 26 sigue fuera de alcance.
+Aprobacion parcial fuerte del prototipo de direccion UX para turno, combate y Tribuna. Actualizacion P0 mapa: aprobacion de Modo 50 revocada el 2026-07-25. La version actual funciona tecnicamente, pero no cumple calidad visual de mapamundi: se perciben blobs/territorios flotando sobre fondo azul y no costas/continentes continuos. Modo 26 sigue fuera de alcance.
 
 ## Evidencia
 
@@ -57,7 +57,8 @@ Aprobacion parcial fuerte del prototipo de direccion UX para turno, combate y Tr
 - Integracion Frontend `b5284b4`: saneo runtime aprobado para el playtest privado. Oculta badges demo horneados, remueve clases demo `p-*` y ajusta `viewBox` al contenido real para evitar recorte sur/radial fuera de vista. Esto no cambia el contrato de Arte, pero evita que defectos del export bloqueen el deploy.
 - Entrega Agy `25ea8c5`: existe `assets/maps/base/map-world-geographic-base-50-001.svg` y esta registrado en `assets/manifests/assets-manifest.json` + `assets/manifests/assets-inventory.csv`. No esta integrado en `MapPanel.tsx` ni en el asset registry runtime de mapas. El prototipo `frontend/public/prototype/geo-base-pilot.html` demuestra base y overlay, pero la captura overlay sigue mostrando territorios como piezas dominantes sobre una base muy oscura y parcialmente tapada. Se acepta como insumo, no como aprobacion final de mapa productivo.
 - Integracion Frontend `fc8e5d7`: base geografica continua integrada en `MapPanel.tsx` debajo de la capa jugable. Se apaga la base vieja del export, la nueva base entra con `pointer-events: none`, los territorios bajan a `fillOpacity 0.34/0.35` y la propiedad se lee por stroke/halo. Verificacion local: `pnpm test` 33/33, `pnpm typecheck` OK, `pnpm build` OK, `pnpm e2e` 4/4. Capturas revisadas: `test-results/sa-pilot-1920x1080.png`, `test-results/sa-pilot-no-labels.png`, `test-results/sa-pilot-1366x768.png`.
+- Reapertura P0 2026-07-25: la evidencia visual posterior invalida la aprobacion anterior. `assets/maps/base/map-world-geographic-base-50-001.svg` existe, pero sus masas continentales son curvas simplificadas tipo blob, no un mapamundi cartografico con costas continuas. Tester Windows reporta bundle `DlvZXums` con hitboxes correctas, pero sin mapa geografico real visible. Queda rechazado como calidad final.
 
 ## Proxima accion
 
-Bloqueo P0 visual levantado para Modo 50. Siguiente paso: tester Windows debe ejecutar mini-regresion sobre URL real con foco en mapa Modo 50, no-labels, clicks, refuerzos, ataque y reconexion. No abrir nuevas iteraciones de Arte/Frontend salvo defectos P0/P1 detectados en playtest.
+Bloqueo P0 visual reabierto para Modo 50. Siguiente paso: Agy debe entregar `map-world-geographic-base-50-002.svg` como mapamundi geografico real/original y continuo. Frontend solo queda habilitado para diagnostico de carga/layout y para integrar la nueva base cuando sea aprobada.

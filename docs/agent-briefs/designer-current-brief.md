@@ -2,63 +2,50 @@
 
 Fecha: 2026-07-25
 
-## Objetivo
-
-Mapa Modo 50 aprobado para playtest privado con base geografica continua integrada. No iterar mas formas ni base salvo defectos P0/P1 de tester.
-
 ## Estado
 
-La entrega `25ea8c5` creo `map-world-geographic-base-50-001.svg` y Frontend la integro en `fc8e5d7`. La captura integrada de Modo 50 ya muestra masas continentales continuas debajo de los territorios, y `pnpm e2e` pasa 4/4. Modo 26 sigue fuera de alcance.
+Bloqueo P0 reabierto. El mapa Modo 50 actual queda rechazado: funciona tecnicamente, pero no se lee como mapamundi terminado. No producir mejoras cosmeticas secundarias hasta resolver la capa cartografica base.
+
+## Problema
+
+El producto muestra territorios/blobs sobre fondo azul con grilla, rutas y una brujula. No hay costas continuas, masas continentales reconocibles ni lectura inmediata de mapamundi cuando se ocultan labels.
 
 ## Evidencia
 
-- `test-results/world-50-labels-badges-1920x1080.png`
-- `test-results/world-50-no-labels-1920x1080.png`
-- `test-results/world-50-1366x768.png`
-- `test-results/world-50-attackable.png`
-- `assets/maps/base/map-base-tactical-50-001.svg`
-- `assets/maps/base/map-world-geographic-base-50-001.svg`
-- `frontend/public/prototype/geo-base-pilot.html`
-- `test-results/geo-base-pure-1920x1080.png`
-- `test-results/geo-base-overlay-1920x1080.png`
-- `frontend/src/components/map/MapPanel.tsx`
-- `e2e/south-america-pilot.spec.ts`
-- `fc8e5d7 feat(map): base geográfica continua debajo de la capa jugable (Modo 50)`.
-- Verificacion local posterior: `pnpm test`, `pnpm typecheck`, `pnpm build`, `pnpm e2e` verde.
+- Captura integrada `test-results/sa-pilot-1920x1080.png`: los territorios siguen dominando la lectura visual.
+- `assets/maps/base/map-world-geographic-base-50-001.svg`: existe, pero contiene paths continentales simplificados tipo blob (`continent-group-*`), no costas cartograficas.
+- Tester Windows sobre bundle `DlvZXums`: 50 territorios e hitboxes correctas, pero no se ve mapamundi real.
+- `docs/product-management/decision-log.md`, Decision 2026-07-25-17.
 
 ## Cambio solicitado
 
-No producir nuevas variantes. Esperar mini-regresion Windows. Solo intervenir si el tester demuestra que el mapa integrado no se reconoce, pierde clicks, tapa tropas/labels o rompe legibilidad a 1366x768.
+Entregar un asset nuevo de capa 1: mapamundi geografico completo, original, continuo y reconocible, alineado al `viewBox` del mapa Modo 50.
 
-## Arquitectura visual obligatoria
+## Formato obligatorio
 
-La direccion aprobada debe poder producirse en cuatro capas:
+- Archivo principal: `assets/maps/base/map-world-geographic-base-50-002.svg`.
+- `viewBox="0 0 2560 1440"` o nuevo viewBox justificado que contenga toda la geometria sin recortes.
+- Un grupo raiz `id="layer-1-geo-base"` con `pointer-events="none"`.
+- Sin labels de paises, sin labels de continentes, sin badges, sin clases de jugador `p-*`, sin hitboxes.
+- Grupos internos opcionales por continente, pero solo decorativos.
+- Costas y masas continentales completas: America del Norte, America del Sur, Europa, Africa, Asia y Oceania deben reconocerse sin texto.
+- Estilo original de mesa de guerra: baja saturacion, topografia/cartografia sutil, oceano legible, sin copiar IP ni calcar un mapa comercial.
 
-1. Base geografica no interactiva: costas, continentes, textura y atmosfera.
-2. Territorios jugables: SVG independiente, un path por territorio, IDs normalizados y coloreables sin tapar la textura.
-3. Hitboxes: areas invisibles independientes para hover, click, seleccion y drag.
-4. Overlays: nombres, tropas, estandartes, flechas, pings, animaciones e indicadores.
+## Entregables
 
-## Entregables aceptados como insumo
+1. `assets/maps/base/map-world-geographic-base-50-002.svg`.
+2. Actualizacion del manifest runtime `assets/manifest/assets-manifest.json` y del inventario de Arte si corresponde.
+3. Capturas exportadas del asset solo, sin territorios ni labels: 1920x1080, 1366x768, 2560x1440 y 3840x2160.
+4. Captura overlay de referencia con territorios al 30-35% de opacidad y seis colores, solo para validar que la base sigue visible.
 
-- `assets/maps/base/map-world-geographic-base-50-001.svg`: base geografica continua no interactiva.
-- Registro en `assets/manifests/assets-manifest.json`.
-- Registro en `assets/manifests/assets-inventory.csv`.
-- Prototipo `frontend/public/prototype/geo-base-pilot.html`.
+## Criterios de aceptacion visual
 
-## Criterios cumplidos para playtest
-
-- La base se ve en producto real Modo 50.
-- Con seis colores de jugadores, masas continentales y rutas/relieves siguen visibles.
-- Los territorios se apoyan sobre un mundo continuo.
-- Capturas 1920x1080 y 1366x768 son aceptables para playtest privado.
+- Una persona reconoce el mapamundi en menos de un segundo sin leer labels.
+- Hay costas continuas y siluetas continentales, no manchas aisladas.
+- Europa y Asia se leen como regiones continentales conectadas, no como piezas sueltas.
+- America del Sur mantiene silueta continental completa aunque los territorios encima esten coloreados.
+- Los elementos decorativos (rutas, brujula, reticula) no reemplazan ni tapan la geografia.
 
 ## Limites
 
-No definir nombres de componentes React, arquitectura frontend, persistencia backend ni contratos tecnicos no acordados. Los eventos y tablas de ledger pueden mencionarse como necesidades de producto, pero no como implementacion cerrada.
-
-Modo 26 queda fuera de alcance y conserva arte anterior hasta nuevo brief. Ajustes finos de labels en Europa/Oriente Medio/Oceania quedan como polish P2, no como bloqueo P0.
-
-## Deuda no bloqueante de Arte
-
-El export ideal del mapa tactico deberia venir sin badges demo horneados, sin clases demo `p-*` y con `viewBox` que contenga toda la geometria. Hoy Frontend lo sanea de forma segura en carga.
+No definir componentes React, logica de hitboxes, reglas de juego, backend ni nombres de eventos. No retocar los territorios jugables actuales como solucion principal: el bloqueo es ausencia/calidad de la capa geografica base.

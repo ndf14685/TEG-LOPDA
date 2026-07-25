@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TEG LOPDA — Base Geográfica v2 (map-world-geographic-base-50-002.svg)</title>
+  <style>
+    :root {
+      --ocean-navy: #091b30;
+      --bg-dark: #040a14;
+      --text-main: #f8fafc;
+      --border-gold: #d97706;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+    body {
+      font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-main);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    header {
+      background: #0f172a;
+      border-bottom: 2px solid var(--border-gold);
+      padding: 8px 16px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      z-index: 20;
+    }
+
+    .brand-title {
+      font-family: serif;
+      font-size: 16px;
+      font-weight: bold;
+      color: #fbbf24;
+      letter-spacing: 1.5px;
+    }
+
+    .toolbar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+
+    .btn {
+      background: linear-gradient(180deg, #334155, #1e293b);
+      border: 1px solid #475569;
+      color: #f8fafc;
+      padding: 5px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .btn:hover { background: #475569; border-color: #fbbf24; }
+    .btn-active { border-color: #fbbf24; background: #d97706; color: #000; }
+
+    .map-viewport {
+      flex: 1;
+      position: relative;
+      background: radial-gradient(circle at 50% 45%, #0f2b48 0%, #091b30 60%, #040a14 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px;
+      overflow: hidden;
+    }
+
+    .viewport-container {
+      width: 100%;
+      height: 100%;
+      max-width: 2560px;
+      max-height: 1440px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+    }
+    .mode-1366 { max-width: 1366px; max-height: 768px; border: 2px stroke #3b82f6; }
+    .mode-1920 { max-width: 1920px; max-height: 1080px; }
+    .mode-2560 { max-width: 2560px; max-height: 1440px; }
+    .mode-3840 { max-width: 3840px; max-height: 2160px; }
+
+    svg { width: 100%; height: 100%; position: absolute; inset: 0; }
+
+    /* ESTILO DE TERRITORIOS SUPERPUESTOS AL 32% OPACIDAD CON 6 JUGADORES Y SIN LABELS/BADGES */
+    #svg-overlay .territory { fill-opacity: 0.32 !important; stroke-width: 6.5 !important; }
+    #svg-overlay .territory-label, #svg-overlay .badge-group, #svg-overlay .vector-arrow { display: none !important; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand-title">🗺️ BASE GEOGRÁFICA CONTINUA V2 — MAP-WORLD-GEOGRAPHIC-BASE-50-002</div>
+    <div class="toolbar">
+      <button class="btn btn-active" id="btn-view-base" onclick="setViewMode('base')">🌍 1. Asset Base Pura</button>
+      <button class="btn" id="btn-view-overlay" onclick="setViewMode('overlay')">🎨 2. Base + Territorios (32% Opacidad, 6 Jugadores)</button>
+      <button class="btn" id="btn-res-1366" onclick="setResolution('1366')">💻 1366x768</button>
+      <button class="btn btn-active" id="btn-res-1920" onclick="setResolution('1920')">🖥️ 1920x1080</button>
+      <button class="btn" id="btn-res-2560" onclick="setResolution('2560')">🖥️ 2560x1440</button>
+      <button class="btn" id="btn-res-3840" onclick="setResolution('3840')">📺 3840x2160 (4K)</button>
+    </div>
+  </header>
+
+  <div class="map-viewport">
+    <div class="viewport-container mode-1920" id="vp-container">
+      <!-- 1. SVG Base Geográfica Pura v2 -->
+      <div id="wrapper-base" style="width:100%; height:100%; position:relative;">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2560 1440" id="map-world-geographic-base-50-002">
+  <defs>
+    <!-- Deep Imperial Navy Ocean Gradient -->
+    <radialGradient id="oceanGrad002" cx="50%" cy="45%" r="80%">
+      <stop offset="0%" stop-color="#0e2a47" />
+      <stop offset="55%" stop-color="#081c32" />
+      <stop offset="100%" stop-color="#030914" />
+    </radialGradient>
+
+    <!-- Shallow Coastal Shelf Glow Gradient -->
+    <filter id="coastalGlow" x="-10%" y="-10%" width="120%" height="120%">
+      <feGaussianBlur stdDeviation="6" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+
+    <!-- Tactical Grid Pattern -->
+    <pattern id="tacGrid002" width="120" height="120" patternUnits="userSpaceOnUse">
+      <path d="M 120 0 L 0 0 0 120" fill="none" stroke="rgba(56, 189, 248, 0.05)" stroke-width="1.5" />
+    </pattern>
+
+    <style>
+      .ocean-bg { fill: url(#oceanGrad002); }
+      .grid-layer { fill: url(#tacGrid002); pointer-events: none; }
+      
+      /* CONTINENTAL LANDMASSES */
+      .continent-shelf { fill: rgba(14, 116, 144, 0.12); stroke: rgba(56, 189, 248, 0.18); stroke-width: 8; stroke-linejoin: round; }
+      .continent-mass { fill: #0d2642; stroke: rgba(56, 189, 248, 0.35); stroke-width: 3; stroke-linejoin: round; }
+      .continent-core { fill: rgba(18, 48, 80, 0.5); stroke: none; }
+      
+      /* TOPOGRAPHY & RELIEF */
+      .topo-mountain { fill: none; stroke: rgba(251, 191, 36, 0.2); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+      .topo-ridge { fill: none; stroke: rgba(56, 189, 248, 0.15); stroke-width: 1.5; stroke-dasharray: 4 4; }
+      .sea-route { stroke: rgba(56, 189, 248, 0.35); stroke-width: 3.5; stroke-dasharray: 8 6; fill: none; }
+      .compass-ring { fill: none; stroke: rgba(251, 191, 36, 0.18); stroke-width: 1.5; }
+    </style>
+  </defs>
+
+  <g id="layer-1-geo-base" pointer-events="none">
+    <!-- 1. Fondo Marino y Retícula -->
+    <rect width="2560" height="1440" class="ocean-bg" />
+    <rect width="2560" height="1440" class="grid-layer" />
+
+    <!-- Brújula Táctica en Océano Pacífico -->
+    <g transform="translate(320, 1180)">
+      <circle cx="0" cy="0" r="140" class="compass-ring" stroke-dasharray="8 4" />
+      <circle cx="0" cy="0" r="100" class="compass-ring" />
+      <path d="M 0 -130 L 0 130 M -130 0 L 130 0" stroke="rgba(251, 191, 36, 0.22)" stroke-width="1.5" />
+      <text x="0" y="-145" fill="rgba(251, 191, 36, 0.5)" font-size="18" font-weight="bold" text-anchor="middle">N</text>
+    </g>
+
+    <!-- 2. Rutas Marítimas Intercontinentales -->
+    <g class="maritime-routes">
+      <path d="M 810 590 C 980 480, 1100 420, 1270 460" class="sea-route" />
+      <path d="M 990 940 C 1150 820, 1250 780, 1520 890" class="sea-route" />
+      <path d="M 2460 320 C 2540 220, 40 200, 120 120" class="sea-route" />
+      <path d="M 1910 1250 C 2050 1320, 2150 1340, 2220 1140" class="sea-route" />
+    </g>
+
+    <!-- 3. Masas Continentales Continuas Reconocibles de los 6 Continentes -->
+
+    <!-- AMÉRICA DEL NORTE -->
+    <g class="continent-group-north-america">
+      <path class="continent-shelf" d="M 90 90 C 300 70, 760 110, 1190 210 C 1130 410, 890 510, 690 730 C 510 810, 350 640, 300 460 C 270 270, 110 290, 90 90 Z" />
+      <path class="continent-mass" d="M 100 100 C 300 80, 750 120, 1180 220 C 1120 400, 880 500, 680 720 C 500 800, 360 630, 310 450 C 280 260, 120 280, 100 100 Z" />
+      <path class="topo-mountain" d="M 320 200 L 360 280 L 400 360 L 420 480 L 460 580" />
+      <path class="topo-ridge" d="M 340 220 L 380 300 L 420 380 L 440 500" />
+    </g>
+
+    <!-- AMÉRICA DEL SUR -->
+    <g class="continent-group-south-america">
+      <path class="continent-shelf" d="M 470 700 C 660 670, 860 710, 1000 930 C 960 1130, 810 1230, 560 1640 C 430 1390, 420 910, 470 700 Z" />
+      <path class="continent-mass" d="M 480 710 C 650 680, 850 720, 990 940 C 950 1120, 800 1220, 570 1620 C 440 1380, 430 900, 480 710 Z" />
+      <path class="topo-mountain" d="M 520 740 L 490 850 L 460 980 L 470 1150 L 510 1350 L 540 1500" />
+      <path class="topo-ridge" d="M 530 760 L 500 870 L 470 1000 L 480 1170" />
+    </g>
+
+    <!-- EUROPA -->
+    <g class="continent-group-europe">
+      <path class="continent-shelf" d="M 1140 170 C 1360 130, 1610 150, 1930 370 C 1810 570, 1460 680, 1170 530 C 1140 390, 1120 250, 1140 170 Z" />
+      <path class="continent-mass" d="M 1150 180 C 1350 140, 1600 160, 1920 380 C 1800 560, 1450 670, 1180 520 C 1150 380, 1130 240, 1150 180 Z" />
+      <path class="topo-mountain" d="M 1250 500 L 1320 480 L 1400 490 L 1460 480" />
+      <path class="topo-ridge" d="M 1300 485 L 1380 495" />
+    </g>
+
+    <!-- ÁFRICA -->
+    <g class="continent-group-africa">
+      <path class="continent-shelf" d="M 1210 670 C 1560 620, 1860 640, 1890 860 C 1970 1090, 1740 1430, 1430 1330 C 1270 980, 1170 850, 1210 670 Z" />
+      <path class="continent-mass" d="M 1220 680 C 1550 630, 1850 650, 1880 870 C 1960 1080, 1730 1420, 1440 1320 C 1280 970, 1180 840, 1220 680 Z" />
+      <path class="topo-mountain" d="M 1260 700 L 1340 710 M 1760 820 L 1740 980 L 1680 1120" />
+      <path class="topo-ridge" d="M 1770 840 L 1750 990" />
+    </g>
+
+    <!-- ASIA -->
+    <g class="continent-group-asia">
+      <path class="continent-shelf" d="M 1570 520 C 1870 110, 2430 90, 2550 230 C 2540 490, 2390 790, 2160 960 C 1890 850, 1540 700, 1570 520 Z" />
+      <path class="continent-mass" d="M 1580 530 C 1880 120, 2420 100, 2540 240 C 2530 480, 2380 780, 2150 950 C 1880 840, 1550 690, 1580 530 Z" />
+      <path class="topo-mountain" d="M 1720 250 L 1740 380 M 1950 620 L 2100 640 L 2250 620 L 2350 550" />
+      <path class="topo-ridge" d="M 1970 630 L 2120 650 L 2270 630" />
+    </g>
+
+    <!-- OCEANÍA -->
+    <g class="continent-group-oceania">
+      <path class="continent-shelf" d="M 2110 950 C 2370 920, 2550 1130, 2550 1350 C 2460 1450, 2170 1330, 2110 950 Z" />
+      <path class="continent-mass" d="M 2120 960 C 2360 930, 2540 1140, 2540 1340 C 2450 1440, 2180 1320, 2120 960 Z" />
+      <path class="topo-mountain" d="M 2480 1160 L 2500 1260 L 2460 1340" />
+      <path class="topo-ridge" d="M 2490 1180 L 2510 1270" />
+    </g>
+
+  </g>
+</svg>
+
+      </div>
+
+      <!-- 2. SVG Overlay Territorios Superpuestos al 32% Opacidad -->
+      <div id="wrapper-overlay" style="width:100%; height:100%; position:absolute; inset:0; display:none;">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2560 1440" id="map-base-tactical-50-001">
+  <defs>
+    <style>
+      .territory { fill: rgba(15, 23, 42, 0.75); stroke: #0f172a; stroke-width: 4.5; transition: all 0.2s ease; cursor: pointer; pointer-events: none; }
+      .territory.selected { stroke: #ffffff !important; stroke-width: 8 !important; animation: pulseStroke 1.2s infinite alternate; }
+      .territory.attack-target { stroke: #ef4444 !important; stroke-width: 8 !important; stroke-dasharray: 10 6; }
+      .p-red { stroke: #ef4444; stroke-width: 6; fill: rgba(239, 68, 68, 0.22); filter: drop-shadow(0 0 6px rgba(239,68,68,0.4)); }
+      .p-blue { stroke: #3b82f6; stroke-width: 6; fill: rgba(59, 130, 246, 0.22); filter: drop-shadow(0 0 6px rgba(59,130,246,0.4)); }
+      .p-green { stroke: #10b981; stroke-width: 6; fill: rgba(16, 185, 129, 0.22); filter: drop-shadow(0 0 6px rgba(16,185,129,0.4)); }
+      .p-yellow { stroke: #eab308; stroke-width: 6; fill: rgba(234, 179, 8, 0.22); filter: drop-shadow(0 0 6px rgba(234,179,8,0.4)); }
+      .p-purple { stroke: #a855f7; stroke-width: 6; fill: rgba(168, 85, 247, 0.22); filter: drop-shadow(0 0 6px rgba(168,85,247,0.4)); }
+      .p-cyan { stroke: #06b6d4; stroke-width: 6; fill: rgba(6, 182, 212, 0.22); filter: drop-shadow(0 0 6px rgba(6,182,212,0.4)); }
+      
+      /* FORZAR HITBOXES COMO ÚNICO RECEPTOR INTERACTIVO */
+      .territory-hitbox { fill: transparent !important; stroke: transparent !important; pointer-events: all !important; cursor: pointer; }
+      
+      /* FORZAR OVERLAYS COMO 100% INACTIVOS A CLICKS */
+      #layer-4-overlays, #layer-4-overlays *, .territory-label, .badge-group, .badge-circle, .badge-text, .vector-arrow {
+        pointer-events: none !important;
+      }
+      .territory-label { font-size: 22px; font-weight: 800; fill: #f8fafc; paint-order: stroke; stroke: #020617; stroke-width: 6px; text-anchor: middle; }
+      .badge-circle { fill: #0f172a; fill-opacity: 0.95; stroke-width: 4.5; }
+      .badge-text { fill: #fff; font-size: 28px; font-weight: 900; text-anchor: middle; }
+      .sea-route { stroke: rgba(56, 189, 248, 0.35); stroke-width: 4; stroke-dasharray: 8 6; fill: none; pointer-events: none; }
+      .vector-arrow { stroke: #ef4444; stroke-width: 8; stroke-dasharray: 14 8; fill: none; animation: dashMove 1s linear infinite; }
+      @keyframes pulseStroke { 0% { filter: drop-shadow(0 0 6px #fff); } 100% { filter: drop-shadow(0 0 20px #fbbf24); } }
+      @keyframes dashMove { to { stroke-dashoffset: -44; } }
+    </style>
+  </defs>
+
+  <!-- CAPA 1: OCÉANO Y BASE GEOGRÁFICA -->
+  <g id="layer-1-geo-base" pointer-events="none">
+    <rect width="2560" height="1440" fill="#091b30" />
+    <pattern id="grid50" width="120" height="120" patternUnits="userSpaceOnUse">
+      <path d="M 120 0 L 0 0 0 120" fill="none" stroke="rgba(56, 189, 248, 0.04)" stroke-width="1.5" />
+    </pattern>
+    <rect width="2560" height="1440" fill="url(#grid50)" />
+    
+    <!-- Rutas Marítimas -->
+    <path d="M 920 320 L 1150 180" class="sea-route" />
+    <path d="M 1060 400 L 1180 320" class="sea-route" />
+    <path d="M 680 720 L 520 540" class="sea-route" />
+    <path d="M 1180 440 L 1220 680" class="sea-route" />
+    <path d="M 2380 120 L 120 120" class="sea-route" />
+    <path d="M 2320 880 L 2240 940" class="sea-route" />
+  </g>
+
+  <!-- CAPA 2: TERRITORIOS SVG JUGABLES -->
+  <g id="layer-2-playable-territories" pointer-events="none">
+    <path id="territory-north-america-alaska" class="territory p-yellow" d="M 120 120 C 180 100, 280 110, 320 180 L 290 260 C 220 280, 150 260, 100 210 Z" pointer-events="none" />
+    <path id="territory-north-america-yukon" class="territory p-yellow" d="M 320 180 C 400 160, 480 170, 520 230 L 450 300 C 380 310, 320 280, 290 260 Z" pointer-events="none" />
+    <path id="territory-north-america-canada" class="territory p-yellow" d="M 520 230 C 650 180, 850 200, 920 320 L 820 420 C 680 440, 520 400, 450 300 Z" pointer-events="none" />
+    <path id="territory-north-america-greenland" class="territory p-blue" d="M 920 80 C 1050 60, 1150 100, 1180 220 C 1120 300, 980 320, 920 220 Z" pointer-events="none" />
+    <path id="territory-north-america-newfoundland" class="territory p-yellow" d="M 920 320 C 980 300, 1040 330, 1060 400 L 980 460 C 920 450, 880 410, 820 420 Z" pointer-events="none" />
+    <path id="territory-north-america-oregon" class="territory p-green" d="M 320 320 C 400 310, 460 330, 480 390 L 420 450 C 350 440, 310 390, 320 320 Z" pointer-events="none" />
+    <path id="territory-north-america-california" class="territory p-green" d="M 310 450 C 380 440, 440 460, 460 520 L 400 580 C 330 570, 300 510, 310 450 Z" pointer-events="none" />
+    <path id="territory-north-america-new-york" class="territory p-blue" d="M 480 390 C 640 380, 780 390, 820 450 L 760 530 C 620 540, 460 520, 480 390 Z" pointer-events="none" />
+    <path id="territory-north-america-mexico" class="territory p-red" d="M 400 580 C 480 570, 560 580, 600 630 L 540 700 C 460 710, 380 660, 400 580 Z" pointer-events="none" />
+    <path id="territory-south-america-colombia" class="territory p-yellow" d="M 520 720 C 570 700, 640 710, 670 760 L 630 830 C 580 840, 530 830, 500 790 C 490 760, 500 740, 520 720 Z" pointer-events="none" />
+    <path id="territory-south-america-venezuela" class="territory p-cyan" d="M 670 760 C 730 730, 810 740, 860 770 L 830 840 C 770 850, 690 840, 630 830 Z" pointer-events="none" />
+    <path id="territory-south-america-peru" class="territory p-green" d="M 500 790 C 540 830, 580 840, 590 900 L 560 1020 C 500 1010, 460 950, 440 870 C 450 830, 470 800, 500 790 Z" pointer-events="none" />
+    <path id="territory-south-america-brazil" class="territory p-blue" d="M 630 830 C 690 840, 770 850, 830 840 C 920 880, 1010 960, 1000 1120 C 960 1220, 830 1240, 730 1190 L 610 1080 C 620 1000, 600 890, 630 830 Z" pointer-events="none" />
+    <path id="territory-south-america-bolivia" class="territory p-purple" d="M 560 1020 C 590 900, 620 1010, 610 1080 L 730 1190 C 670 1230, 600 1240, 560 1170 Z" pointer-events="none" />
+    <path id="territory-south-america-chile" class="territory p-yellow" d="M 440 870 C 460 950, 500 1010, 560 1020 L 560 1170 C 530 1290, 500 1440, 480 1540 C 450 1530, 440 1380, 440 1120 C 430 1010, 430 930, 440 870 Z" pointer-events="none" />
+    <path id="territory-south-america-argentina" class="territory p-red" d="M 560 1170 C 600 1230, 670 1230, 730 1190 L 770 1260 C 730 1340, 650 1480, 570 1620 L 480 1540 C 500 1440, 530 1290, 560 1170 Z" pointer-events="none" />
+    <path id="territory-south-america-uruguay" class="territory p-green" d="M 730 1190 C 830 1190, 810 1270, 770 1260 Z" pointer-events="none" />
+    <path id="territory-europe-iceland" class="territory p-blue" d="M 1150 180 C 1220 160, 1280 180, 1300 240 L 1240 290 C 1170 280, 1130 240, 1150 180 Z" pointer-events="none" />
+    <path id="territory-europe-great-britain" class="territory p-blue" d="M 1180 320 C 1250 300, 1310 320, 1330 400 L 1270 460 C 1200 450, 1160 390, 1180 320 Z" pointer-events="none" />
+    <path id="territory-europe-sweden" class="territory p-cyan" d="M 1340 180 C 1420 160, 1480 190, 1500 290 L 1420 360 C 1350 350, 1320 260, 1340 180 Z" pointer-events="none" />
+    <path id="territory-europe-spain" class="territory p-red" d="M 1180 520 C 1260 500, 1310 520, 1330 590 L 1260 660 C 1180 650, 1150 580, 1180 520 Z" pointer-events="none" />
+    <path id="territory-europe-france" class="territory p-blue" d="M 1270 460 C 1350 440, 1400 460, 1420 530 L 1350 600 C 1280 590, 1250 520, 1270 460 Z" pointer-events="none" />
+    <path id="territory-europe-germany" class="territory p-blue" d="M 1380 380 C 1460 370, 1510 390, 1530 460 L 1450 530 C 1380 520, 1360 450, 1380 380 Z" pointer-events="none" />
+    <path id="territory-europe-italy" class="territory p-green" d="M 1390 530 C 1440 520, 1470 540, 1480 610 L 1430 670 C 1380 660, 1370 600, 1390 530 Z" pointer-events="none" />
+    <path id="territory-europe-poland" class="territory p-purple" d="M 1480 370 C 1560 360, 1610 380, 1630 460 L 1550 530 C 1480 520, 1460 440, 1480 370 Z" pointer-events="none" />
+    <path id="territory-europe-russia" class="territory p-purple" d="M 1550 220 C 1720 180, 1880 220, 1920 380 L 1800 520 C 1650 530, 1520 460, 1550 220 Z" pointer-events="none" />
+    <path id="territory-africa-sahara" class="territory p-green" d="M 1220 680 C 1400 650, 1550 670, 1600 760 L 1520 890 C 1340 900, 1180 840, 1220 680 Z" pointer-events="none" />
+    <path id="territory-africa-egypt" class="territory p-yellow" d="M 1580 650 C 1680 630, 1750 650, 1780 720 L 1710 810 C 1620 810, 1560 760, 1580 650 Z" pointer-events="none" />
+    <path id="territory-africa-nigeria" class="territory p-green" d="M 1320 890 C 1440 880, 1500 900, 1520 980 L 1440 1060 C 1320 1050, 1280 970, 1320 890 Z" pointer-events="none" />
+    <path id="territory-africa-ethiopia" class="territory p-yellow" d="M 1680 780 C 1780 760, 1850 790, 1880 870 L 1790 950 C 1700 940, 1650 870, 1680 780 Z" pointer-events="none" />
+    <path id="territory-africa-zaire" class="territory p-green" d="M 1440 1040 C 1580 1030, 1660 1050, 1680 1140 L 1580 1220 C 1440 1210, 1400 1130, 1440 1040 Z" pointer-events="none" />
+    <path id="territory-africa-kenya" class="territory p-green" d="M 1680 950 C 1780 940, 1820 970, 1840 1060 L 1740 1140 C 1660 1120, 1640 1040, 1680 950 Z" pointer-events="none" />
+    <path id="territory-africa-south-africa" class="territory p-red" d="M 1480 1200 C 1640 1180, 1720 1210, 1730 1340 C 1640 1420, 1480 1400, 1440 1320 Z" pointer-events="none" />
+    <path id="territory-africa-madagascar" class="territory p-green" d="M 1880 1080 C 1930 1060, 1960 1090, 1970 1180 L 1910 1250 C 1860 1240, 1850 1160, 1880 1080 Z" pointer-events="none" />
+    <path id="territory-asia-turkey" class="territory p-purple" d="M 1580 530 C 1660 510, 1720 530, 1740 600 L 1660 670 C 1580 660, 1550 590, 1580 530 Z" pointer-events="none" />
+    <path id="territory-asia-arabia" class="territory p-purple" d="M 1720 630 C 1820 610, 1880 640, 1900 740 L 1810 820 C 1720 810, 1680 730, 1720 630 Z" pointer-events="none" />
+    <path id="territory-asia-iran" class="territory p-purple" d="M 1740 500 C 1840 480, 1900 500, 1920 580 L 1830 650 C 1740 640, 1710 570, 1740 500 Z" pointer-events="none" />
+    <path id="territory-asia-aral" class="territory p-purple" d="M 1880 350 C 1980 330, 2040 360, 2060 450 L 1970 520 C 1880 510, 1850 430, 1880 350 Z" pointer-events="none" />
+    <path id="territory-asia-gobi" class="territory p-purple" d="M 2060 320 C 2180 300, 2250 330, 2270 420 L 2170 500 C 2060 490, 2020 410, 2060 320 Z" pointer-events="none" />
+    <path id="territory-asia-siberia" class="territory p-purple" d="M 1920 120 C 2180 80, 2380 120, 2420 280 L 2260 400 C 2050 410, 1880 320, 1920 120 Z" pointer-events="none" />
+    <path id="territory-asia-kamchatka" class="territory p-purple" d="M 2380 120 C 2480 100, 2530 140, 2540 240 L 2460 320 C 2380 310, 2350 220, 2380 120 Z" pointer-events="none" />
+    <path id="territory-asia-japan" class="territory p-cyan" d="M 2420 380 C 2480 360, 2520 390, 2530 480 L 2460 550 C 2410 540, 2390 460, 2420 380 Z" pointer-events="none" />
+    <path id="territory-asia-india" class="territory p-yellow" d="M 1920 580 C 2040 560, 2120 590, 2140 700 L 2020 850 C 1920 840, 1880 730, 1920 580 Z" pointer-events="none" />
+    <path id="territory-asia-china" class="territory p-purple" d="M 2140 500 C 2280 480, 2380 520, 2400 680 C 2320 780, 2150 780, 2120 680 Z" pointer-events="none" />
+    <path id="territory-asia-mongolia" class="territory p-purple" d="M 2180 280 C 2280 260, 2350 280, 2370 360 L 2270 420 C 2180 410, 2140 350, 2180 280 Z" pointer-events="none" />
+    <path id="territory-asia-malaysia" class="territory p-purple" d="M 2150 780 C 2250 770, 2300 800, 2320 880 L 2220 950 C 2140 940, 2120 860, 2150 780 Z" pointer-events="none" />
+    <path id="territory-oceania-sumatra" class="territory p-cyan" d="M 2120 960 C 2180 940, 2220 960, 2230 1020 L 2170 1070 C 2110 1060, 2100 1010, 2120 960 Z" pointer-events="none" />
+    <path id="territory-oceania-borneo" class="territory p-cyan" d="M 2240 940 C 2320 930, 2360 960, 2370 1030 L 2290 1090 C 2220 1080, 2210 1000, 2240 940 Z" pointer-events="none" />
+    <path id="territory-oceania-java" class="territory p-cyan" d="M 2180 1080 C 2240 1070, 2280 1090, 2290 1140 L 2230 1180 C 2170 1170, 2160 1120, 2180 1080 Z" pointer-events="none" />
+    <path id="territory-oceania-australia" class="territory p-cyan" d="M 2220 1140 C 2420 1110, 2520 1180, 2540 1340 C 2450 1440, 2220 1420, 2180 1320 Z" pointer-events="none" />
+  </g>
+
+  <!-- CAPA 3: HITBOXES INVISIBLES INDEPENDIENTES CON CONTRATO TÉCNICO COMPATIBLE (data-territory) -->
+  <g id="layer-3-hitboxes" pointer-events="all">
+    <path class="territory-hitbox" data-territory="territory-north-america-alaska" d="M 120 120 C 180 100, 280 110, 320 180 L 290 260 C 220 280, 150 260, 100 210 Z" pointer-events="all" />
+    <path class="territory-hitbox" data-territory="territory-north-america-yukon" d="M 320 180 C 400 160, 480 170, 520 230 L 450 300 C 380 310, 320 280, 290 260 Z" pointer-events="all" />
+    <path class="territory-hitbox" data-territory="territory-north-america-canada" d="M 520 230 C 650 180, 850 200, 920 320 L 820 420 C 680 440, 520 400, 450 300 Z" pointer-events="all" />
+    <path class="territory-hitbox" data-territory="territory-north-america-greenland" d="M 920 80 C 1050 60, 1150 100, 1180 220 C 1120 300, 980 320, 920 220 Z" pointer-events="all" />
+    <path class="territory-hitbox" data-territory="territory-north-america-newfoundland" d="M 920 320 C 980 300, 1040 330, 1060 400 L 980 460 C 920 450, 880 410, 820 420 Z" pointer-events="all" />
+    <path class="territory-hitbox" data-territory="territory-north-america-oregon" d="M 320 320 C 400 310, 460 330, 480 390 L 420 450 C 350 440, 310 390, 320 320 Z" pointer-events="all" />
+    <path class="territory-hitbox" data-territory="territory-north-america-california" d="M 310 450 C 380 440, 440 460, 460 520 L 400 580 C 330 570, 300 510, 310 450 Z" pointer-events="all" />
+    <path class="territory-hitbox" data-territory="territory-north-america-new-york" d="M 480 390 C 640 380, 780 390, 820 450 L 760 530 C 620 540, 460 520, 480 390 Z" pointer-events="all" />
+    <path class="territory-hitbox" data-territory="territory-north-america-mexico" d="M 400 580 C 480 570, 560 580, 600 630 L 540 700 C 460 710, 380 660, 400 580 Z" pointer-events="all" />
+    <path class="territory-hitbox" data-territory="territory-south-america-colombia" d="M 520 720 C 570 700, 640 710, 670 760 L 630 830 C 580 840, 530 830, 500 790 C 490 760, 500 740, 520 720 Z" pointer-events="all" />
+    <path class="territory-hitbox" data-territory="territory-south-america-venezuela" d="M 670 760 C 730 730, 810 740, 860 770 L 830 840 C 770 850, 690 840, 630 830 Z" pointer-events="all" />
+    <path class="territory-hitbox" data-territory="territory-south-america-peru" d="M 500 790 C 540 830, 580 840, 590 900 L 560 1020 C 500 1010, 460 950, 440 870 C 450 830, 470 800, 500 790 Z" pointer-events="all" />
+    <path class="territory-hitbox" data-territory="territory-south-america-brazil" d="M 630 830 C 690 840, 770 850, 830 840 C 920 880, 1010 960, 1000 1120 C 960 1220, 830 1240, 730 1190 L 610 1080 C 620 1000, 600 890, 630 830 Z" pointer-events="all" />
+    <path class="territory-hitbox" data-territory="territory-south-america-bolivia" d="M 560 1020 C 590 900, 620 1010, 610 1080 L 730 1190 C 670 1230, 600 1240, 560 1170 Z" pointer-events="all" />
+    <path class="territory-hitbox" data-territory="territory-south-america-chile" d="M 440 870 C 460 950, 500 1010, 560 1020 L 560 1170 C 530 1290, 500 1440, 480 1540 C 450 1530, 440 1380, 440 1120 C 430 1010, 430 930, 440 870 Z" pointer-events="all" />
+    <path class="territory-hitbox" data-territory="territory-south-america-argentina" d="M 560 1170 C 600 1230, 670 1230, 730 1190 L 770 1260 C 730 1340, 650 1480, 570 1620 L 480 1540 C 500 1440, 530 1290, 560 1170 Z" pointer-events="all" />
+    <path class="territory-hitbox" data-territory="territory-south-america-uruguay" d="M 730 1190 C 830 1190, 810 1270, 770 1260 Z" pointer-events="all" />
+    <path class="territory-hitbox" data-territory="territory-europe-iceland" d="M 1150 180 C 1220 160, 1280 180, 1300 240 L 1240 290 C 1170 280, 1130 240, 1150 180 Z" pointer-events="all" />
+    <path class="territory-hitbox" data-territory="territory-europe-great-britain" d="M 1180 320 C 1250 300, 1310 320, 1330 400 L 1270 460 C 1200 450, 1160 390, 1180 320 Z" pointer-events="all" />
+    <path class="territory-hitbox" data-territory="territory-europe-sweden" d="M 1340 180 C 1420 160, 1480 190, 1500 290 L 1420 360 C 1350 350, 1320 260, 1340 180 Z" pointer-events="all" />
+    <path class="territory-hitbox" data-territory="territory-europe-spain" d="M 1180 520 C 1260 500, 1310 520, 1330 590 L 1260 660 C 1180 650, 1150 580, 1180 520 Z" pointer-events="all" />
+    <path class="territory-hitbox" data-territory="territory-europe-france" d="M 1270 460 C 1350 440, 1400 460, 1420 530 L 1350 600 C 1280 590, 1250 520, 1270 460 Z" pointer-events="all" />
+    <path class="territory-hitbox" data-territory="territory-europe-germany" d="M 1380 380 C 1460 370, 1510 390, 1530 460 L 1450 530 C 1380 520, 1360 450, 1380 380 Z" pointer-events="all" />
+    <path class="territory-hitbox" data-territory="territory-europe-italy" d="M 1390 530 C 1440 520, 1470 540, 1480 610 L 1430 670 C 1380 660, 1370 600, 1390 530 Z" pointer-events="all" />
+    <path class="territory-hitbox" data-territory="territory-europe-poland" d="M 1480 370 C 1560 360, 1610 380, 1630 460 L 1550 530 C 1480 520, 1460 440, 1480 370 Z" pointer-events="all" />
+    <path class="territory-hitbox" data-territory="territory-europe-russia" d="M 1550 220 C 1720 180, 1880 220, 1920 380 L 1800 520 C 1650 530, 1520 460, 1550 220 Z" pointer-events="all" />
+    <path class="territory-hitbox" data-territory="territory-africa-sahara" d="M 1220 680 C 1400 650, 1550 670, 1600 760 L 1520 890 C 1340 900, 1180 840, 1220 680 Z" pointer-events="all" />
+    <path class="territory-hitbox" data-territory="territory-africa-egypt" d="M 1580 650 C 1680 630, 1750 650, 1780 720 L 1710 810 C 1620 810, 1560 760, 1580 650 Z" pointer-events="all" />
+    <path class="territory-hitbox" data-territory="territory-africa-nigeria" d="M 1320 890 C 1440 880, 1500 900, 1520 980 L 1440 1060 C 1320 1050, 1280 970, 1320 890 Z" pointer-events="all" />
+    <path class="territory-hitbox" data-territory="territory-africa-ethiopia" d="M 1680 780 C 1780 760, 1850 790, 1880 870 L 1790 950 C 1700 940, 1650 870, 1680 780 Z" pointer-events="all" />
+    <path class="territory-hitbox" data-territory="territory-africa-zaire" d="M 1440 1040 C 1580 1030, 1660 1050, 1680 1140 L 1580 1220 C 1440 1210, 1400 1130, 1440 1040 Z" pointer-events="all" />
+    <path class="territory-hitbox" data-territory="territory-africa-kenya" d="M 1680 950 C 1780 940, 1820 970, 1840 1060 L 1740 1140 C 1660 1120, 1640 1040, 1680 950 Z" pointer-events="all" />
+    <path class="territory-hitbox" data-territory="territory-africa-south-africa" d="M 1480 1200 C 1640 1180, 1720 1210, 1730 1340 C 1640 1420, 1480 1400, 1440 1320 Z" pointer-events="all" />
+    <path class="territory-hitbox" data-territory="territory-africa-madagascar" d="M 1880 1080 C 1930 1060, 1960 1090, 1970 1180 L 1910 1250 C 1860 1240, 1850 1160, 1880 1080 Z" pointer-events="all" />
+    <path class="territory-hitbox" data-territory="territory-asia-turkey" d="M 1580 530 C 1660 510, 1720 530, 1740 600 L 1660 670 C 1580 660, 1550 590, 1580 530 Z" pointer-events="all" />
+    <path class="territory-hitbox" data-territory="territory-asia-arabia" d="M 1720 630 C 1820 610, 1880 640, 1900 740 L 1810 820 C 1720 810, 1680 730, 1720 630 Z" pointer-events="all" />
+    <path class="territory-hitbox" data-territory="territory-asia-iran" d="M 1740 500 C 1840 480, 1900 500, 1920 580 L 1830 650 C 1740 640, 1710 570, 1740 500 Z" pointer-events="all" />
+    <path class="territory-hitbox" data-territory="territory-asia-aral" d="M 1880 350 C 1980 330, 2040 360, 2060 450 L 1970 520 C 1880 510, 1850 430, 1880 350 Z" pointer-events="all" />
+    <path class="territory-hitbox" data-territory="territory-asia-gobi" d="M 2060 320 C 2180 300, 2250 330, 2270 420 L 2170 500 C 2060 490, 2020 410, 2060 320 Z" pointer-events="all" />
+    <path class="territory-hitbox" data-territory="territory-asia-siberia" d="M 1920 120 C 2180 80, 2380 120, 2420 280 L 2260 400 C 2050 410, 1880 320, 1920 120 Z" pointer-events="all" />
+    <path class="territory-hitbox" data-territory="territory-asia-kamchatka" d="M 2380 120 C 2480 100, 2530 140, 2540 240 L 2460 320 C 2380 310, 2350 220, 2380 120 Z" pointer-events="all" />
+    <path class="territory-hitbox" data-territory="territory-asia-japan" d="M 2420 380 C 2480 360, 2520 390, 2530 480 L 2460 550 C 2410 540, 2390 460, 2420 380 Z" pointer-events="all" />
+    <path class="territory-hitbox" data-territory="territory-asia-india" d="M 1920 580 C 2040 560, 2120 590, 2140 700 L 2020 850 C 1920 840, 1880 730, 1920 580 Z" pointer-events="all" />
+    <path class="territory-hitbox" data-territory="territory-asia-china" d="M 2140 500 C 2280 480, 2380 520, 2400 680 C 2320 780, 2150 780, 2120 680 Z" pointer-events="all" />
+    <path class="territory-hitbox" data-territory="territory-asia-mongolia" d="M 2180 280 C 2280 260, 2350 280, 2370 360 L 2270 420 C 2180 410, 2140 350, 2180 280 Z" pointer-events="all" />
+    <path class="territory-hitbox" data-territory="territory-asia-malaysia" d="M 2150 780 C 2250 770, 2300 800, 2320 880 L 2220 950 C 2140 940, 2120 860, 2150 780 Z" pointer-events="all" />
+    <path class="territory-hitbox" data-territory="territory-oceania-sumatra" d="M 2120 960 C 2180 940, 2220 960, 2230 1020 L 2170 1070 C 2110 1060, 2100 1010, 2120 960 Z" pointer-events="all" />
+    <path class="territory-hitbox" data-territory="territory-oceania-borneo" d="M 2240 940 C 2320 930, 2360 960, 2370 1030 L 2290 1090 C 2220 1080, 2210 1000, 2240 940 Z" pointer-events="all" />
+    <path class="territory-hitbox" data-territory="territory-oceania-java" d="M 2180 1080 C 2240 1070, 2280 1090, 2290 1140 L 2230 1180 C 2170 1170, 2160 1120, 2180 1080 Z" pointer-events="all" />
+    <path class="territory-hitbox" data-territory="territory-oceania-australia" d="M 2220 1140 C 2420 1110, 2520 1180, 2540 1340 C 2450 1440, 2220 1420, 2180 1320 Z" pointer-events="all" />
+  </g>
+
+  <!-- CAPA 4: OVERLAYS DE ETIQUETAS Y BADGES DE TROPAS 100% TRANSPARENTES A EVENTOS DE RATÓN -->
+  <g id="layer-4-overlays" pointer-events="none">
+    <text x="200" y="155" class="territory-label" pointer-events="none">Alaska</text>
+    <g class="badge-group" data-badge-id="territory-north-america-alaska" pointer-events="none">
+      <circle cx="200" cy="215" r="28" class="badge-circle" pointer-events="none" />
+      <text x="200" y="225" class="badge-text" pointer-events="none">3</text>
+    </g>
+    <text x="400" y="195" class="territory-label" pointer-events="none">Yukón</text>
+    <g class="badge-group" data-badge-id="territory-north-america-yukon" pointer-events="none">
+      <circle cx="400" cy="255" r="28" class="badge-circle" pointer-events="none" />
+      <text x="400" y="265" class="badge-text" pointer-events="none">2</text>
+    </g>
+    <text x="680" y="245" class="territory-label" pointer-events="none">Canadá</text>
+    <g class="badge-group" data-badge-id="territory-north-america-canada" pointer-events="none">
+      <circle cx="680" cy="335" r="28" class="badge-circle" pointer-events="none" />
+      <text x="680" y="345" class="badge-text" pointer-events="none">8</text>
+    </g>
+    <text x="1040" y="135" class="territory-label" pointer-events="none">Groenlandia</text>
+    <g class="badge-group" data-badge-id="territory-north-america-greenland" pointer-events="none">
+      <circle cx="1040" cy="215" r="28" class="badge-circle" pointer-events="none" />
+      <text x="1040" y="225" class="badge-text" pointer-events="none">4</text>
+    </g>
+    <text x="960" y="325" class="territory-label" pointer-events="none">Terranova</text>
+    <g class="badge-group" data-badge-id="territory-north-america-newfoundland" pointer-events="none">
+      <circle cx="960" cy="390" r="28" class="badge-circle" pointer-events="none" />
+      <text x="960" y="400" class="badge-text" pointer-events="none">2</text>
+    </g>
+    <text x="400" y="345" class="territory-label" pointer-events="none">Oregón</text>
+    <g class="badge-group" data-badge-id="territory-north-america-oregon" pointer-events="none">
+      <circle cx="400" cy="405" r="28" class="badge-circle" pointer-events="none" />
+      <text x="400" y="415" class="badge-text" pointer-events="none">3</text>
+    </g>
+    <text x="380" y="475" class="territory-label" pointer-events="none">California</text>
+    <g class="badge-group" data-badge-id="territory-north-america-california" pointer-events="none">
+      <circle cx="380" cy="535" r="28" class="badge-circle" pointer-events="none" />
+      <text x="380" y="545" class="badge-text" pointer-events="none">4</text>
+    </g>
+    <text x="640" y="420" class="territory-label" pointer-events="none">Nueva York</text>
+    <g class="badge-group" data-badge-id="territory-north-america-new-york" pointer-events="none">
+      <circle cx="640" cy="485" r="28" class="badge-circle" pointer-events="none" />
+      <text x="640" y="495" class="badge-text" pointer-events="none">6</text>
+    </g>
+    <text x="490" y="605" class="territory-label" pointer-events="none">México</text>
+    <g class="badge-group" data-badge-id="territory-north-america-mexico" pointer-events="none">
+      <circle cx="490" cy="665" r="28" class="badge-circle" pointer-events="none" />
+      <text x="490" y="675" class="badge-text" pointer-events="none">5</text>
+    </g>
+    <text x="580" y="745" class="territory-label" pointer-events="none">Colombia</text>
+    <g class="badge-group" data-badge-id="territory-south-america-colombia" pointer-events="none">
+      <circle cx="580" cy="805" r="28" class="badge-circle" pointer-events="none" />
+      <text x="580" y="815" class="badge-text" pointer-events="none">3</text>
+    </g>
+    <text x="740" y="760" class="territory-label" pointer-events="none">Venezuela</text>
+    <g class="badge-group" data-badge-id="territory-south-america-venezuela" pointer-events="none">
+      <circle cx="740" cy="815" r="28" class="badge-circle" pointer-events="none" />
+      <text x="740" y="825" class="badge-text" pointer-events="none">2</text>
+    </g>
+    <text x="510" y="850" class="territory-label" pointer-events="none">Perú</text>
+    <g class="badge-group" data-badge-id="territory-south-america-peru" pointer-events="none">
+      <circle cx="510" cy="940" r="28" class="badge-circle" pointer-events="none" />
+      <text x="510" y="950" class="badge-text" pointer-events="none">4</text>
+    </g>
+    <text x="800" y="910" class="territory-label" pointer-events="none">Brasil</text>
+    <g class="badge-group" data-badge-id="territory-south-america-brazil" pointer-events="none">
+      <circle cx="800" cy="1030" r="28" class="badge-circle" pointer-events="none" />
+      <text x="800" y="1040" class="badge-text" pointer-events="none">10</text>
+    </g>
+    <text x="620" y="1075" class="territory-label" pointer-events="none">Bolivia</text>
+    <g class="badge-group" data-badge-id="territory-south-america-bolivia" pointer-events="none">
+      <circle cx="620" cy="1145" r="28" class="badge-circle" pointer-events="none" />
+      <text x="620" y="1155" class="badge-text" pointer-events="none">2</text>
+    </g>
+    <text x="450" y="1110" class="territory-label" pointer-events="none">Chile</text>
+    <g class="badge-group" data-badge-id="territory-south-america-chile" pointer-events="none">
+      <circle cx="450" cy="1280" r="28" class="badge-circle" pointer-events="none" />
+      <text x="450" y="1290" class="badge-text" pointer-events="none">5</text>
+    </g>
+    <text x="620" y="1260" class="territory-label" pointer-events="none">Argentina</text>
+    <g class="badge-group" data-badge-id="territory-south-america-argentina" pointer-events="none">
+      <circle cx="620" cy="1390" r="28" class="badge-circle" pointer-events="none" />
+      <text x="620" y="1400" class="badge-text" pointer-events="none">16</text>
+    </g>
+    <text x="770" y="1205" class="territory-label" pointer-events="none">Uruguay</text>
+    <g class="badge-group" data-badge-id="territory-south-america-uruguay" pointer-events="none">
+      <circle cx="770" cy="1245" r="28" class="badge-circle" pointer-events="none" />
+      <text x="770" y="1255" class="badge-text" pointer-events="none">1</text>
+    </g>
+    <text x="1210" y="195" class="territory-label" pointer-events="none">Islandia</text>
+    <g class="badge-group" data-badge-id="territory-europe-iceland" pointer-events="none">
+      <circle cx="1210" cy="255" r="28" class="badge-circle" pointer-events="none" />
+      <text x="1210" y="265" class="badge-text" pointer-events="none">2</text>
+    </g>
+    <text x="1230" y="335" class="territory-label" pointer-events="none">Gran Bretaña</text>
+    <g class="badge-group" data-badge-id="territory-europe-great-britain" pointer-events="none">
+      <circle cx="1230" cy="405" r="28" class="badge-circle" pointer-events="none" />
+      <text x="1230" y="415" class="badge-text" pointer-events="none">5</text>
+    </g>
+    <text x="1410" y="205" class="territory-label" pointer-events="none">Suecia</text>
+    <g class="badge-group" data-badge-id="territory-europe-sweden" pointer-events="none">
+      <circle cx="1410" cy="285" r="28" class="badge-circle" pointer-events="none" />
+      <text x="1410" y="295" class="badge-text" pointer-events="none">4</text>
+    </g>
+    <text x="1230" y="535" class="territory-label" pointer-events="none">España</text>
+    <g class="badge-group" data-badge-id="territory-europe-spain" pointer-events="none">
+      <circle cx="1230" cy="605" r="28" class="badge-circle" pointer-events="none" />
+      <text x="1230" y="615" class="badge-text" pointer-events="none">3</text>
+    </g>
+    <text x="1320" y="470" class="territory-label" pointer-events="none">Francia</text>
+    <g class="badge-group" data-badge-id="territory-europe-france" pointer-events="none">
+      <circle cx="1320" cy="535" r="28" class="badge-circle" pointer-events="none" />
+      <text x="1320" y="545" class="badge-text" pointer-events="none">4</text>
+    </g>
+    <text x="1420" y="390" class="territory-label" pointer-events="none">Alemania</text>
+    <g class="badge-group" data-badge-id="territory-europe-germany" pointer-events="none">
+      <circle cx="1420" cy="465" r="28" class="badge-circle" pointer-events="none" />
+      <text x="1420" y="475" class="badge-text" pointer-events="none">6</text>
+    </g>
+    <text x="1420" y="550" class="territory-label" pointer-events="none">Italia</text>
+    <g class="badge-group" data-badge-id="territory-europe-italy" pointer-events="none">
+      <circle cx="1420" cy="620" r="28" class="badge-circle" pointer-events="none" />
+      <text x="1420" y="630" class="badge-text" pointer-events="none">3</text>
+    </g>
+    <text x="1530" y="390" class="territory-label" pointer-events="none">Polonia</text>
+    <g class="badge-group" data-badge-id="territory-europe-poland" pointer-events="none">
+      <circle cx="1530" cy="465" r="28" class="badge-circle" pointer-events="none" />
+      <text x="1530" y="475" class="badge-text" pointer-events="none">4</text>
+    </g>
+    <text x="1710" y="265" class="territory-label" pointer-events="none">Rusia</text>
+    <g class="badge-group" data-badge-id="territory-europe-russia" pointer-events="none">
+      <circle cx="1710" cy="390" r="28" class="badge-circle" pointer-events="none" />
+      <text x="1710" y="400" class="badge-text" pointer-events="none">12</text>
+    </g>
+    <text x="1390" y="705" class="territory-label" pointer-events="none">Sáhara</text>
+    <g class="badge-group" data-badge-id="territory-africa-sahara" pointer-events="none">
+      <circle cx="1390" cy="805" r="28" class="badge-circle" pointer-events="none" />
+      <text x="1390" y="815" class="badge-text" pointer-events="none">4</text>
+    </g>
+    <text x="1660" y="660" class="territory-label" pointer-events="none">Egipto</text>
+    <g class="badge-group" data-badge-id="territory-africa-egypt" pointer-events="none">
+      <circle cx="1660" cy="735" r="28" class="badge-circle" pointer-events="none" />
+      <text x="1660" y="745" class="badge-text" pointer-events="none">3</text>
+    </g>
+    <text x="1400" y="905" class="territory-label" pointer-events="none">Nigeria</text>
+    <g class="badge-group" data-badge-id="territory-africa-nigeria" pointer-events="none">
+      <circle cx="1400" cy="975" r="28" class="badge-circle" pointer-events="none" />
+      <text x="1400" y="985" class="badge-text" pointer-events="none">2</text>
+    </g>
+    <text x="1760" y="800" class="territory-label" pointer-events="none">Etiopía</text>
+    <g class="badge-group" data-badge-id="territory-africa-ethiopia" pointer-events="none">
+      <circle cx="1760" cy="875" r="28" class="badge-circle" pointer-events="none" />
+      <text x="1760" y="885" class="badge-text" pointer-events="none">3</text>
+    </g>
+    <text x="1530" y="1065" class="territory-label" pointer-events="none">Zaire</text>
+    <g class="badge-group" data-badge-id="territory-africa-zaire" pointer-events="none">
+      <circle cx="1530" cy="1135" r="28" class="badge-circle" pointer-events="none" />
+      <text x="1530" y="1145" class="badge-text" pointer-events="none">4</text>
+    </g>
+    <text x="1740" y="975" class="territory-label" pointer-events="none">Kenia</text>
+    <g class="badge-group" data-badge-id="territory-africa-kenya" pointer-events="none">
+      <circle cx="1740" cy="1045" r="28" class="badge-circle" pointer-events="none" />
+      <text x="1740" y="1055" class="badge-text" pointer-events="none">2</text>
+    </g>
+    <text x="1580" y="1235" class="territory-label" pointer-events="none">Sudáfrica</text>
+    <g class="badge-group" data-badge-id="territory-africa-south-africa" pointer-events="none">
+      <circle cx="1580" cy="1315" r="28" class="badge-circle" pointer-events="none" />
+      <text x="1580" y="1325" class="badge-text" pointer-events="none">6</text>
+    </g>
+    <text x="1910" y="1105" class="territory-label" pointer-events="none">Madagascar</text>
+    <g class="badge-group" data-badge-id="territory-africa-madagascar" pointer-events="none">
+      <circle cx="1910" cy="1175" r="28" class="badge-circle" pointer-events="none" />
+      <text x="1910" y="1185" class="badge-text" pointer-events="none">2</text>
+    </g>
+    <text x="1640" y="530" class="territory-label" pointer-events="none">Turquía</text>
+    <g class="badge-group" data-badge-id="territory-asia-turkey" pointer-events="none">
+      <circle cx="1640" cy="605" r="28" class="badge-circle" pointer-events="none" />
+      <text x="1640" y="615" class="badge-text" pointer-events="none">3</text>
+    </g>
+    <text x="1800" y="650" class="territory-label" pointer-events="none">Arabia</text>
+    <g class="badge-group" data-badge-id="territory-asia-arabia" pointer-events="none">
+      <circle cx="1800" cy="735" r="28" class="badge-circle" pointer-events="none" />
+      <text x="1800" y="745" class="badge-text" pointer-events="none">4</text>
+    </g>
+    <text x="1820" y="515" class="territory-label" pointer-events="none">Irán</text>
+    <g class="badge-group" data-badge-id="territory-asia-iran" pointer-events="none">
+      <circle cx="1820" cy="585" r="28" class="badge-circle" pointer-events="none" />
+      <text x="1820" y="595" class="badge-text" pointer-events="none">3</text>
+    </g>
+    <text x="1960" y="375" class="territory-label" pointer-events="none">Aral</text>
+    <g class="badge-group" data-badge-id="territory-asia-aral" pointer-events="none">
+      <circle cx="1960" cy="450" r="28" class="badge-circle" pointer-events="none" />
+      <text x="1960" y="460" class="badge-text" pointer-events="none">4</text>
+    </g>
+    <text x="2150" y="345" class="territory-label" pointer-events="none">Gobi</text>
+    <g class="badge-group" data-badge-id="territory-asia-gobi" pointer-events="none">
+      <circle cx="2150" cy="420" r="28" class="badge-circle" pointer-events="none" />
+      <text x="2150" y="430" class="badge-text" pointer-events="none">5</text>
+    </g>
+    <text x="2120" y="165" class="territory-label" pointer-events="none">Siberia</text>
+    <g class="badge-group" data-badge-id="territory-asia-siberia" pointer-events="none">
+      <circle cx="2120" cy="285" r="28" class="badge-circle" pointer-events="none" />
+      <text x="2120" y="295" class="badge-text" pointer-events="none">10</text>
+    </g>
+    <text x="2450" y="155" class="territory-label" pointer-events="none">Kamchatka</text>
+    <g class="badge-group" data-badge-id="territory-asia-kamchatka" pointer-events="none">
+      <circle cx="2450" cy="230" r="28" class="badge-circle" pointer-events="none" />
+      <text x="2450" y="240" class="badge-text" pointer-events="none">4</text>
+    </g>
+    <text x="2460" y="405" class="territory-label" pointer-events="none">Japón</text>
+    <g class="badge-group" data-badge-id="territory-asia-japan" pointer-events="none">
+      <circle cx="2460" cy="475" r="28" class="badge-circle" pointer-events="none" />
+      <text x="2460" y="485" class="badge-text" pointer-events="none">3</text>
+    </g>
+    <text x="2010" y="625" class="territory-label" pointer-events="none">India</text>
+    <g class="badge-group" data-badge-id="territory-asia-india" pointer-events="none">
+      <circle cx="2010" cy="730" r="28" class="badge-circle" pointer-events="none" />
+      <text x="2010" y="740" class="badge-text" pointer-events="none">6</text>
+    </g>
+    <text x="2240" y="540" class="territory-label" pointer-events="none">China</text>
+    <g class="badge-group" data-badge-id="territory-asia-china" pointer-events="none">
+      <circle cx="2240" cy="650" r="28" class="badge-circle" pointer-events="none" />
+      <text x="2240" y="660" class="badge-text" pointer-events="none">8</text>
+    </g>
+    <text x="2260" y="300" class="territory-label" pointer-events="none">Mongolia</text>
+    <g class="badge-group" data-badge-id="territory-asia-mongolia" pointer-events="none">
+      <circle cx="2260" cy="360" r="28" class="badge-circle" pointer-events="none" />
+      <text x="2260" y="370" class="badge-text" pointer-events="none">3</text>
+    </g>
+    <text x="2220" y="805" class="territory-label" pointer-events="none">Malasia</text>
+    <g class="badge-group" data-badge-id="territory-asia-malaysia" pointer-events="none">
+      <circle cx="2220" cy="875" r="28" class="badge-circle" pointer-events="none" />
+      <text x="2220" y="885" class="badge-text" pointer-events="none">3</text>
+    </g>
+    <text x="2160" y="975" class="territory-label" pointer-events="none">Sumatra</text>
+    <g class="badge-group" data-badge-id="territory-oceania-sumatra" pointer-events="none">
+      <circle cx="2160" cy="1025" r="28" class="badge-circle" pointer-events="none" />
+      <text x="2160" y="1035" class="badge-text" pointer-events="none">2</text>
+    </g>
+    <text x="2290" y="955" class="territory-label" pointer-events="none">Borneo</text>
+    <g class="badge-group" data-badge-id="territory-oceania-borneo" pointer-events="none">
+      <circle cx="2290" cy="1025" r="28" class="badge-circle" pointer-events="none" />
+      <text x="2290" y="1035" class="badge-text" pointer-events="none">2</text>
+    </g>
+    <text x="2220" y="1090" class="territory-label" pointer-events="none">Java</text>
+    <g class="badge-group" data-badge-id="territory-oceania-java" pointer-events="none">
+      <circle cx="2220" cy="1140" r="28" class="badge-circle" pointer-events="none" />
+      <text x="2220" y="1150" class="badge-text" pointer-events="none">1</text>
+    </g>
+    <text x="2340" y="1180" class="territory-label" pointer-events="none">Australia</text>
+    <g class="badge-group" data-badge-id="territory-oceania-australia" pointer-events="none">
+      <circle cx="2340" cy="1290" r="28" class="badge-circle" pointer-events="none" />
+      <text x="2340" y="1300" class="badge-text" pointer-events="none">6</text>
+    </g>
+  </g>
+</svg>
+
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function setViewMode(mode) {
+      const wrapperBase = document.getElementById('wrapper-base');
+      const wrapperOverlay = document.getElementById('wrapper-overlay');
+      const btnBase = document.getElementById('btn-view-base');
+      const btnOverlay = document.getElementById('btn-view-overlay');
+
+      if (mode === 'overlay') {
+        wrapperOverlay.style.display = 'block';
+        btnOverlay.classList.add('btn-active');
+        btnBase.classList.remove('btn-active');
+      } else {
+        wrapperOverlay.style.display = 'none';
+        btnBase.classList.add('btn-active');
+        btnOverlay.classList.remove('btn-active');
+      }
+    }
+
+    function setResolution(res) {
+      const container = document.getElementById('vp-container');
+      ['1366', '1920', '2560', '3840'].forEach(r => {
+        container.classList.remove(`mode-${r}`);
+        const btn = document.getElementById(`btn-res-${r}`);
+        if (btn) btn.classList.remove('btn-active');
+      });
+
+      container.classList.add(`mode-${res}`);
+      const activeBtn = document.getElementById(`btn-res-${res}`);
+      if (activeBtn) activeBtn.classList.add('btn-active');
+    }
+  </script>
+</body>
+</html>

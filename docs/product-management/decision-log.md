@@ -631,3 +631,43 @@ Puede haber zonas densas (Europa/Medio Oriente) que pidan polish P2 despues del 
 ## Criterio de revisión
 
 Reabrir solo si tester demuestra que sin etiquetas no se reconoce el mapa, que la base desaparece con seis colores, que un territorio no es clickeable, o que la legibilidad falla a 1366x768.
+
+## Decision 2026-07-25-17
+
+## Decisión
+
+Reabrir el bloqueo P0 del mapa Modo 50 y agregar bloqueo P0/P1 de layout responsive para QHD/4K. Se revoca la aprobacion de playtest privado basada en `fc8e5d7`.
+
+## Problema
+
+La version actual sigue sin leerse como mapamundi terminado: se perciben territorios/blobs flotando sobre fondo azul. Ademas, la UI no demuestra aprovechamiento correcto de viewports 2560x1440 y 3840x2160.
+
+## Evidencia
+
+Tester Windows informa bundle `DlvZXums` con 50 territorios, `viewBox 2560x1440`, toggle `Aa` funcional e hitboxes correctas, pero sin mapa geografico real visible. Revision local de `test-results/sa-pilot-1920x1080.png` confirma que el fondo muestra grilla/rutas/masas abstractas, no costas ni continentes reconocibles. `assets/maps/base/map-world-geographic-base-50-001.svg` existe, pero sus paths de continentes son curvas simplificadas tipo blob (`continent-group-*`) y no un mapamundi cartografico. `frontend/src/components/map/MapPanel.tsx` carga la base por convencion de nombre y falla silenciosamente si no aparece. `frontend/src/services/assets/AssetRegistry.ts` consume `/assets/manifest/assets-manifest.json`, donde la base geografica no esta declarada; la declaracion existe en `assets/manifests/assets-manifest.json`, que no es el manifest runtime.
+
+## Opciones consideradas
+
+1. Mantener aprobacion porque el mapa funciona tecnicamente.
+2. Pedir pulido visual menor sobre los territorios actuales.
+3. Reabrir P0 y exigir capa cartografica real mas validacion responsive.
+
+## Decisión elegida
+
+Reabrir P0. No autorizar nuevas iteraciones cosmeticas sobre blobs, dados 3D, particulas, relator animado ni Tribuna visual hasta resolver mapa base y layout responsive.
+
+## Motivo
+
+La promesa de producto es un tablero mundial reconocible. Los e2e verdes prueban clicks, no calidad cartografica ni presentacion en captura aislada. La capa geografica actual no cumple el criterio visual obligatorio.
+
+## Impacto
+
+Agy debe producir un mapamundi base real/original y continuo. Frontend debe diagnosticar integracion/deploy de la base y corregir layout responsive despues de tener asset valido. Tester debe validar 1366, 1920, 2560 y 3840. Backend no entra.
+
+## Riesgos
+
+Desalineacion entre base geografica y territorios interactivos; exceso de detalle que compita con tropas/labels; cambios responsive que rompan 1366x768; seguir gastando cuota en e2e funcionales sin validacion visual.
+
+## Criterio de revisión
+
+Solo reconsiderar con capturas reales del producto en 1920x1080, 1366x768, 2560x1440 y 3840x2160, con y sin labels, donde se vean costas/continentes continuos, seis colores de jugadores, hitboxes funcionando y sin areas vacias excesivas.

@@ -128,19 +128,20 @@ Integrar la region piloto America del Sur corregida en el mapa productivo o en u
 
 Fecha: 2026-07-25
 
-Estado: aprobado para playtest privado en Modo 50. No tocar backend ni modo 26.
+Estado: bloqueo P0 reabierto. No implementar mejoras cosmeticas ni avanzar playtest privado hasta integrar una capa geografica aprobada y resolver responsive QHD/4K.
 
 ### Objetivo
 
-Mantener la integracion de la base geografica continua debajo del mapa tactico Modo 50 y corregir solo defectos P0/P1 encontrados por tester.
+Diagnosticar y preparar la integracion robusta de una capa geografica real debajo del mapa tactico Modo 50, sin tocar backend, reglas ni modo 26.
 
-### Fuentes aprobadas
+### Fuentes
 
 - `assets/maps/base/map-base-tactical-50-001.svg`
-- `assets/maps/base/map-world-geographic-base-50-001.svg`
+- `assets/maps/base/map-world-geographic-base-50-001.svg` (rechazado como calidad final; sirve solo como evidencia tecnica)
 - `assets/manifests/map-world-50-manifest.json`
 - `docs/design/map-world-50-p0.md`
 - `frontend/public/prototype/geo-base-pilot.html`
+- `docs/product-management/decision-log.md`, Decision 2026-07-25-17
 
 ### Contrato obligatorio
 
@@ -151,14 +152,32 @@ Mantener la integracion de la base geografica continua debajo del mapa tactico M
 - La base geografica debe ser no interactiva y quedar debajo de territorios/hitboxes.
 - Bajar la opacidad/tintado de territorios lo necesario para que costas y continentes sigan visibles.
 
+### Diagnostico obligatorio antes de implementar
+
+- Confirmar en deploy real si existe `/assets/maps/base/map-world-geographic-base-50-001.svg`.
+- Confirmar en DOM si se inyecta `#layer-0-geo-world` y `svg[data-geo-base="1"]`.
+- Dejar de fallar silenciosamente en tests/dev cuando falta la base de un modo que la declara.
+- Resolver contradiccion de manifests: el runtime carga `/assets/manifest/assets-manifest.json`, no `assets/manifests/assets-manifest.json`.
+- Medir layout en 1366x768, 1920x1080, 2560x1440 y 3840x2160: rect del `game-board`, `map-panel`, SVG renderizado, columna Tribuna y areas vacias.
+
+### Integracion esperada cuando Arte entregue `map-world-geographic-base-50-002.svg`
+
+- Cargar la base desde manifest/runtime o contrato explicito, no solo por reemplazo de nombre.
+- Insertarla debajo de territorios y encima del fondo base tactico si corresponde.
+- Mantener `pointer-events: none`.
+- No usar la base para clicks ni derivar reglas de juego.
+- Validar que territorios, labels y tropas no tapen la lectura del mapamundi con seis jugadores.
+- Ajustar layout shell para QHD/4K: mapa dominante, Tribuna con `clamp`, sin max-width 1080p, sin scroll horizontal.
+
 ### Verificacion obligatoria
 
 - `pnpm test`
 - `pnpm typecheck`
 - `pnpm build`
 - `pnpm e2e`
-- Capturas 1920x1080 y 1366x768: vista normal con base, sin labels, seis jugadores, seleccionado, atacable, ataque en ejecucion.
+- Capturas 1366x768, 1920x1080, 2560x1440 y 3840x2160: vista normal con base, sin labels, seis jugadores, seleccionado, atacable, ataque en ejecucion.
+- Prueba Playwright que falle si `classic_50` no tiene `#layer-0-geo-world` visible o si `map-panel` no ocupa el area principal esperada.
 
 ### Limites
 
-No adaptar reglas, backend ni modo 26. No rehacer poligonos. No abrir pulido visual secundario hasta que tester Windows valide la URL real.
+No adaptar reglas, backend ni modo 26. No rehacer poligonos. No abrir pulido visual secundario. No declarar aprobado por e2e funcional: la aprobacion requiere capturas visuales revisadas por PO.
