@@ -39,3 +39,45 @@ Convertir la UI productiva en una version final jugable basada en `frontend/publ
 ## Condicion de parada
 
 Detener y pedir backend solo si falta dato autoritativo indispensable para turno, fase, accion legal, combate o persistencia.
+
+## Hotfix post-playtest Windows
+
+Fecha: 2026-07-25
+
+Estado: entregado y aceptado para mini-playtest en `bf4e6fe`.
+
+### Objetivo
+
+Corregir los P1 del playtest sin abrir rediseños grandes.
+
+### Tareas
+
+1. DEF-01: Arena de Combate no bloqueante para defensor y espectadores.
+   - Atacante: puede mantener modal/arena accionable.
+   - Defensor/espectador: deben ver batalla como panel/dock/overlay no bloqueante o con autocierre claro; no debe impedir Tribuna/chat/mapa.
+   - Mantener todo el contenido explicativo actual.
+
+2. DEF-02: apuesta de refuerzos transparente.
+   - Al pulsar `Arriesgar +N`, mostrar confirmacion/estado con el monto exacto enviado.
+   - Registrar en UI el monto aceptado por el servidor.
+   - Si se pide +3 y el servidor acepta 1, mostrar discrepancia y dejar evidencia de payload WS/evento para determinar si es bug backend.
+   - No simular ni ocultar el resultado.
+
+3. DEF-03: colocacion simultanea.
+   - Durante `placement_1`/`placement_2`, no mostrar `JUEGA` como si hubiera turno unico.
+   - Mostrar `COLOCANDO`/`LISTO` por jugador.
+
+4. DEF-04: reducir solapamiento nombre/insignia.
+   - Ajuste visual pequeno; no bloquear si requiere Arte.
+
+### Verificacion obligatoria
+
+- `pnpm test`
+- `pnpm typecheck`
+- `pnpm build`
+- `pnpm e2e`
+- Capturas desktop: turno, arena atacante, arena defensor/espectador, Tribuna.
+
+## Proximo alcance
+
+No abrir nuevos cambios de Frontend hasta completar mini-playtest de regresion con tres clientes. Si aparecen P0/P1, corregir solo esos defectos. DEF-05 mobile, flecha por arrastre, pings, planes privados e iconos/assets quedan fuera del alcance inmediato.
