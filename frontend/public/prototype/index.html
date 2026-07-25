@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TEG LOPDA — Prototipo Navegable Oficial (Mapa Real 26 Territorios & Tribuna Autoritativa)</title>
+  <style>
+    :root {
+      --bg-dark: #091b30;
+      --bg-panel: rgba(15, 23, 42, 0.94);
+      --border-gold: #d97706;
+      --border-blue: #0284c7;
+      --border-red: #ef4444;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent-gold: #fbbf24;
+      --accent-red: #f87171;
+      --accent-green: #34d399;
+      --player-red: #ef4444;
+      --player-blue: #3b82f6;
+      --player-green: #10b981;
+      --player-yellow: #eab308;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+    body {
+      font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+      background: #040a14;
+      color: var(--text-main);
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      background: #0f172a;
+      border-bottom: 2px solid var(--border-gold);
+      padding: 8px 16px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      z-index: 20;
+      min-height: 54px;
+    }
+
+    .brand-title {
+      font-family: serif;
+      font-size: 18px;
+      font-weight: bold;
+      color: var(--accent-gold);
+      letter-spacing: 1.5px;
+      white-space: nowrap;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .btn {
+      background: linear-gradient(180deg, #334155, #1e293b);
+      border: 1px solid #475569;
+      color: #f8fafc;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: bold;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+    }
+    .btn:hover { background: #475569; border-color: var(--accent-gold); }
+    .btn-gold {
+      background: linear-gradient(180deg, #f59e0b, #d97706);
+      border-color: #b45309;
+      color: #020617;
+    }
+    .btn-gold:hover { filter: brightness(1.2); }
+    .btn-red {
+      background: linear-gradient(180deg, #ef4444, #dc2626);
+      border-color: #991b1b;
+      color: #fff;
+    }
+    .btn-active {
+      border-color: var(--accent-gold);
+      box-shadow: 0 0 8px rgba(251, 191, 36, 0.5);
+    }
+
+    .main-layout {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    @media (max-width: 1280px) {
+      .main-layout { grid-template-columns: 1fr 340px; }
+    }
+    @media (max-width: 1024px) {
+      .main-layout { grid-template-columns: 1fr; }
+      aside.sidebar { display: none; }
+    }
+
+    .map-container {
+      position: relative;
+      background: radial-gradient(circle at 50% 45%, #0f2b48 0%, #091b30 55%, #040a14 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      width: 100%;
+      height: 100%;
+    }
+
+    .vignette-overlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      box-shadow: inset 0 0 120px rgba(239, 68, 68, 0.45);
+      opacity: 0;
+      transition: opacity 0.4s ease;
+      z-index: 5;
+    }
+    .vignette-overlay.active { opacity: 1; }
+
+    /* Real Map SVG Styling */
+    svg.real-map-svg {
+      width: 100%;
+      height: 100%;
+      max-height: 100%;
+    }
+
+    /* Sidebar La Tribuna */
+    aside.sidebar {
+      background: var(--bg-panel);
+      border-left: 2px solid #1e293b;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 14px;
+      overflow-y: auto;
+      z-index: 10;
+    }
+
+    .panel-box {
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      padding: 12px;
+    }
+    .panel-title {
+      font-size: 11px;
+      font-weight: bold;
+      letter-spacing: 1.5px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .turn-banner {
+      background: linear-gradient(90deg, rgba(239, 68, 68, 0.25), rgba(15, 23, 42, 0.9));
+      border-left: 4px solid var(--player-red);
+      padding: 10px;
+      border-radius: 6px;
+      transition: all 0.3s ease;
+    }
+
+    .lopda-counter {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #1e293b;
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border-gold);
+    }
+    .coin-val { font-size: 18px; font-weight: bold; color: var(--accent-gold); }
+
+    /* Radial Menu Popup */
+    .radial-menu {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      display: flex;
+      gap: 8px;
+      background: rgba(15, 23, 42, 0.95);
+      border: 2px solid var(--border-gold);
+      padding: 8px 14px;
+      border-radius: 30px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.85);
+      z-index: 30;
+    }
+    .radial-btn {
+      padding: 6px 12px;
+      border-radius: 20px;
+      border: none;
+      font-size: 12px;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: transform 0.15s ease;
+    }
+    .radial-btn:hover { transform: scale(1.1); }
+
+    /* Modal Overlay */
+    .modal-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(2, 6, 23, 0.85);
+      backdrop-filter: blur(5px);
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .combat-card {
+      background: #0f172a;
+      border: 2px solid var(--border-gold);
+      border-radius: 12px;
+      width: 780px;
+      max-width: 95%;
+      padding: 20px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.9);
+      position: relative;
+    }
+    .combat-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #1e293b;
+      padding-bottom: 10px;
+      margin-bottom: 14px;
+    }
+
+    .pair-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #1e293b;
+      margin-bottom: 8px;
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+    }
+    .dice-val {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 16px;
+    }
+    .dice-att { background: #ef4444; color: #fff; }
+    .dice-def { background: #3b82f6; color: #fff; }
+
+    .badge-label-top {
+      font-size: 28px;
+      font-weight: 800;
+      fill: #fff;
+      paint-order: stroke;
+      stroke: #020617;
+      stroke-width: 7px;
+      text-anchor: middle;
+      pointer-events: none;
+    }
+
+    .hidden { display: none !important; }
+
+    .toast-banner {
+      position: absolute;
+      top: 15px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #0284c7;
+      color: #fff;
+      padding: 8px 18px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: bold;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+      z-index: 40;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand-title">⚔️ TEG LOPDA — PROTOTIPO NAVEGABLE OFICIAL</div>
+    <div class="toolbar">
+      <button class="btn btn-gold" id="btn-state-turn" onclick="setNavState('turn-own')">🎮 1. Turno Propio</button>
+      <button class="btn" id="btn-state-other" onclick="setNavState('turn-other')">👑 2. Turno Ajeno</button>
+      <button class="btn" id="btn-state-reinf" onclick="setNavState('reinforcement')">🪖 3. Refuerzos</button>
+      <button class="btn" id="btn-state-attack" onclick="setNavState('attack')">⚔️ 4. Ataque Target</button>
+      <button class="btn" id="btn-state-combat" onclick="setNavState('combat')">🎲 5. Arena Combate</button>
+      <button class="btn" id="btn-state-bet-accepted" onclick="setNavState('bet-accepted')">✅ 6. Apuesta Aceptada</button>
+      <button class="btn" id="btn-state-bet-rejected" onclick="setNavState('bet-rejected')">❌ 7. Apuesta Rechazada</button>
+      <button class="btn" id="btn-state-bet-locked" onclick="setNavState('bet-locked')">🔒 8. Mercado Bloqueado</button>
+      <button class="btn" id="btn-state-bet-paid" onclick="setNavState('bet-paid')">💰 9. Pago Ganancia</button>
+      <button class="btn" id="btn-state-bet-refund" onclick="setNavState('bet-refund')">↩️ 10. Reembolso</button>
+      <button class="btn" id="btn-state-sync" onclick="setNavState('sync-state')">📡 11. Reconexión</button>
+    </div>
+  </header>
+
+  <div class="main-layout">
+    <!-- MAPA REAL 26 TERRITORIOS -->
+    <div class="map-container" id="map-container">
+      <div class="vignette-overlay active" id="vignette"></div>
+
+      <div id="toast" class="toast-banner hidden"></div>
+
+      <!-- MAPA SVG REAL INYECTADO -->
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2560 1440" class="real-map-svg" id="svg-map">
+  <defs>
+    <style>
+      .territory {
+        fill: rgba(30, 35, 45, 0.85);
+        stroke: #0b1220;
+        stroke-width: 4;
+        stroke-linejoin: round;
+        cursor: pointer;
+        transition: fill 0.2s ease, stroke 0.2s ease, filter 0.2s ease;
+      }
+      .territory:hover { stroke: #38bdf8; filter: brightness(1.25); }
+      .territory.selected { stroke: #fbbf24; stroke-width: 8; filter: brightness(1.35); }
+      .territory.attack-source { stroke: #38bdf8; stroke-width: 8; }
+      .territory.attack-target { stroke: #ef4444; stroke-width: 8; stroke-dasharray: 14 8; }
+      .territory.attackable { stroke: #22d3ee; stroke-width: 6; stroke-dasharray: 6 6; }
+      .territory-label {
+        fill: #f1f5f9;
+        font-family: ui-sans-serif, system-ui, sans-serif;
+        font-weight: 700;
+        paint-order: stroke;
+        stroke: rgba(2, 6, 23, 0.85);
+        stroke-width: 6px;
+        stroke-linejoin: round;
+        pointer-events: none;
+        text-anchor: middle;
+      }
+      .continent-title {
+        fill: rgba(148, 163, 184, 0.5);
+        font-family: ui-sans-serif, system-ui, sans-serif;
+        font-size: 44px;
+        font-weight: 900;
+        letter-spacing: 4px;
+        pointer-events: none;
+        text-anchor: middle;
+        text-transform: uppercase;
+      }
+      .sea-route {
+        stroke: rgba(125, 211, 252, 0.35);
+        stroke-width: 3;
+        stroke-dasharray: 10 12;
+        fill: none;
+        pointer-events: none;
+      }
+    </style>
+    <radialGradient id="ocean-grad" cx="50%" cy="42%" r="75%">
+      <stop offset="0%" stop-color="#0e2a47" />
+      <stop offset="60%" stop-color="#0a1e35" />
+      <stop offset="100%" stop-color="#060f1d" />
+    </radialGradient>
+    <pattern id="ocean-grid" width="120" height="120" patternUnits="userSpaceOnUse">
+      <path d="M 120 0 L 0 0 0 120" fill="none" stroke="rgba(96, 165, 250, 0.06)" stroke-width="1.5" />
+    </pattern>
+  </defs>
+
+  <rect x="0" y="0" width="2560" height="1440" fill="url(#ocean-grad)" />
+  <rect x="0" y="0" width="2560" height="1440" fill="url(#ocean-grid)" />
+
+  <g id="sea-routes">
+    <line x1="510" y1="1030" x2="164" y2="400" class="sea-route" />
+    <line x1="677" y1="823" x2="1430" y2="950" class="sea-route" />
+    <line x1="343" y1="1030" x2="1875" y2="970" class="sea-route" />
+    <line x1="164" y1="233" x2="2372" y2="460" class="sea-route" />
+    <line x1="726" y1="233" x2="1472" y2="220" class="sea-route" />
+    <line x1="1162" y1="360" x2="2372" y2="667" class="sea-route" />
+    <line x1="1318" y1="360" x2="2372" y2="667" class="sea-route" />
+    <line x1="1318" y1="360" x2="1942" y2="253" class="sea-route" />
+    <line x1="1318" y1="360" x2="2158" y2="667" class="sea-route" />
+    <line x1="1472" y1="360" x2="1430" y2="950" class="sea-route" />
+    <line x1="1008" y1="360" x2="1070" y2="743" class="sea-route" />
+    <line x1="1070" y1="743" x2="1728" y2="253" class="sea-route" />
+    <line x1="1728" y1="667" x2="2185" y2="970" class="sea-route" />
+    <line x1="1728" y1="667" x2="2185" y2="1170" class="sea-route" />
+  </g>
+
+  <g id="continent-south-america">
+    <path id="territory-south-america-argentina" class="territory" d="M 411 823 Q 417 854 403 887 Q 384 891 343 899 Q 320 877 296 879 Q 281 860 273 823 Q 274 798 296 766 Q 326 748 343 752 Q 367 758 400 766 Q 417 805 411 823 Z" />
+    <path id="territory-south-america-bolivia" class="territory" d="M 595 823 Q 574 861 558 885 Q 527 889 510 911 Q 482 898 453 885 Q 444 857 428 823 Q 433 800 460 760 Q 496 753 510 738 Q 530 757 563 761 Q 578 787 595 823 Z" />
+    <path id="territory-south-america-brazil" class="territory" d="M 744 823 Q 733 846 729 891 Q 709 905 677 911 Q 640 904 617 877 Q 612 852 601 823 Q 613 790 630 767 Q 651 754 677 734 Q 699 762 721 773 Q 727 792 744 823 Z" />
+    <path id="territory-south-america-chile" class="territory" d="M 412 1030 Q 402 1061 401 1091 Q 380 1098 343 1125 Q 307 1095 291 1082 Q 286 1048 274 1030 Q 276 993 300 978 Q 316 962 343 948 Q 374 945 389 965 Q 402 994 412 1030 Z" />
+    <path id="territory-south-america-colombia" class="territory" d="M 578 1030 Q 569 1068 560 1094 Q 528 1101 510 1107 Q 492 1097 453 1087 Q 444 1063 447 1030 Q 463 1008 460 966 Q 483 957 510 949 Q 544 976 569 979 Q 576 1008 578 1030 Z" />
+    <path id="territory-south-america-peru" class="territory" d="M 761 1030 Q 739 1054 722 1095 Q 698 1122 677 1126 Q 651 1117 633 1088 Q 631 1060 608 1030 Q 622 1010 630 971 Q 646 964 677 945 Q 708 966 736 975 Q 758 1001 761 1030 Z" />
+    <path id="territory-south-america-uruguay" class="territory" d="M 413 1237 Q 410 1262 393 1296 Q 371 1300 343 1314 Q 327 1314 296 1293 Q 296 1275 275 1237 Q 288 1210 286 1169 Q 305 1172 343 1156 Q 359 1179 393 1185 Q 407 1221 413 1237 Z" />
+    <path id="territory-south-america-venezuela" class="territory" d="M 590 1237 Q 575 1266 564 1290 Q 529 1305 510 1315 Q 488 1301 455 1304 Q 440 1265 426 1237 Q 436 1209 454 1185 Q 486 1183 510 1161 Q 542 1175 566 1185 Q 588 1202 590 1237 Z" />
+  </g>
+  <g id="continent-north-america">
+    <path id="territory-north-america-alaska" class="territory" d="M 253 233 Q 248 253 221 285 Q 192 293 164 290 Q 135 283 112 277 Q 105 246 86 233 Q 107 218 110 186 Q 130 168 164 170 Q 184 170 214 180 Q 246 206 253 233 Z" />
+    <path id="territory-north-america-california" class="territory" d="M 446 233 Q 418 266 407 281 Q 391 287 351 301 Q 306 299 284 278 Q 289 255 277 233 Q 277 206 301 182 Q 316 179 351 170 Q 379 172 406 191 Q 417 209 446 233 Z" />
+    <path id="territory-north-america-canada" class="territory" d="M 615 233 Q 616 253 596 284 Q 557 280 539 291 Q 523 287 489 283 Q 461 266 456 233 Q 455 205 476 192 Q 504 185 539 170 Q 581 182 606 191 Q 599 207 615 233 Z" />
+    <path id="territory-north-america-greenland" class="territory" d="M 816 233 Q 809 250 793 279 Q 763 283 726 303 Q 708 288 670 279 Q 657 252 652 233 Q 652 215 671 187 Q 707 191 726 177 Q 754 191 780 190 Q 808 216 816 233 Z" />
+    <path id="territory-north-america-mexico" class="territory" d="M 241 400 Q 225 417 221 448 Q 190 453 164 477 Q 142 460 106 451 Q 102 417 92 400 Q 109 375 108 352 Q 135 348 164 337 Q 188 337 216 356 Q 221 387 241 400 Z" />
+    <path id="territory-north-america-new-york" class="territory" d="M 442 400 Q 422 416 407 442 Q 384 451 351 457 Q 309 457 291 445 Q 283 418 259 400 Q 280 380 299 350 Q 335 330 351 329 Q 374 333 408 354 Q 430 372 442 400 Z" />
+    <path id="territory-north-america-newfoundland" class="territory" d="M 631 400 Q 622 414 601 444 Q 571 443 539 456 Q 506 454 489 443 Q 467 426 458 400 Q 480 377 487 358 Q 522 340 539 324 Q 576 341 605 354 Q 627 380 631 400 Z" />
+    <path id="territory-north-america-oregon" class="territory" d="M 807 400 Q 793 426 783 446 Q 759 444 726 458 Q 692 459 668 451 Q 638 422 632 400 Q 651 375 666 351 Q 697 346 726 339 Q 749 348 782 348 Q 790 374 807 400 Z" />
+    <path id="territory-north-america-yukon" class="territory" d="M 255 567 Q 226 595 217 621 Q 202 620 164 632 Q 137 630 103 615 Q 85 594 70 567 Q 100 531 106 514 Q 140 508 164 509 Q 187 517 219 514 Q 230 543 255 567 Z" />
+  </g>
+  <g id="continent-europe">
+    <path id="territory-europe-france" class="territory" d="M 1065 220 Q 1060 244 1063 260 Q 1043 269 1008 273 Q 981 259 952 261 Q 943 240 944 220 Q 954 193 959 176 Q 987 176 1008 169 Q 1042 167 1063 180 Q 1060 200 1065 220 Z" />
+    <path id="territory-europe-germany" class="territory" d="M 1226 220 Q 1222 245 1209 262 Q 1192 267 1162 268 Q 1142 260 1114 257 Q 1111 246 1097 220 Q 1099 197 1119 183 Q 1140 179 1162 163 Q 1198 173 1216 177 Q 1211 198 1226 220 Z" />
+    <path id="territory-europe-great-britain" class="territory" d="M 1388 220 Q 1380 237 1371 265 Q 1339 276 1318 283 Q 1296 262 1276 257 Q 1272 234 1257 220 Q 1272 196 1270 183 Q 1288 175 1318 158 Q 1340 162 1364 179 Q 1368 204 1388 220 Z" />
+    <path id="territory-europe-iceland" class="territory" d="M 1550 220 Q 1543 240 1528 255 Q 1499 257 1472 273 Q 1453 277 1430 264 Q 1418 244 1404 220 Q 1420 194 1425 178 Q 1456 171 1472 169 Q 1488 180 1513 185 Q 1526 199 1550 220 Z" />
+    <path id="territory-europe-italy" class="territory" d="M 1072 360 Q 1053 379 1053 400 Q 1033 412 1008 419 Q 989 415 961 406 Q 948 379 929 360 Q 935 331 954 317 Q 989 321 1008 308 Q 1039 315 1058 318 Q 1063 332 1072 360 Z" />
+    <path id="territory-europe-poland" class="territory" d="M 1240 360 Q 1214 373 1206 397 Q 1182 403 1162 410 Q 1133 394 1118 394 Q 1096 369 1087 360 Q 1100 340 1119 318 Q 1131 302 1162 297 Q 1176 300 1204 319 Q 1224 339 1240 360 Z" />
+    <path id="territory-europe-russia" class="territory" d="M 1392 360 Q 1380 378 1363 397 Q 1349 401 1318 419 Q 1296 412 1263 404 Q 1256 374 1248 360 Q 1250 343 1263 321 Q 1293 311 1318 312 Q 1328 315 1359 319 Q 1378 335 1392 360 Z" />
+    <path id="territory-europe-spain" class="territory" d="M 1545 360 Q 1534 381 1519 401 Q 1492 404 1472 418 Q 1450 413 1420 396 Q 1410 378 1400 360 Q 1421 340 1424 325 Q 1443 318 1472 311 Q 1497 325 1515 322 Q 1520 337 1545 360 Z" />
+    <path id="territory-europe-sweden" class="territory" d="M 1085 500 Q 1061 519 1055 534 Q 1030 540 1008 561 Q 983 540 955 535 Q 944 521 947 500 Q 960 479 966 456 Q 988 452 1008 442 Q 1029 449 1062 462 Q 1074 478 1085 500 Z" />
+  </g>
+  <g id="continent-africa">
+    <path id="territory-africa-egypt" class="territory" d="M 1151 743 Q 1131 763 1131 804 Q 1108 802 1070 815 Q 1049 809 1020 804 Q 1000 777 989 743 Q 993 715 1007 679 Q 1041 665 1070 671 Q 1096 676 1117 692 Q 1136 719 1151 743 Z" />
+    <path id="territory-africa-ethiopia" class="territory" d="M 1325 743 Q 1319 775 1297 794 Q 1270 804 1250 838 Q 1229 818 1191 801 Q 1183 773 1160 743 Q 1171 708 1193 690 Q 1230 668 1250 670 Q 1272 676 1313 686 Q 1308 723 1325 743 Z" />
+    <path id="territory-africa-kenya" class="territory" d="M 1505 743 Q 1502 767 1482 803 Q 1464 815 1430 833 Q 1404 812 1366 794 Q 1351 767 1354 743 Q 1365 721 1369 679 Q 1391 668 1430 650 Q 1449 674 1482 685 Q 1492 715 1505 743 Z" />
+    <path id="territory-africa-madagascar" class="territory" d="M 1150 950 Q 1145 989 1125 1005 Q 1097 1014 1070 1041 Q 1036 1026 1023 1004 Q 1015 967 992 950 Q 992 933 1013 894 Q 1040 889 1070 867 Q 1100 889 1119 895 Q 1142 911 1150 950 Z" />
+    <path id="territory-africa-nigeria" class="territory" d="M 1326 950 Q 1305 990 1307 1012 Q 1278 1017 1250 1039 Q 1229 1029 1193 1015 Q 1177 975 1179 950 Q 1188 925 1196 890 Q 1216 877 1250 878 Q 1283 882 1310 898 Q 1312 932 1326 950 Z" />
+    <path id="territory-africa-sahara" class="territory" d="M 1511 950 Q 1488 985 1487 1000 Q 1463 1020 1430 1045 Q 1391 1016 1367 1007 Q 1348 972 1340 950 Q 1350 911 1378 889 Q 1408 889 1430 867 Q 1459 886 1491 894 Q 1494 927 1511 950 Z" />
+    <path id="territory-africa-south-africa" class="territory" d="M 1147 1157 Q 1138 1183 1132 1208 Q 1091 1217 1070 1227 Q 1048 1228 1014 1223 Q 1003 1199 994 1157 Q 999 1120 1016 1103 Q 1036 1094 1070 1065 Q 1102 1090 1129 1091 Q 1138 1132 1147 1157 Z" />
+    <path id="territory-africa-zaire" class="territory" d="M 1334 1157 Q 1315 1195 1298 1219 Q 1277 1236 1250 1242 Q 1226 1219 1196 1208 Q 1195 1185 1170 1157 Q 1177 1126 1185 1096 Q 1209 1080 1250 1084 Q 1273 1103 1303 1102 Q 1329 1119 1334 1157 Z" />
+  </g>
+  <g id="continent-asia">
+    <path id="territory-asia-arabia" class="territory" d="M 1823 253 Q 1811 297 1794 318 Q 1749 340 1728 347 Q 1685 325 1666 319 Q 1662 278 1635 253 Q 1661 231 1668 187 Q 1710 164 1728 164 Q 1768 181 1794 189 Q 1796 221 1823 253 Z" />
+    <path id="territory-asia-aral" class="territory" d="M 2047 253 Q 2021 285 2016 304 Q 1992 323 1942 338 Q 1917 314 1876 309 Q 1875 277 1859 253 Q 1874 222 1878 200 Q 1905 171 1942 166 Q 1976 189 2005 190 Q 2016 227 2047 253 Z" />
+    <path id="territory-asia-china" class="territory" d="M 2264 253 Q 2249 278 2234 320 Q 2183 316 2158 332 Q 2112 327 2089 316 Q 2063 287 2052 253 Q 2068 220 2083 200 Q 2110 190 2158 179 Q 2188 191 2216 195 Q 2241 223 2264 253 Z" />
+    <path id="territory-asia-gobi" class="territory" d="M 2459 253 Q 2449 285 2432 313 Q 2390 319 2372 328 Q 2331 320 2307 304 Q 2307 267 2278 253 Q 2280 225 2302 187 Q 2323 190 2372 184 Q 2408 187 2431 194 Q 2439 227 2459 253 Z" />
+    <path id="territory-asia-india" class="territory" d="M 1812 460 Q 1796 477 1793 511 Q 1755 514 1728 530 Q 1703 523 1668 511 Q 1633 488 1623 460 Q 1625 420 1653 392 Q 1681 394 1728 382 Q 1759 393 1784 397 Q 1801 422 1812 460 Z" />
+    <path id="territory-asia-iran" class="territory" d="M 2023 460 Q 2024 483 2006 524 Q 1987 531 1942 536 Q 1908 524 1881 514 Q 1868 493 1834 460 Q 1857 433 1868 400 Q 1910 383 1942 373 Q 1979 376 1999 398 Q 2004 426 2023 460 Z" />
+    <path id="territory-asia-japan" class="territory" d="M 2251 460 Q 2233 484 2216 517 Q 2189 533 2158 550 Q 2131 528 2087 512 Q 2081 487 2065 460 Q 2067 419 2096 394 Q 2133 386 2158 369 Q 2186 376 2229 404 Q 2253 439 2251 460 Z" />
+    <path id="territory-asia-kamchatka" class="territory" d="M 2477 460 Q 2464 489 2438 516 Q 2410 536 2372 533 Q 2331 529 2313 519 Q 2314 489 2288 460 Q 2295 420 2300 404 Q 2345 394 2372 376 Q 2418 388 2439 397 Q 2448 438 2477 460 Z" />
+    <path id="territory-asia-malaysia" class="territory" d="M 1812 667 Q 1802 695 1787 723 Q 1766 735 1728 747 Q 1684 724 1666 717 Q 1645 698 1623 667 Q 1630 639 1653 613 Q 1697 595 1728 571 Q 1772 602 1803 613 Q 1802 647 1812 667 Z" />
+    <path id="territory-asia-mongolia" class="territory" d="M 2049 667 Q 2022 687 2005 724 Q 1977 726 1942 748 Q 1905 726 1878 721 Q 1859 691 1863 667 Q 1866 633 1878 608 Q 1906 588 1942 581 Q 1965 586 2010 616 Q 2026 636 2049 667 Z" />
+    <path id="territory-asia-siberia" class="territory" d="M 2246 667 Q 2225 694 2230 728 Q 2191 724 2158 743 Q 2126 741 2098 729 Q 2084 709 2051 667 Q 2065 646 2100 608 Q 2126 599 2158 589 Q 2184 600 2229 613 Q 2237 644 2246 667 Z" />
+    <path id="territory-asia-turkey" class="territory" d="M 2465 667 Q 2458 690 2442 730 Q 2416 746 2372 759 Q 2339 744 2299 732 Q 2302 688 2283 667 Q 2298 627 2298 607 Q 2327 584 2372 574 Q 2405 584 2435 616 Q 2456 640 2465 667 Z" />
+  </g>
+  <g id="continent-oceania">
+    <path id="territory-oceania-australia" class="territory" d="M 2033 970 Q 1997 1001 1978 1023 Q 1920 1035 1875 1042 Q 1845 1030 1775 1024 Q 1768 997 1732 970 Q 1754 944 1794 915 Q 1822 905 1875 883 Q 1936 896 1987 919 Q 2013 950 2033 970 Z" />
+    <path id="territory-oceania-borneo" class="territory" d="M 2320 970 Q 2287 988 2267 1026 Q 2244 1036 2185 1038 Q 2143 1023 2084 1029 Q 2059 994 2044 970 Q 2058 951 2103 910 Q 2150 899 2185 899 Q 2245 913 2291 915 Q 2306 945 2320 970 Z" />
+    <path id="territory-oceania-java" class="territory" d="M 2022 1170 Q 1986 1206 1982 1222 Q 1913 1245 1875 1249 Q 1823 1229 1772 1226 Q 1770 1199 1753 1170 Q 1755 1141 1780 1107 Q 1831 1096 1875 1098 Q 1916 1103 1964 1122 Q 1979 1146 2022 1170 Z" />
+    <path id="territory-oceania-sumatra" class="territory" d="M 2311 1170 Q 2308 1196 2289 1229 Q 2231 1233 2185 1238 Q 2119 1233 2079 1223 Q 2055 1188 2038 1170 Q 2057 1148 2089 1112 Q 2133 1108 2185 1097 Q 2212 1105 2273 1105 Q 2279 1128 2311 1170 Z" />
+  </g>
+
+  <g id="territory-labels">
+    <text x="343" y="786" class="territory-label" font-size="26">Argentina</text>
+    <text x="510" y="786" class="territory-label" font-size="26">Bolivia</text>
+    <text x="677" y="786" class="territory-label" font-size="26">Brasil</text>
+    <text x="343" y="993" class="territory-label" font-size="26">Chile</text>
+    <text x="510" y="993" class="territory-label" font-size="26">Colombia</text>
+    <text x="677" y="993" class="territory-label" font-size="26">Perú</text>
+    <text x="343" y="1199" class="territory-label" font-size="26">Uruguay</text>
+    <text x="510" y="1199" class="territory-label" font-size="26">Venezuela</text>
+    <text x="164" y="203" class="territory-label" font-size="26">Alaska</text>
+    <text x="351" y="203" class="territory-label" font-size="26">California</text>
+    <text x="539" y="203" class="territory-label" font-size="26">Canadá</text>
+    <text x="726" y="203" class="territory-label" font-size="26">Groenlandia</text>
+    <text x="164" y="370" class="territory-label" font-size="26">México</text>
+    <text x="351" y="370" class="territory-label" font-size="26">Nueva York</text>
+    <text x="539" y="370" class="territory-label" font-size="26">Terranova</text>
+    <text x="726" y="370" class="territory-label" font-size="26">Oregón</text>
+    <text x="164" y="537" class="territory-label" font-size="26">Yukón</text>
+    <text x="1008" y="195" class="territory-label" font-size="26">Francia</text>
+    <text x="1162" y="195" class="territory-label" font-size="26">Alemania</text>
+    <text x="1318" y="195" class="territory-label" font-size="26">Gran Bretaña</text>
+    <text x="1472" y="195" class="territory-label" font-size="26">Islandia</text>
+    <text x="1008" y="335" class="territory-label" font-size="26">Italia</text>
+    <text x="1162" y="335" class="territory-label" font-size="26">Polonia</text>
+    <text x="1318" y="335" class="territory-label" font-size="26">Rusia</text>
+    <text x="1472" y="335" class="territory-label" font-size="26">España</text>
+    <text x="1008" y="475" class="territory-label" font-size="26">Suecia</text>
+    <text x="1070" y="706" class="territory-label" font-size="26">Egipto</text>
+    <text x="1250" y="706" class="territory-label" font-size="26">Etiopía</text>
+    <text x="1430" y="706" class="territory-label" font-size="26">Kenia</text>
+    <text x="1070" y="913" class="territory-label" font-size="26">Madagascar</text>
+    <text x="1250" y="913" class="territory-label" font-size="26">Nigeria</text>
+    <text x="1430" y="913" class="territory-label" font-size="26">Sáhara</text>
+    <text x="1070" y="1119" class="territory-label" font-size="26">Sudáfrica</text>
+    <text x="1250" y="1119" class="territory-label" font-size="26">Zaire</text>
+    <text x="1728" y="216" class="territory-label" font-size="26">Arabia</text>
+    <text x="1942" y="216" class="territory-label" font-size="26">Aral</text>
+    <text x="2158" y="216" class="territory-label" font-size="26">China</text>
+    <text x="2372" y="216" class="territory-label" font-size="26">Gobi</text>
+    <text x="1728" y="423" class="territory-label" font-size="26">India</text>
+    <text x="1942" y="423" class="territory-label" font-size="26">Irán</text>
+    <text x="2158" y="423" class="territory-label" font-size="26">Japón</text>
+    <text x="2372" y="423" class="territory-label" font-size="26">Kamchatka</text>
+    <text x="1728" y="629" class="territory-label" font-size="26">Malasia</text>
+    <text x="1942" y="629" class="territory-label" font-size="26">Mongolia</text>
+    <text x="2158" y="629" class="territory-label" font-size="26">Siberia</text>
+    <text x="2372" y="629" class="territory-label" font-size="26">Turquía</text>
+    <text x="1875" y="934" class="territory-label" font-size="26">Australia</text>
+    <text x="2185" y="934" class="territory-label" font-size="26">Borneo</text>
+    <text x="1875" y="1134" class="territory-label" font-size="26">Java</text>
+    <text x="2185" y="1134" class="territory-label" font-size="26">Sumatra</text>
+  </g>
+
+  <g id="continent-titles">
+    <text x="510" y="700" class="continent-title">América del Sur</text>
+    <text x="445" y="130" class="continent-title">América del Norte</text>
+    <text x="1240" y="130" class="continent-title">Europa</text>
+    <text x="1250" y="622" class="continent-title">África</text>
+    <text x="2050" y="130" class="continent-title">Asia</text>
+    <text x="2030" y="850" class="continent-title">Oceanía</text>
+  </g>
+</svg>
+
+
+      <!-- Menú Radial Contextual -->
+      <div class="radial-menu hidden" id="radial-menu">
+        <button class="radial-btn" style="background:#10b981; color:#fff" onclick="addReinforcement(1)">🪖 +1</button>
+        <button class="radial-btn" style="background:#059669; color:#fff" onclick="addReinforcement(3)">🪖 +3</button>
+        <button class="radial-btn" style="background:#ef4444; color:#fff" onclick="startAttackTargeting()">⚔️ Atacar</button>
+      </div>
+    </div>
+
+    <!-- SIDEBAR LA TRIBUNA -->
+    <aside class="sidebar">
+      <div class="turn-banner" id="turn-banner-box">
+        <div class="panel-title" style="color:#f87171" id="turn-banner-header">ESTADO DEL TURNO</div>
+        <p style="font-weight:bold; font-size:15px;" id="turn-title">¡ES TU TURNO - FASE DE ATAQUE!</p>
+        <p style="font-size:12px; color:var(--text-muted); margin-top:4px;" id="turn-sub">Acción: Hacé click en tus países (ej. Argentina) para desplegar el Menú Radial.</p>
+      </div>
+
+      <div class="lopda-counter">
+        <div>
+          <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase;">MONEDAS LOPDA</div>
+          <div class="coin-val" id="coin-balance">🪙 450 LOPDA</div>
+        </div>
+        <span style="font-size:10px; background:#0284c7; padding:3px 6px; border-radius:4px;" id="ledger-badge">SQLite Ledger</span>
+      </div>
+
+      <div class="panel-box" id="tribune-box">
+        <div class="panel-title">🏟️ LA TRIBUNA: MERCADO AUTORITATIVO EN VIVO</div>
+        <p style="font-size:12px; margin-bottom:8px;" id="market-question">¿Argentina (16) conquista Brasil (4)?</p>
+        
+        <div style="display:flex; gap:8px; margin-bottom:10px;">
+          <button class="btn btn-gold" style="flex:1;" onclick="requestBet('SI')" id="btn-bet-yes">APOSTAR SÍ (1.6x)</button>
+          <button class="btn" style="flex:1;" onclick="requestBet('NO')" id="btn-bet-no">APOSTAR NO (2.4x)</button>
+        </div>
+
+        <div style="font-size:11px; color:var(--text-muted);" id="bet-status-label">
+          Estado: Mercado Abierto | Tiempo Configurable: 00:08s ⏳
+        </div>
+      </div>
+
+      <div class="panel-box">
+        <div class="panel-title">📺 RELATOR DEPORTIVO IA</div>
+        <div style="display:flex; gap:10px; align-items:center;">
+          <span style="font-size:28px;">🎙️</span>
+          <p style="font-size:12px; font-style:italic;" id="commentator-text">
+            "¡Atención señores! Argentina prepara una ofensiva pesada desde el sur. Brasil aguanta con 4 tropas..."
+          </p>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- ARENA DE COMBATE MODAL -->
+  <div class="modal-overlay hidden" id="combat-modal">
+    <div class="combat-card" tabIndex="0" id="combat-card-element">
+      <div class="combat-header">
+        <h3 style="color:var(--accent-gold);">⚔️ ARENA DE COMBATE 3D (DESGLOSE MATEMÁTICO TRANSPARENTE)</h3>
+        <button class="btn" onclick="closeCombatDemo()" title="Cerrar modal (Esc)">✕ Cerrar (Esc)</button>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px; background:#1e293b; padding:12px; border-radius:8px;">
+        <div>
+          <strong style="color:var(--player-red);">🇦🇷 ARGENTINA (Atacante)</strong>
+          <p style="font-size:12px; color:var(--text-muted);">Tropas Iniciales: <span id="att-armies">16</span> | Dados: <strong>3 Dados</strong></p>
+          <p style="font-size:10px; color:#94a3b8;">Explicación: >3 tropas disponibles ➔ Máximo 3 dados.</p>
+        </div>
+        <div>
+          <strong style="color:var(--player-blue);">🇧🇷 BRASIL (Defensor)</strong>
+          <p style="font-size:12px; color:var(--text-muted);">Tropas Iniciales: <span id="def-armies">4</span> | Dados: <strong>3 Dados</strong></p>
+          <p style="font-size:10px; color:#94a3b8;">Explicación: Defiende con hasta 3 dados disponibles.</p>
+        </div>
+      </div>
+
+      <div id="pair-results">
+        <div class="pair-row">
+          <span>PAREJA 1 (Dados Máximos): <span class="dice-val dice-att">6</span> vs <span class="dice-val dice-def">6</span></span>
+          <strong style="color:var(--player-blue);">🛡️ GANA DEFENSOR (Empate favorece al defensor) ➔ Argentina pierde 1</strong>
+        </div>
+        <div class="pair-row">
+          <span>PAREJA 2 (Dados Medios): <span class="dice-val dice-att">5</span> vs <span class="dice-val dice-def">4</span></span>
+          <strong style="color:var(--accent-green);">⚔️ GANA ATACANTE (5 > 4) ➔ Brasil pierde 1</strong>
+        </div>
+        <div class="pair-row">
+          <span>PAREJA 3 (Dados Mínimos): <span class="dice-val dice-att">3</span> vs <span class="dice-val dice-def">1</span></span>
+          <strong style="color:var(--accent-green);">⚔️ GANA ATACANTE (3 > 1) ➔ Brasil pierde 1</strong>
+        </div>
+      </div>
+
+      <div style="background:#020617; border:1px solid #334155; padding:10px; border-radius:6px; margin-top:15px; font-size:12px;" id="combat-summary">
+        <strong>RESUMEN ACUMULADO DE LA BATALLA:</strong><br/>
+        - Argentina: Iniciales 16 | Pérdidas Acumuladas -1 | Actuales: 15<br/>
+        - Brasil: Iniciales 4 | Pérdidas Acumuladas -2 | Actuales: 2
+      </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:15px;">
+        <div style="font-size:11px; color:var(--text-muted);">
+          Velocidad: 
+          <button class="btn" style="padding:2px 6px; font-size:10px;" onclick="setSpeed('1x')">1x</button>
+          <button class="btn" style="padding:2px 6px; font-size:10px;" onclick="setSpeed('2x')">2x Fast</button>
+          <button class="btn" style="padding:2px 6px; font-size:10px;" onclick="setSpeed('instant')">Instantáneo ⚡</button>
+        </div>
+        <button class="btn btn-red" onclick="resolveRoundCombat()">⚔️ Ejecutar Siguiente Tirada</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentState = 'turn-own';
+    let isMyTurn = true;
+    let argArmies = 16;
+    let braArmies = 4;
+    let lopdaCoins = 450;
+    let currentBet = null;
+    let betStatus = 'opened';
+
+    // Manejador accesible para cerrar modal con Escape
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        closeCombatDemo();
+        document.getElementById('radial-menu').classList.add('hidden');
+      }
+    });
+
+    // Vincular clicks a territorios del mapa real
+    document.addEventListener('DOMContentLoaded', () => {
+      const svg = document.getElementById('svg-map');
+      if (svg) {
+        const paths = svg.querySelectorAll('.territory');
+        paths.forEach(path => {
+          path.style.cursor = 'pointer';
+          path.onclick = (e) => {
+            e.stopPropagation();
+            const id = path.getAttribute('id');
+            showRadialForTerritory(id, e.clientX, e.clientY);
+          };
+        });
+      }
+    });
+
+    function showRadialForTerritory(id, x, y) {
+      if (!isMyTurn) return;
+      const menu = document.getElementById('radial-menu');
+      menu.style.left = x + 'px';
+      menu.style.top = y + 'px';
+      menu.classList.remove('hidden');
+      showToast(`Seleccionado: ${id.replace('territory-', '').replaceAll('-', ' ')}`);
+    }
+
+    function setNavState(state) {
+      currentState = state;
+      const vignette = document.getElementById('vignette');
+      const turnTitle = document.getElementById('turn-title');
+      const turnSub = document.getElementById('turn-sub');
+      const betLabel = document.getElementById('bet-status-label');
+      const combatModal = document.getElementById('combat-modal');
+      const btnYes = document.getElementById('btn-bet-yes');
+      const btnNo = document.getElementById('btn-bet-no');
+
+      // Resetear botones activos en barra
+      document.querySelectorAll('.toolbar .btn').forEach(b => b.classList.remove('btn-active'));
+      const activeBtn = document.getElementById(`btn-state-${state.split('-')[0]}`) || document.getElementById(`btn-state-${state}`);
+      if (activeBtn) activeBtn.classList.add('btn-active');
+
+      switch(state) {
+        case 'turn-own':
+          isMyTurn = true;
+          vignette.classList.add('active');
+          turnTitle.textContent = "¡ES TU TURNO - FASE DE ATAQUE!";
+          turnSub.textContent = "Acción: Hacé click en tus países (ej. Argentina) para desplegar el Menú Radial.";
+          combatModal.classList.add('hidden');
+          showToast("Estado: Turno Propio (Vignette Dorado)");
+          break;
+
+        case 'turn-other':
+          isMyTurn = false;
+          vignette.classList.remove('active');
+          turnTitle.textContent = "TURNO DE DARO (JUGADOR AZUL)";
+          turnSub.textContent = "Esperando acción rival. Podés apostar en La Tribuna o consultar el mapa.";
+          combatModal.classList.add('hidden');
+          showToast("Estado: Turno Ajeno (Espectador)");
+          break;
+
+        case 'reinforcement':
+          isMyTurn = true;
+          vignette.classList.add('active');
+          turnTitle.textContent = "🪖 FASE DE REFUERZOS (Te quedan 5 tropas)";
+          turnSub.textContent = "Hacé click en tus países para colocar +1, +3 o el máximo disponible.";
+          combatModal.classList.add('hidden');
+          showToast("Estado: Fase de Refuerzos");
+          break;
+
+        case 'attack':
+          isMyTurn = true;
+          vignette.classList.add('active');
+          turnTitle.textContent = "⚔️ FASE DE ATAQUE TÁCTICO";
+          turnSub.textContent = "Hacé click sobre Argentina y seleccioná Atacar hacia Brasil.";
+          combatModal.classList.add('hidden');
+          showToast("Estado: Selección de Ataque Target");
+          break;
+
+        case 'combat':
+          combatModal.classList.remove('hidden');
+          document.getElementById('combat-card-element').focus();
+          showToast("Estado: Arena de Combate 3D Abierta");
+          break;
+
+        case 'bet-accepted':
+          betStatus = 'accepted';
+          betLabel.textContent = "Estado: Solicitud Aceptada ➔ Transacción Registrada en Ledger SQLite ✅";
+          btnYes.disabled = true;
+          btnNo.disabled = true;
+          showToast("Apuesta Aceptada autoritativamente en Ledger SQLite");
+          break;
+
+        case 'bet-rejected':
+          betStatus = 'rejected';
+          betLabel.textContent = "Estado: ❌ Apuesta Rechazada (Motivo: Saldo insuficiente o Mercado cerrado)";
+          showToast("Apuesta Rechazada por el Servidor");
+          break;
+
+        case 'bet-locked':
+          betStatus = 'locked';
+          betLabel.textContent = "Estado: 🔒 Mercado Bloqueado (Tirada en curso / Timer 0s)";
+          btnYes.disabled = true;
+          btnNo.disabled = true;
+          showToast("Mercado de Apuestas Bloqueado");
+          break;
+
+        case 'bet-paid':
+          lopdaCoins += 130;
+          document.getElementById('coin-balance').textContent = `🪙 ${lopdaCoins} LOPDA`;
+          betLabel.textContent = "Estado: 💰 Ganancia Acreditada (+130 LOPDA en Ledger SQLite)";
+          showToast("🎉 Ganancia Acreditada en Ledger SQLite");
+          break;
+
+        case 'bet-refund':
+          lopdaCoins += 50;
+          document.getElementById('coin-balance').textContent = `🪙 ${lopdaCoins} LOPDA`;
+          betLabel.textContent = "Estado: ↩️ Reembolso 100% (Combate cancelado / bet_refunded)";
+          showToast("↩️ Reembolso Transaccional Ejecutado");
+          break;
+
+        case 'sync-state':
+          showToast("📡 Sincronizando estado con el servidor (Reconexión)...");
+          break;
+      }
+    }
+
+    function addReinforcement(count) {
+      argArmies += count;
+      showToast(`+${count} Tropas colocadas en Argentina. Nuevo total: ${argArmies}`);
+      document.getElementById('radial-menu').classList.add('hidden');
+    }
+
+    function startAttackTargeting() {
+      document.getElementById('radial-menu').classList.add('hidden');
+      setNavState('combat');
+    }
+
+    function requestBet(option) {
+      if (betStatus === 'locked' || betStatus === 'accepted') return;
+      if (lopdaCoins < 50) {
+        setNavState('bet-rejected');
+        return;
+      }
+      lopdaCoins -= 50;
+      document.getElementById('coin-balance').textContent = `🪙 ${lopdaCoins} LOPDA`;
+      setNavState('bet-accepted');
+    }
+
+    function resolveRoundCombat() {
+      if (braArmies <= 0) return;
+      argArmies -= 1;
+      braArmies -= 2;
+      if (braArmies < 0) braArmies = 0;
+
+      document.getElementById('att-armies').textContent = argArmies;
+      document.getElementById('def-armies').textContent = braArmies;
+
+      document.getElementById('combat-summary').innerHTML = `
+        <strong>RESUMEN ACUMULADO DE LA BATALLA:</strong><br/>
+        - Argentina: Iniciales 16 | Pérdidas Acumuladas -1 | Actuales: ${argArmies}<br/>
+        - Brasil: Iniciales 4 | Pérdidas Acumuladas -2 | Actuales: ${braArmies}
+      `;
+
+      if (braArmies === 0) {
+        setNavState('bet-paid');
+      }
+    }
+
+    function closeCombatDemo() {
+      document.getElementById('combat-modal').classList.add('hidden');
+    }
+
+    function setSpeed(speed) {
+      showToast(`Velocidad de combate ajustada a: ${speed}`);
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.remove('hidden');
+      setTimeout(() => t.classList.add('hidden'), 2500);
+    }
+  </script>
+</body>
+</html>

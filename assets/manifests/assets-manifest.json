@@ -1,0 +1,36 @@
+{
+  "schema_version": "1.0.0",
+  "project": "TEG-LOPDA",
+  "updated_at": "2026-07-25T01:25:00Z",
+  "assets": {
+    "brand": {
+      "palette_json": "assets/brand/palette/palette.json"
+    },
+    "map": {
+      "tactical_50": "assets/maps/base/map-base-tactical-50-001.svg",
+      "tactical_100": "assets/maps/base/map-base-tactical-100-001.svg"
+    },
+    "ui": {
+      "icon_coin": "assets/ui/icons/icon-betting-lopda-coin-001.svg",
+      "button_attack": "assets/ui/buttons/button-action-attack-001.svg",
+      "button_fortify": "assets/ui/buttons/button-action-fortify-001.svg",
+      "panel_card": "assets/ui/panels/panel-player-card-001.svg"
+    },
+    "achievements": {
+      "banner_traitor_king": "assets/achievements/banners/banner-achievement-traitor-king-001.svg"
+    },
+    "audio": {
+      "ui_click": "assets/audio/ui/sound-ui-click-001.wav",
+      "ui_notify": "assets/audio/ui/sound-notify-001.wav",
+      "reinforce": "assets/audio/ui/sound-reinforce-001.wav",
+      "dice_roll": "assets/audio/dice/sound-dice-roll-001.wav",
+      "battle_clash": "assets/audio/battles/sound-battle-clash-001.wav",
+      "battle_win": "assets/audio/battles/sound-battle-win-001.wav",
+      "battle_lose": "assets/audio/battles/sound-battle-lose-001.wav",
+      "alert_traitor": "assets/audio/alerts/sound-alert-traitor-001.wav",
+      "player_eliminated": "assets/audio/alerts/sound-player-eliminated-001.wav",
+      "victory_fanfare": "assets/audio/victory/sound-victory-fanfare-001.wav",
+      "defeat_sad": "assets/audio/victory/sound-defeat-sad-001.wav"
+    }
+  }
+}
