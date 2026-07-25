@@ -1,0 +1,41 @@
+{
+  "schema_version": "1.0.0",
+  "map_name": "map-base-tactical-50-001",
+  "mode": 50,
+  "updated_at": "2026-07-25T06:00:00Z",
+  "total_territories": 50,
+  "continents": {
+    "continent-south-america": 8,
+    "continent-north-america": 9,
+    "continent-europe": 9,
+    "continent-africa": 8,
+    "continent-asia": 12,
+    "continent-oceania": 4
+  },
+  "layers": [
+    {
+      "id": "layer-1-geo-base",
+      "type": "geo-base",
+      "interactive": false,
+      "description": "Fondo marino (#091b30), relieve topográfico y retícula submarina sutil"
+    },
+    {
+      "id": "layer-2-playable-territories",
+      "type": "playable-svg",
+      "interactive": true,
+      "description": "Un <path class='territory'> por cada uno de los 50 territorios con stroke brillante y tintado sutil por jugador"
+    },
+    {
+      "id": "layer-3-hitboxes",
+      "type": "hitboxes",
+      "interactive": true,
+      "description": "Path transparente independiente simplificado por territorio para capturar click/hover/drag"
+    },
+    {
+      "id": "layer-4-overlays",
+      "type": "overlays",
+      "interactive": false,
+      "description": "Etiquetas de nombre (.territory-label) en tercio superior, badges circulares de ejércitos (.badge-group) en tercio inferior y flechas de ataque vectoriales"
+    }
+  ]
+}

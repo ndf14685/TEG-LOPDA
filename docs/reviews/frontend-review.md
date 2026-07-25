@@ -36,6 +36,7 @@ Aprobado para esta tanda fast-track posterior al hotfix Windows y mini-regresion
 - Arena no bloqueante para defensor/espectador: mantiene batalla visible sin impedir Tribuna/chat/mapa.
 - Apuesta de refuerzos ahora muestra monto pedido y aceptado; el backend queda cubierto por test especifico de `amount=3`.
 - Colocacion simultanea ya no comunica un turno unico falso.
+- Piloto P0 America del Sur integrado en modo 50 productivo: e2e real valida IDs, hitboxes, labels/tropas, seis colores, seleccion, atacable y ataque en ejecucion.
 
 ## Correcciones pendientes
 
@@ -44,7 +45,8 @@ Aprobado para esta tanda fast-track posterior al hotfix Windows y mini-regresion
 - P2: banner central de turno puede tapar temporalmente parte del mapa en capturas de espera; no bloquea flujo.
 - P2: mobile 390x844 queda diferido si no es objetivo real del grupo.
 - P2: flecha por arrastre, pings, planes privados, set de iconos SVG y assets de Arte quedan para iteracion.
+- P0 mapa: resto del mundo sigue con geometria vieja. No es tarea de Frontend inventar continentes; requiere entrega de Arte con el mismo patron aprobado.
 
 ## Proxima accion
 
-No abrir mas trabajo de Frontend hasta tener direccion de mapa aprobada o un P0/P1 nuevo del playtest. El siguiente agente activo es Agy por el rediseño P0 del mapa.
+Frontend aprobado para el piloto America del Sur. Siguiente agente activo: Agy debe producir el resto del mundo con el mismo patron; Frontend solo integra cuando reciba geometria/capas listas.

@@ -311,3 +311,43 @@ El manifest `south-america-pilot-manifest.json` no refleja todavia el alcance se
 ## Criterio de revisión
 
 Se habilita extender al resto del mapa solo despues de que Frontend demuestre en flujo real seleccion, propiedad, tropas, hitboxes, ataque y reconexion usando America del Sur en 1920x1080 y 1366x768.
+
+## Decision 2026-07-25-09
+
+## Decisión
+
+Aprobar la integracion piloto de America del Sur en el mapa productivo modo 50 y devolver el foco a Agy para completar el resto del mundo.
+
+## Problema
+
+Frontend ya demostro que la region aprobada puede integrarse sin romper IDs, hitboxes ni flujo de ataque. El riesgo restante no es tecnico de Frontend sino de consistencia visual: el resto del mundo conserva la geometria vieja.
+
+## Evidencia
+
+Commit `d980385 feat(map): piloto P0 América del Sur — geometría realista integrada al modo 50`. Review `docs/reviews/sa-pilot-integration.md`. E2E `e2e/south-america-pilot.spec.ts` paso junto con la suite completa: `pnpm test`, `pnpm typecheck`, `pnpm build`, `pnpm e2e`. Capturas: `test-results/sa-pilot-1920x1080.png`, `test-results/sa-pilot-1366x768.png`, `test-results/sa-pilot-no-labels.png`, `test-results/sa-pilot-selected.png`, `test-results/sa-pilot-attackable.png`, `test-results/sa-pilot-executing.png`.
+
+## Opciones consideradas
+
+1. Pedir a Frontend que extrapole el resto del mundo.
+2. Volver a Agy para generar el resto de continentes con el patron aprobado.
+3. Detener mapa y volver a pulido secundario.
+
+## Decisión elegida
+
+Volver a Agy. Frontend queda en pausa hasta recibir geometria/capas aprobadas del resto del mundo.
+
+## Motivo
+
+La calidad visual del mapa depende de geometria, no de integracion. Frontend ya probo el pipeline; ahora Arte debe producir assets consistentes para el resto.
+
+## Impacto
+
+Agy: producir continentes restantes. Frontend: no avanzar salvo correccion P0/P1 o integracion de assets aprobados. Backend: no entra.
+
+## Riesgos
+
+El contraste entre America del Sur nueva y el resto del mundo viejo queda visible hasta completar la malla. Modo 26 conserva arte viejo porque el piloto valido solo modo 50.
+
+## Criterio de revisión
+
+Se habilita nueva integracion Frontend cuando Agy entregue America del Norte, Europa, Africa, Asia y Oceania con geometria encastrada, hitboxes, labels, posiciones de tropas, estados de seleccion/ataque y manifest por modo.

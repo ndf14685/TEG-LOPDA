@@ -43,7 +43,9 @@ Aprobacion parcial fuerte del prototipo de direccion UX para turno, combate y Tr
 - La afirmacion "0 cambios tecnicos en el motor" solo aplica al modo 50 en esta region. El modo 26 actual no contiene todos esos IDs, por lo que debe declararse explicitamente el alcance.
 - La region piloto no demuestra todavia integracion productiva ni hitboxes verificadas con Playwright; es prototipo de diseno.
 - `assets/manifests/south-america-pilot-manifest.json` no quedo actualizado con el alcance separado modo 26/modo 50 ni con timestamp de la version 2.3.0. Frontend puede usar el HTML/prototipo como referencia, pero el manifest debe corregirse antes de tratarlo como contrato final de assets.
+- Manifiestos principales de assets: `assets-manifest.json` y `assets-inventory.csv` quedan aprobados en existencia fisica; verificacion local de referencias `READY` encontro 21 rutas y 0 faltantes.
+- `missing-assets.md` queda aceptado como inventario operativo, pero mantiene inconsistencias menores: no lista todos los nuevos READY del manifest principal y conserva observaciones antiguas de integracion frontend. No bloquea la integracion piloto del mapa.
 
 ## Proxima accion
 
-Frontend queda habilitado para una integracion piloto acotada de America del Sur, sin completar el resto del mundo. Debe integrar la region en el flujo real y validar seleccion, hitboxes, labels, tropas, propiedad, ataque y 1366x768. Agy debe corregir el manifest de modo 26/50 en paralelo o antes del handoff definitivo.
+Integracion piloto de America del Sur completada por Frontend en modo 50 y aprobada en e2e real. Agy debe producir el resto del mapa con el mismo patron de geometria encastrada, capas separadas e IDs conservados por modo. Frontend no debe inventar continentes ni extrapolar geometria sin assets aprobados.
