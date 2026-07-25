@@ -22,3 +22,6 @@ __pycache__/
 *.pyc
 .venv/
 .pytest_cache/
+
+# capturas/artefactos de Playwright MCP
+.playwright-mcp/
