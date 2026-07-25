@@ -12,3 +12,4 @@ Fecha: 2026-07-25
 | R6 | Cobertura automatizada insuficiente para experiencia | Media | Sin reporte de coverage; E2E no cubre ataque/conquista/reconexion | Plan de E2E por vertical |
 | R7 | Trabajo sin commitear en docs/assets/prototipo | Media | `git status` lista carpetas nuevas sin trackear | Rama/commit controlado antes de entregar a agentes |
 | R8 | Documentacion tecnica antigua induce errores | Media | README/overview conservan TODOs falsos | Actualizar docs oficiales y marcar docs viejos como referencia |
+| R9 | Mapa no reconocible como mapamundi | Alta | Capturas de playtest/e2e muestran continentes dependientes de titulos y etiquetas | Rediseño P0 en capas: base geografica, territorios, hitboxes y overlays; validar primero direccion y luego region piloto |

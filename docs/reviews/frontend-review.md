@@ -4,7 +4,7 @@ Fecha: 2026-07-25
 
 ## Resultado
 
-Aprobado para mini-playtest privado fast-track posterior al hotfix Windows. No es cierre final del producto, pero ya es una candidata valida para jugar con amigos y corregir por evidencia real.
+Aprobado para esta tanda fast-track posterior al hotfix Windows y mini-regresion. No es cierre final del producto, pero los defectos DEF-01, DEF-02 y DEF-03 quedaron corregidos en deploy real.
 
 ## Evidencia
 
@@ -20,6 +20,7 @@ Aprobado para mini-playtest privado fast-track posterior al hotfix Windows. No e
 - Verificacion backend de soporte: `backend/tests/test_wager_amount.py` y tests de apuesta pasaron; suite backend completa paso al repetir con 84 passed.
 - Capturas regeneradas: `test-results/product-player-view.png`, `test-results/product-combat-arena.png`, `test-results/product-1366x768-turn.png`, `test-results/product-1920x1080-turn.png`.
 - Capturas post-hotfix revisadas: `test-results/product-defender-battle.png`, `test-results/product-spectator-battle.png`.
+- Mini-regresion Windows: `docs/playtest/mini-regression-2026-07-25.md`, resultado 6/6 PASS sobre bundle `static/index-B-E0RDsg.js`.
 
 ## Aprobado
 
@@ -46,4 +47,4 @@ Aprobado para mini-playtest privado fast-track posterior al hotfix Windows. No e
 
 ## Proxima accion
 
-Ejecutar mini-playtest privado de regresion con tres clientes: atacante, defensor y espectador. Registrar defectos por severidad y no abrir Backend salvo que el playtest confirme necesidad de ledger de Tribuna o datos autoritativos faltantes.
+No abrir mas trabajo de Frontend hasta tener direccion de mapa aprobada o un P0/P1 nuevo del playtest. El siguiente agente activo es Agy por el rediseño P0 del mapa.

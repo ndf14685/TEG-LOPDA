@@ -151,3 +151,43 @@ Puede entrar deuda visual/tecnica y algunas inconsistencias de Tribuna si se sim
 ## Criterio de revisión
 
 Se frena el fast-track solo si aparece P0: partida imposible de continuar, estado inconsistente, perdida de datos, reglas criticas en cliente o corrupcion de monedas/apuestas.
+
+## Decision 2026-07-25-05
+
+## Decisión
+
+Rechazar el mapa visual actual y declarar P0 el rediseño total del mapamundi.
+
+## Problema
+
+El mapa actual es funcional tecnicamente, pero no se reconoce inmediatamente como mapamundi. El jugador depende de titulos de continentes y etiquetas para interpretar la pantalla, lo que rompe la fantasia, la claridad tactica y la presentacion basica del juego.
+
+## Evidencia
+
+Capturas de playtest y e2e: `test-results/product-1366x768-turn.png`, `test-results/product-defender-battle.png`, `artifacts/playtest/screenshots/13-game-1366x768.png`, `artifacts/playtest/screenshots/14-game-390x844.png`. Las siluetas continentales son organicas pero no reconocibles como America del Norte, America del Sur, Europa, Africa, Asia y Oceania sin leer textos.
+
+## Opciones consideradas
+
+1. Parchear posiciones, nombres e insignias sobre el SVG actual.
+2. Mejorar solo textura/colores del mapa actual.
+3. Redisenar el mapa en capas conservando IDs y adyacencias cuando sea posible.
+
+## Decisión elegida
+
+Redisenar el mapa completo en cuatro capas: base geografica no interactiva, territorios SVG jugables, hitboxes invisibles y overlays.
+
+## Motivo
+
+El mapa es el protagonista del producto. Si no se reconoce como mapamundi en menos de un segundo, el juego se percibe como prototipo tecnico aunque turno, combate y multiplayer funcionen.
+
+## Impacto
+
+Designer/Agy pasa primero y debe entregar tres direcciones visuales del mapamundi completo sin titulos de continentes. Frontend queda pausado para pulido visual secundario y solo dara soporte tecnico de IDs, adyacencias, hitboxes y prueba de una region. Backend no entra salvo que el cambio de IDs rompa contratos o persistencia.
+
+## Riesgos
+
+Puede consumir cuota si se intenta resolver todo el mundo de una vez. Puede romper adyacencias o flujos si se reemplazan IDs sin mapeo. Puede generar una imagen linda pero poco jugable si no se separan territorios e hitboxes.
+
+## Criterio de revisión
+
+Se reconsidera solo si una propuesta demuestra en capturas 1920x1080 y 1366x768 que el mapa se reconoce sin etiquetas, conserva interaccion por territorio, mantiene legibilidad de tropas y respeta colores de seis jugadores sin destruir la geografia.

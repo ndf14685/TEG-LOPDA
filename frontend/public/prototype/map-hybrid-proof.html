@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TEG LOPDA — Prueba de Alta Fidelidad Mapa Híbrido (A+B+C)</title>
+  <style>
+    :root {
+      --ocean-navy: #091b30;
+      --bg-dark: #040a14;
+      --text-main: #f8fafc;
+      --border-gold: #d97706;
+      --player-red: #ef4444;
+      --player-blue: #3b82f6;
+      --player-green: #10b981;
+      --player-yellow: #eab308;
+      --player-purple: #a855f7;
+      --player-cyan: #06b6d4;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+    body {
+      font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-main);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    header {
+      background: #0f172a;
+      border-bottom: 2px solid var(--border-gold);
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 15px;
+      z-index: 20;
+    }
+
+    .brand-title {
+      font-family: serif;
+      font-size: 18px;
+      font-weight: bold;
+      color: #fbbf24;
+      letter-spacing: 1.5px;
+    }
+
+    .toolbar { display: flex; gap: 10px; align-items: center; }
+
+    .btn {
+      background: linear-gradient(180deg, #334155, #1e293b);
+      border: 1px solid #475569;
+      color: #f8fafc;
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .btn:hover { background: #475569; border-color: #fbbf24; }
+    .btn-active { border-color: #fbbf24; background: #d97706; color: #000; }
+
+    .map-viewport {
+      flex: 1;
+      position: relative;
+      background: radial-gradient(circle at 50% 45%, #0f2b48 0%, #091b30 60%, #040a14 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px;
+      transition: all 0.3s ease;
+    }
+
+    /* Target resolutions container */
+    .viewport-container {
+      width: 100%;
+      height: 100%;
+      max-width: 1920px;
+      max-height: 1080px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+    }
+    .mode-1366 {
+      max-width: 1366px;
+      max-height: 768px;
+      border: 2px stroke #3b82f6;
+      box-shadow: 0 0 30px rgba(2, 132, 199, 0.4);
+    }
+
+    svg.hybrid-map-svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Player styling without flat solid paint */
+    .terr-base {
+      fill: rgba(15, 23, 42, 0.7);
+      stroke: #0f172a;
+      stroke-width: 4;
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+    .terr-base:hover {
+      filter: brightness(1.3);
+      stroke: #38bdf8;
+    }
+
+    /* Player-controlled glowing borders & inner subtle tinting */
+    .p-red { stroke: var(--player-red); stroke-width: 6; fill: rgba(239, 68, 68, 0.25); filter: drop-shadow(0 0 8px rgba(239,68,68,0.5)); }
+    .p-blue { stroke: var(--player-blue); stroke-width: 6; fill: rgba(59, 130, 246, 0.25); filter: drop-shadow(0 0 8px rgba(59,130,246,0.5)); }
+    .p-green { stroke: var(--player-green); stroke-width: 6; fill: rgba(16, 185, 129, 0.25); filter: drop-shadow(0 0 8px rgba(16,185,129,0.5)); }
+    .p-yellow { stroke: var(--player-yellow); stroke-width: 6; fill: rgba(234, 179, 8, 0.25); filter: drop-shadow(0 0 8px rgba(234,179,8,0.5)); }
+    .p-purple { stroke: var(--player-purple); stroke-width: 6; fill: rgba(168, 85, 247, 0.25); filter: drop-shadow(0 0 8px rgba(168,85,247,0.5)); }
+    .p-cyan { stroke: var(--player-cyan); stroke-width: 6; fill: rgba(6, 182, 212, 0.25); filter: drop-shadow(0 0 8px rgba(6,182,212,0.5)); }
+
+    .terr-selected { stroke: #fff !important; stroke-width: 8 !important; animation: pulseStroke 1.2s infinite alternate; }
+    .terr-target { stroke: #ef4444 !important; stroke-width: 8 !important; stroke-dasharray: 10 6; }
+
+    @keyframes pulseStroke {
+      0% { filter: drop-shadow(0 0 6px #fff); }
+      100% { filter: drop-shadow(0 0 20px #fbbf24); }
+    }
+
+    .continent-label {
+      font-size: 32px;
+      font-weight: 900;
+      fill: #fbbf24;
+      paint-order: stroke;
+      stroke: #020617;
+      stroke-width: 8px;
+      letter-spacing: 4px;
+      text-anchor: middle;
+      pointer-events: none;
+      opacity: 1;
+      transition: opacity 0.3s ease;
+    }
+    .continent-label.hidden-titles { opacity: 0 !important; }
+
+    .badge-circle { fill: #0f172a; stroke-width: 5; }
+    .badge-text { fill: #fff; font-size: 34px; font-weight: 900; text-anchor: middle; }
+
+    .vector-arrow {
+      stroke: #ef4444;
+      stroke-width: 8;
+      stroke-dasharray: 14 8;
+      fill: none;
+      animation: dashMove 1s linear infinite;
+    }
+    @keyframes dashMove {
+      to { stroke-dashoffset: -44; }
+    }
+
+    .legend-bar {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid var(--border-gold);
+      padding: 8px 18px;
+      border-radius: 20px;
+      display: flex;
+      gap: 15px;
+      font-size: 12px;
+      z-index: 15;
+    }
+    .player-tag { display: flex; align-items: center; gap: 6px; font-weight: bold; }
+    .color-dot { width: 12px; height: 12px; border-radius: 50%; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand-title">🗺️ TEG LOPDA — PRUEBA DE ALTA FIDELIDAD MAPA HÍBRIDO (A+B+C)</div>
+    <div class="toolbar">
+      <button class="btn btn-active" id="btn-toggle-titles" onclick="toggleTitles()">🏷️ Alternar Títulos de Continente (Verificación <1s)</button>
+      <button class="btn" id="btn-res-1920" onclick="setResolution('1920')">🖥️ 1920x1080</button>
+      <button class="btn" id="btn-res-1366" onclick="setResolution('1366')">💻 1366x768</button>
+    </div>
+  </header>
+
+  <div class="map-viewport">
+    <div class="viewport-container" id="vp-container">
+      <svg class="hybrid-map-svg" viewBox="0 0 2560 1440">
+        <!-- CAPA 1: OCÉANO Y BASE GEOGRÁFICA -->
+        <g id="layer-1-geo-base">
+          <rect width="2560" height="1440" fill="#091b30" />
+          <!-- Grilla Táctica -->
+          <pattern id="grid" width="100" height="100" patternUnits="userSpaceOnUse">
+            <path d="M 100 0 L 0 0 0 100" fill="none" stroke="rgba(56, 189, 248, 0.05)" stroke-width="1.5" />
+          </pattern>
+          <rect width="2560" height="1440" fill="url(#grid)" />
+          
+          <!-- Rutas Marítimas -->
+          <path d="M 450 480 L 1150 480" stroke="rgba(56,189,248,0.3)" stroke-width="4" stroke-dasharray="10 8" />
+          <path d="M 750 900 L 1250 850" stroke="rgba(239,68,68,0.7)" stroke-width="6" stroke-dasharray="12 6" class="vector-arrow" />
+        </g>
+
+        <!-- CAPA 2: TERRITORIOS SVG CON TINTADO CONTROLADO Y HALOS (6 JUGADORES) -->
+        <g id="layer-2-playable-territories">
+          <!-- 1. AMÉRICA DEL NORTE (Jugador Amarillo) -->
+          <path class="terr-base p-yellow" d="M 300 250 C 450 200, 750 220, 850 380 C 800 520, 600 580, 420 520 C 320 480, 250 350, 300 250 Z" />
+          
+          <!-- 2. AMÉRICA DEL SUR (Jugador Rojo - Seleccionado Origen) -->
+          <path class="terr-base p-red terr-selected" d="M 520 650 C 680 620, 820 680, 840 820 C 820 1050, 680 1220, 560 1240 C 460 1180, 440 920, 520 650 Z" />
+
+          <!-- 3. EUROPA (Jugador Azul) -->
+          <path class="terr-base p-blue" d="M 1150 320 C 1350 280, 1520 320, 1550 480 C 1450 560, 1250 580, 1180 500 Z" />
+
+          <!-- 4. ÁFRICA (Jugador Verde - Objetivo Atacable) -->
+          <path class="terr-base p-green terr-target" d="M 1200 620 C 1450 590, 1620 660, 1640 820 C 1580 1120, 1380 1200, 1250 1150 C 1150 980, 1140 780, 1200 620 Z" />
+
+          <!-- 5. ASIA (Jugador Púrpura) -->
+          <path class="terr-base p-purple" d="M 1600 240 C 2050 200, 2400 320, 2420 620 C 2300 780, 1950 820, 1680 720 Z" />
+
+          <!-- 6. OCEANÍA (Jugador Cian) -->
+          <path class="terr-base p-cyan" d="M 1950 880 C 2200 850, 2350 920, 2380 1120 C 2300 1240, 2050 1260, 1980 1150 Z" />
+        </g>
+
+        <!-- CAPA 3: HITBOXES INVISIBLES (Independientes para Hover/Click/Drag) -->
+        <g id="layer-3-hitboxes" opacity="0">
+          <path d="M 300 250 C 450 200, 750 220, 850 380 C 800 520, 600 580, 420 520 Z" fill="#fff" />
+          <path d="M 520 650 C 680 620, 820 680, 840 820 C 820 1050, 680 1220, 560 1240 Z" fill="#fff" />
+          <path d="M 1150 320 C 1350 280, 1520 320, 1550 480 Z" fill="#fff" />
+          <path d="M 1200 620 C 1450 590, 1620 660, 1640 820 Z" fill="#fff" />
+          <path d="M 1600 240 C 2050 200, 2400 320, 2420 620 Z" fill="#fff" />
+          <path d="M 1950 880 C 2200 850, 2350 920, 2380 1120 Z" fill="#fff" />
+        </g>
+
+        <!-- CAPA 4: OVERLAYS DE ETIQUETAS, BADGES DE TROPAS Y FLECHA AUTORITATIVA -->
+        <g id="layer-4-overlays">
+          <!-- Títulos de Continente (Toggleable) -->
+          <text x="550" y="320" class="continent-label" id="lbl-na">AMÉRICA DEL NORTE</text>
+          <text x="650" y="760" class="continent-label" id="lbl-sa">AMÉRICA DEL SUR</text>
+          <text x="1350" y="380" class="continent-label" id="lbl-eu">EUROPA</text>
+          <text x="1380" y="740" class="continent-label" id="lbl-af">ÁFRICA</text>
+          <text x="1980" y="360" class="continent-label" id="lbl-as">ASIA</text>
+          <text x="2150" y="960" class="continent-label" id="lbl-oc">OCEANÍA</text>
+
+          <!-- Badges de Ejércitos Circulares -->
+          <g>
+            <circle cx="550" cy="420" r="42" class="badge-circle" stroke="#eab308" />
+            <text x="550" y="432" class="badge-text">8</text>
+          </g>
+          <g>
+            <circle cx="650" cy="920" r="46" class="badge-circle" stroke="#ef4444" />
+            <text x="650" y="934" class="badge-text">16</text>
+          </g>
+          <g>
+            <circle cx="1350" cy="480" r="42" class="badge-circle" stroke="#3b82f6" />
+            <text x="1350" y="492" class="badge-text">12</text>
+          </g>
+          <g>
+            <circle cx="1380" cy="880" r="42" class="badge-circle" stroke="#10b981" />
+            <text x="1380" y="892" class="badge-text">4</text>
+          </g>
+          <g>
+            <circle cx="1980" cy="520" r="42" class="badge-circle" stroke="#a855f7" />
+            <text x="1980" y="532" class="badge-text">22</text>
+          </g>
+          <g>
+            <circle cx="2150" cy="1080" r="42" class="badge-circle" stroke="#06b6d4" />
+            <text x="2150" y="1092" class="badge-text">6</text>
+          </g>
+        </g>
+      </svg>
+
+      <!-- Barra Leyenda de 6 Jugadores -->
+      <div class="legend-bar">
+        <div class="player-tag" style="color:var(--player-yellow)"><div class="color-dot" style="background:var(--player-yellow)"></div> Jugador Sol (AN)</div>
+        <div class="player-tag" style="color:var(--player-red)"><div class="color-dot" style="background:var(--player-red)"></div> Jugador León (AS)</div>
+        <div class="player-tag" style="color:var(--player-blue)"><div class="color-dot" style="background:var(--player-blue)"></div> Jugador Águila (EU)</div>
+        <div class="player-tag" style="color:var(--player-green)"><div class="color-dot" style="background:var(--player-green)"></div> Jugador Elefante (AF)</div>
+        <div class="player-tag" style="color:var(--player-purple)"><div class="color-dot" style="background:var(--player-purple)"></div> Jugador Dragón (AS)</div>
+        <div class="player-tag" style="color:var(--player-cyan)"><div class="color-dot" style="background:var(--player-cyan)"></div> Jugador Tridente (OC)</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let titlesVisible = true;
+    function toggleTitles() {
+      titlesVisible = !titlesVisible;
+      const labels = document.querySelectorAll('.continent-label');
+      labels.forEach(l => {
+        if (titlesVisible) l.classList.remove('hidden-titles');
+        else l.classList.add('hidden-titles');
+      });
+      document.getElementById('btn-toggle-titles').classList.toggle('btn-active', titlesVisible);
+    }
+
+    function setResolution(res) {
+      const container = document.getElementById('vp-container');
+      const btn1920 = document.getElementById('btn-res-1920');
+      const btn1366 = document.getElementById('btn-res-1366');
+
+      if (res === '1366') {
+        container.classList.add('mode-1366');
+        btn1366.classList.add('btn-active');
+        btn1920.classList.remove('btn-active');
+      } else {
+        container.classList.remove('mode-1366');
+        btn1920.classList.add('btn-active');
+        btn1366.classList.remove('btn-active');
+      }
+    }
+  </script>
+</body>
+</html>

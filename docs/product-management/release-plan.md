@@ -10,9 +10,24 @@ Release por verticales jugables, no por capas tecnicas. Ninguna vertical se decl
 
 Actualizacion 2026-07-25: por decision del owner humano, se habilita una version jugable acelerada para amigos. Se permite implementar Frontend antes de cerrar todos los gates formales, manteniendo guardrails P0. Las verticales siguen siendo utiles para ordenar correcciones, pero no bloquean sacar una version usable.
 
+Actualizacion 2026-07-25: el mapa visual actual queda rechazado como P0. Se pausa pulido visual secundario (dados 3D, particulas, animaciones epicas, Tribuna visual y relator animado) hasta aprobar una direccion de mapamundi reconocible.
+
+## Bloque P0 - Mapa
+
+Estado: rechazado visualmente, funcional tecnicamente.
+
+Secuencia obligatoria:
+
+1. Agy entrega tres direcciones de mapamundi completo sin titulos de continentes.
+2. Owner/Codex aprueba una direccion.
+3. Agy produce capas de una region piloto, preferentemente America del Sur: base, territorios, hitboxes, overlays y manifest.
+4. Frontend integra solo esa region piloto.
+5. Se valida zoom, seleccion, propiedad, tropas, ataque y legibilidad en 1920x1080 y 1366x768.
+6. Solo despues se completa el resto del mundo.
+
 ## Vertical 1 - Identidad, lobby, turno y refuerzos
 
-Estado: parcialmente implementada, no aprobada.
+Estado: funcional en fast-track, bloqueada visualmente por mapa P0.
 
 Checkpoint proximo: prototipo de claridad del turno/refuerzos + contrato sincronizado + E2E ampliado.
 

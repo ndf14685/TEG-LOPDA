@@ -8,6 +8,8 @@ Playtest Windows recibido por reporte del tester. Resultado general: apto como b
 
 Hotfix post-playtest `bf4e6fe` verificado el 2026-07-25: DEF-01, DEF-02, DEF-03 y DEF-04 quedan aceptados como corregidos para desktop. DEF-05 mobile queda diferido.
 
+Mini-regresion Windows 2026-07-25: 6/6 PASS sobre deploy real. Frontend queda aprobado para esta tanda; el siguiente bloqueo P0 es el mapa visual.
+
 ## Evidencia disponible
 
 - Reporte pegado por el owner humano el 2026-07-25.
@@ -17,6 +19,8 @@ Hotfix post-playtest `bf4e6fe` verificado el 2026-07-25: DEF-01, DEF-02, DEF-03 
 - Verificacion local: `pnpm test` 33 passed, `pnpm typecheck` passed, `pnpm build` passed, `pnpm e2e` 2 passed.
 - Verificacion backend: primera corrida completa tuvo un fallo intermitente en `tests/test_bot.py::test_full_game_between_bots_reaches_victory` por evento `game.finished` no observado; el test paso aislado y la suite completa paso al repetir con 84 passed. Se registra como riesgo de flakiness, no como bloqueo de este hotfix.
 - Capturas revisadas: `test-results/product-combat-arena.png`, `test-results/product-defender-battle.png`, `test-results/product-spectator-battle.png`, `test-results/product-1366x768-turn.png`.
+- Mini-regresion: `docs/playtest/mini-regression-2026-07-25.md`.
+- Capturas de mini-regresion: `artifacts/playtest/screenshots/R-01-attacker-arena.png`, `R-23-daro-during-battle.png`, `R-23-tribu-during-battle.png`, `R-04-wager-plus3.png`, `R-05-placement-hud-nessi.png`, `R-06-reload-daro.png`.
 
 ## Defectos aceptados
 
@@ -44,6 +48,6 @@ Hotfix post-playtest `bf4e6fe` verificado el 2026-07-25: DEF-01, DEF-02, DEF-03 
 
 ## Proxima correccion
 
-Ejecutar mini-playtest de regresion, no auditoria completa: atacante, defensor, espectador, combate, apuesta +3, chat durante batalla y reconexion por recarga.
+Mini-playtest de regresion completado y aprobado. No abrir mas correcciones de Frontend por esta tanda.
 
-Despues del mini-playtest, priorizar solo defectos P0/P1 encontrados jugando. Mobile y assets quedan fuera salvo decision explicita del owner.
+Siguiente foco: Agy debe resolver el P0 de mapa reconocible. Frontend solo vuelve cuando exista direccion visual aprobada para integrar una region piloto.
