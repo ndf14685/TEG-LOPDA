@@ -1,6 +1,7 @@
 id,category,path,format,status,description
+map.world.geographic-base-50.001,map,assets/maps/base/map-world-geographic-base-50-001.svg,svg,ready,Base geográfica vectorial continua no interactiva de los 6 continentes
 map.world.tactical-26.001,map,assets/maps/base/map-base-tactical-26-001.svg,svg,ready,Mapa táctico base de 26 territorios
-map.world.tactical-50.001,map,assets/maps/base/map-base-tactical-50-001.svg,svg,ready,Mapa táctico de 50 territorios con siluetas orgánicas
+map.world.tactical-50.001,map,assets/maps/base/map-base-tactical-50-001.svg,svg,ready,Mapa táctico de 50 territorios en 4 capas realistas
 map.world.tactical-100.001,map,assets/maps/base/map-base-tactical-100-001.svg,svg,ready,Mapa táctico extendido de 100 territorios
 brand.palette.001,brand,assets/brand/palette/palette.json,json,ready,Paleta de marca y 8 colores de jugadores WCAG
 ui.icon.lopda-coin.001,ui,assets/ui/icons/icon-betting-lopda-coin-001.svg,svg,ready,Icono de Moneda LOPDA virtual
@@ -9,6 +10,7 @@ ui.button.fortify.001,ui,assets/ui/buttons/button-action-fortify-001.svg,svg,rea
 ui.panel.card.001,ui,assets/ui/panels/panel-player-card-001.svg,svg,ready,Panel heráldico de tarjeta de jugador
 achievement.banner.traitor-king.001,achievements,assets/achievements/banners/banner-achievement-traitor-king-001.svg,svg,ready,Estandarte de logro Rey Traidor
 pilot.south-america.manifest.001,manifests,assets/manifests/south-america-pilot-manifest.json,json,ready,Manifiesto técnico de la región piloto América del Sur
+pilot.world-50.manifest.001,manifests,assets/manifests/map-world-50-manifest.json,json,ready,Manifiesto técnico del mapamundi de 50 territorios
 audio.ui.click.001,audio,assets/audio/ui/sound-ui-click-001.wav,wav,ready,Efecto sonoro de click en interfaz
 audio.ui.notify.001,audio,assets/audio/ui/sound-notify-001.wav,wav,ready,Notificación sonora de interfaz
 audio.ui.reinforce.001,audio,assets/audio/ui/sound-reinforce-001.wav,wav,ready,Sonido de colocación de refuerzos

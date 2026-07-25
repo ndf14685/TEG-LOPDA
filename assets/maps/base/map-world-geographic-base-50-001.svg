@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2560 1440" id="map-world-geographic-base-50-001">
+  <defs>
+    <!-- Dark Imperial Navy Ocean Gradient -->
+    <radialGradient id="oceanGrad" cx="50%" cy="45%" r="75%">
+      <stop offset="0%" stop-color="#0f2b48" />
+      <stop offset="60%" stop-color="#091b30" />
+      <stop offset="100%" stop-color="#040a14" />
+    </radialGradient>
+
+    <!-- Bathymetric Shallow Water Shading Gradient -->
+    <linearGradient id="shallowWater" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="rgba(14, 116, 144, 0.18)" />
+      <stop offset="100%" stop-color="rgba(2, 132, 199, 0.05)" />
+    </linearGradient>
+
+    <!-- Tactical Grid Pattern -->
+    <pattern id="tacGrid" width="120" height="120" patternUnits="userSpaceOnUse">
+      <path d="M 120 0 L 0 0 0 120" fill="none" stroke="rgba(56, 189, 248, 0.04)" stroke-width="1.5" />
+    </pattern>
+
+    <style>
+      .ocean-bg { fill: url(#oceanGrad); }
+      .grid-layer { fill: url(#tacGrid); pointer-events: none; }
+      .continent-mass { fill: #0c2238; stroke: rgba(56, 189, 248, 0.25); stroke-width: 2.5; filter: drop-shadow(0 0 8px rgba(9, 30, 54, 0.8)); }
+      .continent-inner-detail { fill: rgba(15, 41, 66, 0.6); stroke: rgba(56, 189, 248, 0.1); stroke-width: 1.5; }
+      .topo-mountain { fill: none; stroke: rgba(251, 191, 36, 0.14); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+      .topo-ridge { fill: none; stroke: rgba(56, 189, 248, 0.12); stroke-width: 1.5; stroke-dasharray: 4 4; }
+      .sea-route { stroke: rgba(56, 189, 248, 0.35); stroke-width: 3.5; stroke-dasharray: 8 6; fill: none; }
+      .compass-ring { fill: none; stroke: rgba(251, 191, 36, 0.15); stroke-width: 1.5; }
+    </style>
+  </defs>
+
+  <g id="layer-1-geo-base" pointer-events="none">
+    <!-- 1. Fondo Marino y Retícula -->
+    <rect width="2560" height="1440" class="ocean-bg" />
+    <rect width="2560" height="1440" class="grid-layer" />
+
+    <!-- Brújula Táctica Submarina Sutil en el Pacífico Sur -->
+    <g transform="translate(300, 1150)">
+      <circle cx="0" cy="0" r="140" class="compass-ring" stroke-dasharray="8 4" />
+      <circle cx="0" cy="0" r="100" class="compass-ring" />
+      <path d="M 0 -130 L 0 130 M -130 0 L 130 0" stroke="rgba(251, 191, 36, 0.18)" stroke-width="1.5" />
+      <text x="0" y="-145" fill="rgba(251, 191, 36, 0.4)" font-size="18" font-weight="bold" text-anchor="middle">N</text>
+    </g>
+
+    <!-- 2. Rutas Marítimas Intercontinentales -->
+    <g class="maritime-routes">
+      <!-- Atlántico Norte (Nueva York ➔ Gran Bretaña) -->
+      <path d="M 810 590 C 980 480, 1100 420, 1270 460" class="sea-route" />
+      <!-- Atlántico Sur (Brasil ➔ Sáhara) -->
+      <path d="M 990 940 C 1150 820, 1250 780, 1520 890" class="sea-route" />
+      <!-- Pacífico Norte (Kamchatka ➔ Alaska) -->
+      <path d="M 2460 320 C 2540 220, 40 200, 120 120" class="sea-route" />
+      <!-- Océano Índico (Madagascar ➔ Australia) -->
+      <path d="M 1910 1250 C 2050 1320, 2150 1340, 2220 1140" class="sea-route" />
+    </g>
+
+    <!-- 3. Masas Continentales Continuas Reconocibles -->
+
+    <!-- AMÉRICA DEL NORTE CONTINUA -->
+    <g class="continent-group-north-america">
+      <path class="continent-mass" d="M 100 100 C 300 80, 750 120, 1180 220 C 1120 400, 880 500, 680 720 C 500 800, 360 630, 310 450 C 280 260, 120 280, 100 100 Z" />
+      <!-- Relieve Topográfico: Rocallosas -->
+      <path class="topo-mountain" d="M 320 200 L 360 280 L 400 360 L 420 480 L 460 580" />
+      <path class="topo-ridge" d="M 340 220 L 380 300 L 420 380 L 440 500" />
+    </g>
+
+    <!-- AMÉRICA DEL SUR CONTINUA -->
+    <g class="continent-group-south-america">
+      <path class="continent-mass" d="M 480 710 C 650 680, 850 720, 990 940 C 950 1120, 800 1220, 570 1620 C 440 1380, 430 900, 480 710 Z" />
+      <!-- Relieve Topográfico: Cordillera de los Andes -->
+      <path class="topo-mountain" d="M 520 740 L 490 850 L 460 980 L 470 1150 L 510 1350 L 540 1500" />
+      <path class="topo-ridge" d="M 530 760 L 500 870 L 470 1000 L 480 1170" />
+    </g>
+
+    <!-- EUROPA CONTINUA -->
+    <g class="continent-group-europe">
+      <path class="continent-mass" d="M 1150 180 C 1350 140, 1600 160, 1920 380 C 1800 560, 1450 670, 1180 520 C 1150 380, 1130 240, 1150 180 Z" />
+      <!-- Relieve Topográfico: Alpes & Pirineos -->
+      <path class="topo-mountain" d="M 1250 500 L 1320 480 L 1400 490 L 1460 480" />
+      <path class="topo-ridge" d="M 1300 485 L 1380 495" />
+    </g>
+
+    <!-- ÁFRICA CONTINUA -->
+    <g class="continent-group-africa">
+      <path class="continent-mass" d="M 1220 680 C 1550 630, 1850 650, 1880 870 C 1960 1080, 1730 1420, 1440 1320 C 1280 970, 1180 840, 1220 680 Z" />
+      <!-- Relieve Topográfico: Montes Atlas & Gran Valle del Rift -->
+      <path class="topo-mountain" d="M 1260 700 L 1340 710 M 1760 820 L 1740 980 L 1680 1120" />
+      <path class="topo-ridge" d="M 1770 840 L 1750 990" />
+    </g>
+
+    <!-- ASIA CONTINUA -->
+    <g class="continent-group-asia">
+      <path class="continent-mass" d="M 1580 530 C 1880 120, 2420 100, 2540 240 C 2530 480, 2380 780, 2150 950 C 1880 840, 1550 690, 1580 530 Z" />
+      <!-- Relieve Topográfico: Cordillera del Himalaya & Montes Urales -->
+      <path class="topo-mountain" d="M 1720 250 L 1740 380 M 1950 620 L 2100 640 L 2250 620 L 2350 550" />
+      <path class="topo-ridge" d="M 1970 630 L 2120 650 L 2270 630" />
+    </g>
+
+    <!-- OCEANÍA CONTINUA -->
+    <g class="continent-group-oceania">
+      <path class="continent-mass" d="M 2120 960 C 2360 930, 2540 1140, 2540 1340 C 2450 1440, 2180 1320, 2120 960 Z" />
+      <!-- Relieve Topográfico: Gran Cordillera Divisoria de Australia -->
+      <path class="topo-mountain" d="M 2480 1160 L 2500 1260 L 2460 1340" />
+      <path class="topo-ridge" d="M 2490 1180 L 2510 1270" />
+    </g>
+
+  </g>
+</svg>
