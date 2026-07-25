@@ -15,7 +15,7 @@ export default defineConfig({
   webServer: [
     {
       command:
-        'cd backend && TEG_ADMIN_TOKEN=dev-admin TEG_COMMENTATOR_PROVIDER=mock TEG_DB_PATH=$(mktemp -d)/teg-e2e.db TEG_CORS_ORIGINS=http://localhost:5174 uv run uvicorn teg_backend.main:app --port 8124',
+        'cd backend && TEG_ADMIN_TOKEN=dev-admin TEG_COMMENTATOR_PROVIDER=mock TEG_AI_PLAYER_THINK_SECONDS=0.05 TEG_DB_PATH=$(mktemp -d)/teg-e2e.db TEG_CORS_ORIGINS=http://localhost:5174 uv run uvicorn teg_backend.main:app --port 8124',
       url: 'http://localhost:8124/health',
       reuseExistingServer: false,
       timeout: 60_000,

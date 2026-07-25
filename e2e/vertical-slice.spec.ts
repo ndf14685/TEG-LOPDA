@@ -165,8 +165,14 @@ test('slice real: lobby, colocación radial, turno y fases sincronizadas', async
   await spectator.getByLabel('Mensaje de chat').fill('espectador libre');
   await spectator.screenshot({ path: 'test-results/product-spectator-battle.png' });
 
-  await active.getByTestId('stop-attack').click();
-  await expect(active.getByTestId('combat-arena')).toHaveCount(0);
+  // si la conquista ganó la partida al instante (objetivo cumplido), el
+  // modal de fin de partida reemplaza a la Arena: ambos finales son válidos
+  if (await active.getByTestId('post-game-modal').count()) {
+    await expect(active.getByTestId('post-game-modal')).toBeVisible();
+  } else {
+    await active.getByTestId('stop-attack').click();
+    await expect(active.getByTestId('combat-arena')).toHaveCount(0);
+  }
   await spectatorCtx.close();
 
   // 14. el mercado de espectadores se declara BLOQUEADO sin controles activos

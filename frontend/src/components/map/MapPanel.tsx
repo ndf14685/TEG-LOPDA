@@ -273,6 +273,24 @@ export function MapPanel({ mode }: { mode?: GameMode }) {
       }
     });
 
+    // 4b. Capa de hitboxes separada (piloto Sudamérica): la interacción y el
+    // tooltip viven en el hitbox transparente; el territorio visible solo pinta.
+    svg.querySelectorAll<SVGPathElement>('.territory-hitbox').forEach((hb) => {
+      const tid = hb.getAttribute('data-territory');
+      if (!tid) return;
+      const target = svg.querySelector<SVGPathElement>(`#${CSS.escape(tid)}`);
+      if (!target) return;
+      hb.onclick = target.onclick;
+      hb.onmouseenter = () => target.classList.add('hb-hover');
+      hb.onmouseleave = () => target.classList.remove('hb-hover');
+      let hbTitle = hb.querySelector<SVGTitleElement>('title');
+      if (hbTitle === null) {
+        hbTitle = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+        hb.appendChild(hbTitle);
+      }
+      hbTitle.textContent = target.querySelector('title')?.textContent ?? '';
+    });
+
     // 5. Inyectar Insignias de Ejércitos
     Object.entries(centers).forEach(([id, center]) => {
       const tState = territories[id];
@@ -473,6 +491,21 @@ export function MapPanel({ mode }: { mode?: GameMode }) {
 
       {/* Reacciones Flotantes & Emotes sobre el mapa */}
       {state === 'ready' && <FloatingEmotes />}
+
+      {/* Toggle de etiquetas: valida reconocibilidad del mapa sin nombres */}
+      {state === 'ready' && (
+        <button
+          data-testid="labels-toggle"
+          onClick={(e) => {
+            e.stopPropagation();
+            containerRef.current?.querySelector('svg')?.classList.toggle('hide-labels');
+          }}
+          className="absolute left-3 top-3 z-20 rounded-lg border border-war-600 bg-war-900/90 px-2 py-1 text-xs font-bold text-stone-300 backdrop-blur-sm hover:border-gold-500"
+          title="Mostrar/ocultar nombres de países"
+        >
+          Aa
+        </button>
+      )}
 
       {/* Menú radial táctico (posicionado relativo a este contenedor) */}
       {state === 'ready' && <RadialMenu />}

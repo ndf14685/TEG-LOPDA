@@ -35,7 +35,7 @@ export function PostGameModal() {
     : [];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-war-950/95 p-4 backdrop-blur-lg">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-war-950/95 p-4 backdrop-blur-lg" data-testid="post-game-modal">
       <Confetti />
       <div className="w-full max-w-2xl rounded-2xl border border-gold-500/50 bg-gradient-to-b from-war-900 via-war-950 to-stone-950 p-6 text-slate-100 shadow-2xl">
         {/* Encabezado */}
