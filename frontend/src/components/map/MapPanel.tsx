@@ -9,6 +9,8 @@ import { RadialMenu } from './RadialMenu';
 import { territoryName } from '../../utils/territoryName';
 
 const RUNTIME_STYLE = `
+  /* los badges demo horneados en exports se ocultan: el juego dibuja los reales */
+  .badge-group { display: none; }
   .territory.hb-hover { stroke: #38bdf8; filter: brightness(1.25); }
   svg.hide-labels .territory-label, svg.hide-labels .continent-title { display: none; }
   .territory.attackable { stroke: #22d3ee; stroke-width: 6; stroke-dasharray: 6 6; }
@@ -74,6 +76,28 @@ export function MapPanel({ mode }: { mode?: GameMode }) {
             const style = document.createElementNS('http://www.w3.org/2000/svg', 'style');
             style.textContent = RUNTIME_STYLE;
             svg.appendChild(style);
+            // saneo de exports demo: clases de dueño falsas (p-*) fuera —
+            // la propiedad real la pinta el juego con datos del server
+            svg.querySelectorAll('.territory').forEach((t) => {
+              Array.from(t.classList)
+                .filter((c) => c.startsWith('p-'))
+                .forEach((c) => t.classList.remove(c));
+            });
+            // viewBox ajustado al contenido real: exports con geometría más
+            // alta que el lienzo (p. ej. y=1620 > 1440) no se recortan
+            try {
+              const bb = (svg as unknown as SVGGraphicsElement).getBBox();
+              const vb = (svg.getAttribute('viewBox') ?? '0 0 2560 1440').split(' ').map(Number);
+              // margen para las insignias dinámicas (desplazadas ~62px bajo el centro)
+              const MARGIN = 80;
+              const needW = Math.max(vb[2], bb.x + bb.width + MARGIN / 2);
+              const needH = Math.max(vb[3], bb.y + bb.height + MARGIN);
+              if (needW > vb[2] || needH > vb[3]) {
+                svg.setAttribute('viewBox', `0 0 ${Math.ceil(needW)} ${Math.ceil(needH)}`);
+              }
+            } catch {
+              // getBBox falla si el nodo no está montado: se conserva el viewBox
+            }
           }
         }
         setState('ready');
@@ -372,8 +396,11 @@ export function MapPanel({ mode }: { mode?: GameMode }) {
     if (state !== 'ready' || !container) return;
     const svg = container.querySelector('svg');
     if (!svg) return;
-    const BASE = { x: 0, y: 0, w: 2560, h: 1440 };
+    // el lienzo base sale del viewBox saneado en la carga (soporta exports
+    // más altos que 1440 sin recortar el sur del mapa)
     if (!svg.getAttribute('viewBox')) svg.setAttribute('viewBox', '0 0 2560 1440');
+    const [bx, by, bw, bh] = (svg.getAttribute('viewBox') ?? '0 0 2560 1440').split(' ').map(Number);
+    const BASE = { x: bx, y: by, w: bw, h: bh };
 
     const view = () => {
       const [x, y, w, h] = (svg.getAttribute('viewBox') ?? '0 0 2560 1440').split(' ').map(Number);
