@@ -4,7 +4,7 @@ Fecha: 2026-07-25
 
 ## Estado
 
-Bloqueo P0 reabierto. El mapa Modo 50 actual queda rechazado: funciona tecnicamente, pero no se lee como mapamundi terminado. No producir mejoras cosmeticas secundarias hasta resolver la capa cartografica base.
+Asset cartografico V3 aprobado como capa base para integracion Frontend. No producir nuevas variantes salvo pedido puntual despues de revisar capturas integradas del producto real.
 
 ## Problema
 
@@ -14,29 +14,21 @@ El producto muestra territorios/blobs sobre fondo azul con grilla, rutas y una b
 
 - Captura integrada `test-results/sa-pilot-1920x1080.png`: los territorios siguen dominando la lectura visual.
 - `assets/maps/base/map-world-geographic-base-50-001.svg`: existe, pero contiene paths continentales simplificados tipo blob (`continent-group-*`), no costas cartograficas.
+- `assets/maps/base/map-world-geographic-base-50-002.svg`: rechazado. Sus seis `path.continent-mass` son identicos a V1; solo agrega `continent-shelf`/glow y mantiene la silueta blob.
+- `test-results/geo-base-002-overlay-32pct-1920x1080.png`: no valida "sin labels"; la captura muestra nombres de territorios.
+- `assets/maps/base/map-world-geographic-base-50-003.svg`: aprobado como asset base. Capturas `test-results/geo-base-003-pure-1920x1080.png` y `test-results/geo-base-003-pure-1366x768.png` se leen como mapamundi sin labels; overlay `test-results/geo-base-003-overlay-32pct-1920x1080.png` mantiene costas visibles con seis colores.
 - Tester Windows sobre bundle `DlvZXums`: 50 territorios e hitboxes correctas, pero no se ve mapamundi real.
-- `docs/product-management/decision-log.md`, Decision 2026-07-25-17.
+- `docs/product-management/decision-log.md`, Decision 2026-07-25-17, Decision 2026-07-25-18 y Decision 2026-07-25-19.
 
 ## Cambio solicitado
 
-Entregar un asset nuevo de capa 1: mapamundi geografico completo, original, continuo y reconocible, alineado al `viewBox` del mapa Modo 50.
+Quedar en espera. La proxima accion corresponde a Frontend: integrar V3 en producto real y generar capturas. Arte solo ajusta si esas capturas muestran desalineacion o una silueta puntual confusa.
 
-## Formato obligatorio
+## Asset aprobado
 
-- Archivo principal: `assets/maps/base/map-world-geographic-base-50-002.svg`.
-- `viewBox="0 0 2560 1440"` o nuevo viewBox justificado que contenga toda la geometria sin recortes.
-- Un grupo raiz `id="layer-1-geo-base"` con `pointer-events="none"`.
-- Sin labels de paises, sin labels de continentes, sin badges, sin clases de jugador `p-*`, sin hitboxes.
-- Grupos internos opcionales por continente, pero solo decorativos.
-- Costas y masas continentales completas: America del Norte, America del Sur, Europa, Africa, Asia y Oceania deben reconocerse sin texto.
-- Estilo original de mesa de guerra: baja saturacion, topografia/cartografia sutil, oceano legible, sin copiar IP ni calcar un mapa comercial.
-
-## Entregables
-
-1. `assets/maps/base/map-world-geographic-base-50-002.svg`.
-2. Actualizacion del manifest runtime `assets/manifest/assets-manifest.json` y del inventario de Arte si corresponde.
-3. Capturas exportadas del asset solo, sin territorios ni labels: 1920x1080, 1366x768, 2560x1440 y 3840x2160.
-4. Captura overlay de referencia con territorios al 30-35% de opacidad y seis colores, solo para validar que la base sigue visible.
+- `assets/maps/base/map-world-geographic-base-50-003.svg`
+- `design/tools/gen-map-geo-base-v3.py`
+- `docs/design/map-geo-base-v3-changelog.md`
 
 ## Criterios de aceptacion visual
 

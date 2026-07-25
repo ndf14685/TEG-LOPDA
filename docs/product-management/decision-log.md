@@ -671,3 +671,123 @@ Desalineacion entre base geografica y territorios interactivos; exceso de detall
 ## Criterio de revisión
 
 Solo reconsiderar con capturas reales del producto en 1920x1080, 1366x768, 2560x1440 y 3840x2160, con y sin labels, donde se vean costas/continentes continuos, seis colores de jugadores, hitboxes funcionando y sin areas vacias excesivas.
+
+## Decision 2026-07-25-18
+
+## Decisión
+
+Rechazar `map-world-geographic-base-50-002.svg` como solucion P0 del mapamundi base.
+
+## Problema
+
+La entrega V2 declara refinamiento cartografico, pero conserva la misma geometria principal de continentes de V1. Agrega shelf/glow y detalles de relieve, pero no reemplaza los blobs por costas reconocibles.
+
+## Evidencia
+
+Comparacion local de los seis `path.continent-mass`: V1 y V2 son identicos. Captura `test-results/geo-base-002-pure-1920x1080.png` muestra seis masas grandes, redondeadas y abstractas; no costas continuas. Captura `test-results/geo-base-002-overlay-32pct-1920x1080.png` muestra labels visibles aunque el entregable la describe como "Sin Labels", por lo que no valida reconocimiento sin texto. `assets/manifest/assets-manifest.json` sigue sin registrar `geographic_base_50_002`; solo aparece en `assets/manifests/assets-manifest.json`, que no es el manifest runtime cargado por Frontend.
+
+## Opciones consideradas
+
+1. Aprobar V2 por existir como asset y tener capturas 4K.
+2. Aprobar V2 como parche visual temporal.
+3. Rechazar V2 y exigir nueva geometria cartografica real.
+
+## Decisión elegida
+
+Rechazar V2 como P0. No habilitar Frontend a integrarla en producto.
+
+## Motivo
+
+El criterio no era agregar brillo o zocalo, sino lograr lectura inmediata de mapamundi. Si los paths continentales principales son iguales a la version rechazada, el problema central permanece.
+
+## Impacto
+
+Agy debe producir una V3 con geometria nueva de costas/continentes. Frontend queda bloqueado para integracion de mapa, salvo diagnostico responsive y manifest. Tester no valida esta V2 en producto. Backend no entra.
+
+## Riesgos
+
+Otra iteracion de asset puede volver a tocar estilo sin cambiar silueta. Para evitarlo, la proxima entrega debe incluir comparacion visual V2 vs V3 y captura sin labels real.
+
+## Criterio de revisión
+
+Solo revisar V3 si los paths principales de continentes cambian materialmente y la captura sin labels realmente no contiene textos de paises ni continentes.
+
+## Decision 2026-07-25-19
+
+## Decisión
+
+Aprobar `map-world-geographic-base-50-003.svg` como asset cartografico base para integracion Frontend en Modo 50. No aprobar todavia el mapa productivo integrado.
+
+## Problema
+
+Las versiones V1/V2 no eran mapamundi reconocible: eran blobs con decoracion. Se necesitaba una capa 1 geografica real, continua y sin labels.
+
+## Evidencia
+
+Commits locales `f105a06` y `5f66f32`. Asset `assets/maps/base/map-world-geographic-base-50-003.svg` pesa ~90KB y reemplaza las seis curvas simplificadas por multiples masas de tierra, islas y aguas interiores. Capturas revisadas: `test-results/geo-base-003-pure-1920x1080.png`, `test-results/geo-base-003-pure-1366x768.png`, `test-results/geo-base-003-overlay-32pct-1920x1080.png`. El manifest runtime `assets/manifest/assets-manifest.json` ahora apunta `classic_50` a `maps/base/map-world-geographic-base-50-003.svg`; `assets/manifests/assets-inventory.csv` marca V1/V2 como deprecated.
+
+## Opciones consideradas
+
+1. Rechazar V3 por no ser geograficamente perfecta.
+2. Aprobar V3 como base cartografica e integrar en producto real.
+3. Pedir otra variante antes de integrar.
+
+## Decisión elegida
+
+Aprobar V3 como asset base para integracion. Frontend queda habilitado a integrarla debajo del SVG tactico/territorios e iniciar correccion responsive QHD/4K.
+
+## Motivo
+
+V3 cambia el metodo y la geometria, no solo el maquillaje. La captura sin labels se lee como mapamundi, con costas y continentes reconocibles. El overlay al 32% mantiene visible la geografia con seis colores.
+
+## Impacto
+
+Agy queda en espera salvo ajustes de silueta puntuales luego de capturas integradas. Frontend pasa a ser el agente activo. Tester validara producto integrado. Backend no entra.
+
+## Riesgos
+
+El asset V3 como mapa completo no garantiza alineacion perfecta con territorios jugables actuales. El manifest runtime ya separa `geo_base_50` de `classic_50`; Frontend debe conservar esa separacion al integrar para no reemplazar el SVG tactico interactivo por la base no interactiva.
+
+## Criterio de revisión
+
+Reconsiderar solo si en producto real con territorios, labels y tropas la base queda tapada, desalineada, rompe hitboxes, o no aprovecha 2560x1440/3840x2160.
+
+## Decision 2026-07-25-20
+
+## Decisión
+
+Aprobar la integracion Frontend de la base cartografica V3 en Modo 50 para playtest privado. No declarar cierre final del mapa.
+
+## Problema
+
+El asset V3 estaba aprobado como capa base, pero faltaba probarlo en producto real con territorios, hitboxes, labels, tropas, seis jugadores y resoluciones QHD/4K.
+
+## Evidencia
+
+Commit `897e26b`. `frontend/src/components/map/MapPanel.tsx` carga `geo_base_50` desde `assets/manifest/assets-manifest.json`, mantiene `classic_50` apuntando a `map-base-tactical-50-001.svg`, inyecta la base como `#layer-0-geo-world` con `pointer-events: none`, conserva hitboxes como capa interactiva y ajusta el oceano/reticula al viewBox final. Capturas revisadas: `test-results/sa-pilot-1920x1080.png`, `test-results/sa-pilot-1366x768.png`, `test-results/sa-pilot-3840x2160.png`. Verificacion local PO: `pnpm test` 33 passed, `pnpm typecheck` OK, `pnpm build` OK, `pnpm e2e` 4/4.
+
+## Opciones consideradas
+
+1. Rechazar por desalineaciones finas entre territorios tacticos y costas V3.
+2. Aprobar para playtest privado con deuda de encastre visual documentada.
+3. Pedir a Arte reexportar tactico completo antes de jugar.
+
+## Decisión elegida
+
+Aprobar para playtest privado. Mantener deuda de alineacion costa/territorio como P2/P1 visual segun feedback real.
+
+## Motivo
+
+El defecto P0 original queda resuelto: la captura ya se lee como mapamundi, no como blobs flotantes. Hitboxes y flujo real siguen funcionando. QHD/4K no dejan grandes areas vacias y el mapa crece.
+
+## Impacto
+
+Tester Windows vuelve a ser agente activo para regresion visual/funcional en URL real. Frontend queda en espera salvo defectos P0/P1. Agy queda en espera salvo ajuste de silueta/encastre solicitado. Backend no entra.
+
+## Riesgos
+
+La geometria tactica no encastra perfecto con costa V3 en algunos bordes, especialmente Sudamerica y regiones insulares. A 1366 el HUD consume mas altura por wrap. En 4K la UI mantiene escala CSS normal; validar confort visual en monitor real.
+
+## Criterio de revisión
+
+Reabrir si tester demuestra que en URL real el mapa no carga V3, que la base queda tapada con seis jugadores, que fallan clicks/hitboxes, que 1366 no es usable o que QHD/4K dejan areas vacias relevantes.

@@ -128,20 +128,21 @@ Integrar la region piloto America del Sur corregida en el mapa productivo o en u
 
 Fecha: 2026-07-25
 
-Estado: bloqueo P0 reabierto. No implementar mejoras cosmeticas ni avanzar playtest privado hasta integrar una capa geografica aprobada y resolver responsive QHD/4K.
+Estado: integracion V3 aprobada para playtest privado en Modo 50. No abrir nuevas mejoras salvo defectos P0/P1 del tester.
 
 ### Objetivo
 
-Diagnosticar y preparar la integracion robusta de una capa geografica real debajo del mapa tactico Modo 50, sin tocar backend, reglas ni modo 26.
+Mantener la integracion de `map-world-geographic-base-50-003.svg` debajo del mapa tactico Modo 50, sin tocar backend, reglas ni modo 26.
 
 ### Fuentes
 
 - `assets/maps/base/map-base-tactical-50-001.svg`
 - `assets/maps/base/map-world-geographic-base-50-001.svg` (rechazado como calidad final; sirve solo como evidencia tecnica)
+- `assets/maps/base/map-world-geographic-base-50-003.svg` (aprobado como asset base por Decision 2026-07-25-19)
 - `assets/manifests/map-world-50-manifest.json`
 - `docs/design/map-world-50-p0.md`
 - `frontend/public/prototype/geo-base-pilot.html`
-- `docs/product-management/decision-log.md`, Decision 2026-07-25-17
+- `docs/product-management/decision-log.md`, Decision 2026-07-25-17, Decision 2026-07-25-18 y Decision 2026-07-25-19
 
 ### Contrato obligatorio
 
@@ -152,24 +153,14 @@ Diagnosticar y preparar la integracion robusta de una capa geografica real debaj
 - La base geografica debe ser no interactiva y quedar debajo de territorios/hitboxes.
 - Bajar la opacidad/tintado de territorios lo necesario para que costas y continentes sigan visibles.
 
-### Diagnostico obligatorio antes de implementar
+### Evidencia de aprobacion
 
-- Confirmar en deploy real si existe `/assets/maps/base/map-world-geographic-base-50-001.svg`.
-- Confirmar en DOM si se inyecta `#layer-0-geo-world` y `svg[data-geo-base="1"]`.
-- Dejar de fallar silenciosamente en tests/dev cuando falta la base de un modo que la declara.
-- Resolver contradiccion de manifests: el runtime carga `/assets/manifest/assets-manifest.json`, no `assets/manifests/assets-manifest.json`.
-- Medir layout en 1366x768, 1920x1080, 2560x1440 y 3840x2160: rect del `game-board`, `map-panel`, SVG renderizado, columna Tribuna y areas vacias.
+- Commit `897e26b`.
+- Capturas `test-results/sa-pilot-1366x768.png`, `test-results/sa-pilot-1920x1080.png`, `test-results/sa-pilot-2560x1440.png`, `test-results/sa-pilot-3840x2160.png`.
+- Verificacion PO: `pnpm test`, `pnpm typecheck`, `pnpm build`, `pnpm e2e` verde.
+- Decision 2026-07-25-20.
 
-### Integracion esperada cuando Arte entregue `map-world-geographic-base-50-002.svg`
-
-- Cargar la base desde manifest/runtime o contrato explicito, no solo por reemplazo de nombre.
-- Insertarla debajo de territorios y encima del fondo base tactico si corresponde.
-- Mantener `pointer-events: none`.
-- No usar la base para clicks ni derivar reglas de juego.
-- Validar que territorios, labels y tropas no tapen la lectura del mapamundi con seis jugadores.
-- Ajustar layout shell para QHD/4K: mapa dominante, Tribuna con `clamp`, sin max-width 1080p, sin scroll horizontal.
-
-### Verificacion obligatoria
+### Verificacion obligatoria ante cualquier cambio
 
 - `pnpm test`
 - `pnpm typecheck`
@@ -180,4 +171,8 @@ Diagnosticar y preparar la integracion robusta de una capa geografica real debaj
 
 ### Limites
 
-No adaptar reglas, backend ni modo 26. No rehacer poligonos. No abrir pulido visual secundario. No declarar aprobado por e2e funcional: la aprobacion requiere capturas visuales revisadas por PO.
+No adaptar reglas, backend ni modo 26. No rehacer poligonos. No abrir pulido visual secundario. No corregir alineacion costa/territorio hasta que tester confirme si molesta en juego real.
+
+### Asset no autorizado
+
+No integrar `assets/maps/base/map-world-geographic-base-50-002.svg` en producto: queda rechazado por Decision 2026-07-25-18.

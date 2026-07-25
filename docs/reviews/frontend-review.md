@@ -4,7 +4,7 @@ Fecha: 2026-07-25
 
 ## Resultado
 
-Aprobado para hotfixes DEF-01, DEF-02 y DEF-03. Aprobacion del mapa Modo 50 revocada el 2026-07-25: los e2e prueban interaccion, pero la captura no cumple calidad visual de mapamundi ni responsive QHD/4K.
+Aprobado para hotfixes DEF-01, DEF-02 y DEF-03. Mapa Modo 50 con base cartografica V3 aprobado para playtest privado el 2026-07-25. No es cierre final del mapa.
 
 ## Evidencia
 
@@ -45,9 +45,9 @@ Aprobado para hotfixes DEF-01, DEF-02 y DEF-03. Aprobacion del mapa Modo 50 revo
 
 ## Correcciones pendientes
 
-- P0 mapa: la capa geografica actual no es un mapamundi real reconocible; no alcanza con rutas, brujula, grilla ni masas abstractas.
-- P0/P1 responsive: falta demostrar aprovechamiento correcto en 2560x1440 y 3840x2160, sin areas negras vacias ni UI concentrada en una esquina.
-- P1 integracion assets: `AssetRegistry.ts` carga `/assets/manifest/assets-manifest.json`, donde la base geografica no esta declarada; la base aparece en `assets/manifests/assets-manifest.json`, manifest que no consume el runtime.
+- Integracion V3 `897e26b`: aprobada para playtest privado. `classic_50` conserva SVG tactico; `geo_base_50` inyecta V3 no interactiva debajo; e2e 4/4 y capturas 1366/1920/2560/3840 revisadas.
+- P1/P2 a validar por tester: alineacion fina entre territorios tacticos y costas V3, especialmente Sudamerica e islas.
+- P2 responsive: a 1366 el HUD ocupa mas altura por wrap; a 4K validar confort visual en monitor real.
 - P1 post-playtest: nombres largos del HUD pueden quedar truncados; aceptable para candidata, revisar si molesta jugando.
 - P1 post-playtest: mercado de espectadores sigue bloqueado hasta ledger Backend; no tratar como bug de Frontend.
 - P2: banner central de turno puede tapar temporalmente parte del mapa en capturas de espera; no bloquea flujo.
@@ -59,4 +59,4 @@ Aprobado para hotfixes DEF-01, DEF-02 y DEF-03. Aprobacion del mapa Modo 50 revo
 
 ## Proxima accion
 
-Frontend no queda aprobado para playtest privado por mapa. Siguiente accion: diagnostico de carga de base en deploy y medicion responsive; despues integrar la nueva base geografica que entregue Arte. Backend no entra por esta entrega.
+Frontend queda en espera. Siguiente accion: tester Windows debe ejecutar regresion en URL real con foco en mapa V3, hitboxes, no-labels, 1366/1920/2560/3840 y flujo ataque/refuerzo. Backend no entra por esta entrega.
