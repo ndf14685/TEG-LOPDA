@@ -1,0 +1,7 @@
+Console/network summary — TEG-LOPDA playtest 2026-07-25
+Deploy: https://paris-penalty-clan-sellers.trycloudflare.com  (bundle static/index-BLdEJnCn.js)
+
+Console errors observed: 0 (landing, lobby, game start, placement, reinforcement, wager, attack, combat arena, turn handoff, chat/bardeo, reconnect lobby, reconnect mid-game, 1366x768, 390x844).
+Network failures (>=400): 0 observed.
+WebSocket errors: none; state stayed synchronized across 3 isolated contexts.
+Assets 404: none.
