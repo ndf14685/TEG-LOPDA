@@ -12,6 +12,10 @@ const COLOR_VALUES: Record<string, string> = {
   yellow: 'var(--player-yellow)',
   purple: 'var(--player-purple)',
   orange: 'var(--player-orange)',
+  cyan: 'var(--player-cyan)',
+  pink: 'var(--player-pink)',
+  lime: 'var(--player-lime)',
+  white: 'var(--player-white)',
 };
 
 export const PLAYER_COLOR_LABEL: Record<string, string> = {
@@ -21,6 +25,10 @@ export const PLAYER_COLOR_LABEL: Record<string, string> = {
   yellow: 'Amarillo',
   purple: 'Violeta',
   orange: 'Naranja',
+  cyan: 'Celeste',
+  pink: 'Rosa',
+  lime: 'Lima',
+  white: 'Blanco',
 };
 
 export const ALL_COLORS = Object.keys(COLOR_VALUES);
