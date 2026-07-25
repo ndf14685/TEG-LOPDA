@@ -4,11 +4,11 @@ Fecha: 2026-07-25
 
 ## Objetivo
 
-Convertir la direccion visual hibrida A+B+C aprobada en una region piloto jugable del mapa.
+Corregir la region piloto America del Sur para aprobar geometria final de mapa.
 
 ## Problema
 
-El mapa actual queda rechazado. La prueba hibrida A+B+C de Agy resuelve el reconocimiento del mapamundi en JPG, pero todavia no demuestra produccion tecnica real en SVG/hitboxes/overlays.
+La prueba hibrida A+B+C de Agy resuelve el reconocimiento del mapamundi en JPG. La region piloto America del Sur demuestra bien la arquitectura de capas, labels, badges, seleccion, ataque y flecha, pero no queda aprobada como geometria final: los territorios se perciben como capsulas/blobs superpuestos, no como subdivisiones geograficas coherentes.
 
 ## Evidencia
 
@@ -22,7 +22,7 @@ El mapa actual queda rechazado. La prueba hibrida A+B+C de Agy resuelve el recon
 
 No generar todavia 26 ni 100 territorios completos.
 
-Entregar una region piloto: America del Sur, basada en la direccion hibrida A+B+C aprobada.
+Entregar una iteracion corregida de America del Sur, basada en la direccion hibrida A+B+C aprobada.
 
 ## Arquitectura visual obligatoria
 
@@ -36,7 +36,7 @@ La direccion aprobada debe poder producirse en cuatro capas:
 ## Entregables de esta iteracion
 
 - Base geografica de America del Sur coherente con el mapamundi aprobado.
-- SVG de territorios jugables de America del Sur, un path por territorio.
+- SVG de territorios jugables de America del Sur, un path por territorio, con bordes internos que parezcan subdivisiones geograficas del continente.
 - IDs conservados del mapa actual cuando existan; si algun ID cambia, entregar tabla `old_id -> new_id`.
 - Hitboxes invisibles independientes por territorio.
 - Posiciones de etiquetas.
@@ -47,11 +47,13 @@ La direccion aprobada debe poder producirse en cuatro capas:
 - Flecha de ataque America del Sur -> Africa como prueba de overlay.
 - Manifest de assets y capas generadas.
 - Capturas 1920x1080 y 1366x768: sin etiquetas, con etiquetas/tropas, seleccionado, atacable y ataque en ejecucion.
+- Declaracion explicita de alcance de IDs: modo 50 o modo 26. No afirmar compatibilidad absoluta con ambos si no aplica.
 
 ## Criterios de aceptacion de region piloto
 
 - America del Sur se reconoce sin etiquetas.
-- Los territorios son visualmente coherentes con la geografia, no blobs arbitrarios.
+- Los territorios son visualmente coherentes con la geografia, no capsulas ni blobs arbitrarios.
+- Brasil debe leerse como Brasil dentro de la costa este, Argentina como cono sur, Chile como franja andina, Uruguay como pieza pequena al este de Argentina, Colombia/Venezuela al norte y Peru/Bolivia en zona andina/interior.
 - Cada territorio tiene path visible y hitbox independiente.
 - Labels y tropas no se solapan.
 - Los seis colores de jugador preservan textura/geografia.
@@ -64,4 +66,4 @@ La direccion aprobada debe poder producirse en cuatro capas:
 
 No definir nombres de componentes React, arquitectura frontend, persistencia backend ni contratos tecnicos no acordados. Los eventos y tablas de ledger pueden mencionarse como necesidades de producto, pero no como implementacion cerrada.
 
-Frontend no debe integrar todavia un mapa completo nuevo. Despues de aprobar esta region piloto, se hara una prueba tecnica acotada de America del Sur.
+Frontend no debe integrar todavia un mapa completo nuevo ni esta region piloto. Despues de aprobar la geometria corregida, se hara una prueba tecnica acotada de America del Sur.

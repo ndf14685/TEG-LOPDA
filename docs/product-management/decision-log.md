@@ -231,3 +231,43 @@ Las JPG tienen elementos de HUD generico de RTS y textos ajenos al producto; deb
 ## Criterio de revisión
 
 Se habilita completar el resto del mundo solo si America del Sur se reconoce, es clickeable, no solapa labels/tropas, conserva IDs o entrega tabla de mapeo, soporta seis colores y permite ataque/seleccion en 1920x1080 y 1366x768.
+
+## Decision 2026-07-25-07
+
+## Decisión
+
+Aprobar parcialmente la region piloto de America del Sur solo como patron de capas/interaccion; rechazarla como geometria final.
+
+## Problema
+
+La entrega demuestra capas, labels, badges, seleccion, objetivo y flecha, pero los territorios se ven como capsulas o blobs superpuestos sobre una silueta de America del Sur, no como subdivisiones geograficas coherentes del continente.
+
+## Evidencia
+
+Capturas revisadas: `test-results/south-america-pilot-labels-badges-1920x1080.png`, `test-results/south-america-pilot-no-labels.png`, `test-results/south-america-pilot-1366x768.png`, `test-results/south-america-pilot-selected.png`, `test-results/south-america-pilot-attackable.png`, `test-results/south-america-pilot-executing.png`. Prototipo: `frontend/public/prototype/south-america-pilot.html`. Manifest: `assets/manifests/south-america-pilot-manifest.json`.
+
+## Opciones consideradas
+
+1. Aprobar region piloto y habilitar Frontend.
+2. Rechazar toda la entrega.
+3. Aprobar capas/interaccion y pedir una iteracion acotada sobre geometria.
+
+## Decisión elegida
+
+Aprobar capas/interaccion y pedir una iteracion acotada de geometria antes de habilitar Frontend.
+
+## Motivo
+
+La arquitectura propuesta es util y no conviene rehacerla, pero el objetivo P0 del mapa exige geografia reconocible no solo a nivel continente, tambien a nivel territorios principales.
+
+## Impacto
+
+Agy sigue activo. Frontend permanece pausado. Backend no entra.
+
+## Riesgos
+
+Si se acepta esta geometria ahora, el mapa completo puede terminar siendo otra malla visualmente arbitraria. Si se pide demasiada precision geografica, puede reducirse la clickeabilidad; por eso se mantienen hitboxes independientes.
+
+## Criterio de revisión
+
+Se aprueba la region piloto cuando Brasil, Argentina, Chile, Uruguay, Colombia, Venezuela, Peru y Bolivia se lean como subdivisiones plausibles de America del Sur, sin solapamiento de labels/tropas y manteniendo los estados de seleccion/ataque ya demostrados.

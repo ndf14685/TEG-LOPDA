@@ -25,6 +25,8 @@ Aprobacion parcial fuerte del prototipo de direccion UX para turno, combate y Tr
 - El CSV de inventario ya no marca como `ready` assets inexistentes.
 - La prueba `map_hybrid_proof_without_titles_1784966918011.jpg` resuelve el criterio principal de reconocimiento: el mapamundi y los continentes se identifican sin titulos.
 - La solucion de tintado suave + borde de jugador preserva mejor la geografia que el relleno plano opaco.
+- Region piloto America del Sur: la separacion de capas, labels, badges, seleccion, objetivo atacable y flecha de ataque quedan aprobados como patron de interaccion.
+- Region piloto America del Sur: los IDs del modo 50 se preservan para los 8 territorios declarados.
 
 ## Lo rechazado
 
@@ -36,7 +38,10 @@ Aprobacion parcial fuerte del prototipo de direccion UX para turno, combate y Tr
 - La pagina `frontend/public/prototype/map-hybrid-proof.html` no reproduce todavia la calidad de las JPG: usa seis blobs simplificados y no demuestra territorios reales ni siluetas continentales finales.
 - No se acepta pasar directo a "generacion final de 26 y 100 territorios SVG". Primero debe entregarse y validarse una region piloto en capas.
 - La direccion debe limpiar textos/HUD genericos de RTS como `GLOBAL DOMINATION`, recursos militares y UI falsa que no pertenece a TEG-LOPDA.
+- Region piloto America del Sur no queda aprobada como geometria final: los territorios siguen leyendose como capsulas/blobs superpuestos sobre una silueta tenue, no como subdivisiones geograficas coherentes del continente.
+- La afirmacion "0 cambios tecnicos en el motor" solo aplica al modo 50 en esta region. El modo 26 actual no contiene todos esos IDs, por lo que debe declararse explicitamente el alcance.
+- La region piloto no demuestra todavia integracion productiva ni hitboxes verificadas con Playwright; es prototipo de diseno.
 
 ## Proxima accion
 
-Agy debe producir una region piloto, preferentemente America del Sur, con base geografica, territorios SVG reales, hitboxes invisibles, posiciones de etiquetas/tropas y manifest. Frontend solo entra despues para integrar esa region piloto y validar interaccion.
+Agy debe iterar una sola vez sobre America del Sur: conservar el patron de capas/interaccion aprobado, pero rehacer la geometria de territorios para que parezcan subdivisiones de una America del Sur real y no blobs. Frontend solo entra despues de aprobar esta iteracion.

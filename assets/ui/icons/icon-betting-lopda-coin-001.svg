@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" id="icon-betting-lopda-coin-001">
+  <circle cx="50" cy="50" r="46" fill="url(#coinGrad)" stroke="#b45309" stroke-width="4" />
+  <circle cx="50" cy="50" r="38" fill="none" stroke="#fde047" stroke-width="2" stroke-dasharray="6 3" />
+  <text x="50" y="62" font-family="serif" font-size="42" font-weight="900" fill="#78350f" text-anchor="middle">L</text>
+  <defs>
+    <linearGradient id="coinGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fde047" />
+      <stop offset="50%" stop-color="#f59e0b" />
+      <stop offset="100%" stop-color="#d97706" />
+    </linearGradient>
+  </defs>
+</svg>

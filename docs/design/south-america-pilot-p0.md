@@ -1,76 +1,67 @@
-# 🗺️ P0 MAPA: Entregable Región Piloto América del Sur
+# 🗺️ P0 MAPA: Entregable de Geometría Realista — Región Piloto América del Sur
 > **Director Creativo, Lead Game UI/UX Designer & Director de Arte**  
-> *Versión 2.2.0 — Especificación Técnica y Demostración en 4 Capas de América del Sur*
+> *Versión 2.3.0 — Geometría Geográfica Encastada, Declaración de Alcance Modo 26 vs Modo 50 y Arquitectura en 4 Capas*
 
 ---
 
-## 1. Tabla de Preservación de IDs de América del Sur (100% IDs Conservados)
+## 1. Declaración de Alcance de IDs: Modo 26 vs Modo 50
 
-Todos los IDs de territorio del contrato original de TEG-LOPDA han sido **100% conservados sin modificaciones ni reescrituras**:
-
-| Nombre del País | ID Técnico Original Conservado | Antiguo ID | Nuevo ID | Estado |
-| :--- | :--- | :--- | :--- | :--- |
-| **Argentina** | `territory-south-america-argentina` | `territory-south-america-argentina` | `territory-south-america-argentina` | ✅ SIN CAMBIOS |
-| **Brasil** | `territory-south-america-brazil` | `territory-south-america-brazil` | `territory-south-america-brazil` | ✅ SIN CAMBIOS |
-| **Chile** | `territory-south-america-chile` | `territory-south-america-chile` | `territory-south-america-chile` | ✅ SIN CAMBIOS |
-| **Colombia** | `territory-south-america-colombia` | `territory-south-america-colombia` | `territory-south-america-colombia` | ✅ SIN CAMBIOS |
-| **Perú** | `territory-south-america-peru` | `territory-south-america-peru` | `territory-south-america-peru` | ✅ SIN CAMBIOS |
-| **Bolivia** | `territory-south-america-bolivia` | `territory-south-america-bolivia` | `territory-south-america-bolivia` | ✅ SIN CAMBIOS |
-| **Uruguay** | `territory-south-america-uruguay` | `territory-south-america-uruguay` | `territory-south-america-uruguay` | ✅ SIN CAMBIOS |
-| **Venezuela** | `territory-south-america-venezuela` | `territory-south-america-venezuela` | `territory-south-america-venezuela` | ✅ SIN CAMBIOS |
-
-*Total de IDs modificados*: **0**. Se preserva la compatibilidad programática absoluta con el motor backend y el estado del juego.
-
----
-
-## 2. Definición del Sistema de 4 Capas Independientes
+Aclaración explícita de alcance técnico de IDs para evitar ambigüedades:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                       ARQUITECTURA DE LAS 4 CAPAS                           │
+│                   ALCANCE DE IDS SEGÚN MODO DE MAPA                         │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│ CAPA 4: OVERLAYS DE ETIQUETAS, BADGES Y FLECHA DE ATAQUE                    │
-│ - <text class="territory-label"> en tercio superior de territorio           │
-│ - <g class="army-badge"> con número gigante en tercio inferior              │
-│ - <path class="vector-arrow"> para flecha animada América del Sur ➔ África  │
+│ 🗺️ MODO 26 (TEG Estándar — 5 Países en América del Sur)                    │
+│ 1. territory-south-america-colombia   ──► Colombia                         │
+│ 2. territory-south-america-peru       ──► Perú                             │
+│ 3. territory-south-america-brazil     ──► Brasil                           │
+│ 4. territory-south-america-chile      ──► Chile                            │
+│ 5. territory-south-america-argentina  ──► Argentina                        │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│ CAPA 3: HITBOXES INVISIBLES DE INTERACCIÓN                                  │
-│ - <path class="hitbox-path"> fill: transparent, stroke: transparent         │
-│ - pointer-events: all para capturar hovers y drag-and-drop                  │
-├─────────────────────────────────────────────────────────────────────────────┤
-│ CAPA 2: TERRITORIOS SVG JUGABLES ILUMINADOS                                 │
-│ - Un <path class="territory"> por país con stroke brillante por jugador     │
-│ - Relleno interior sutil (fill-opacity: 0.22) sin manchas planas            │
-├─────────────────────────────────────────────────────────────────────────────┤
-│ CAPA 1: BASE GEOGRÁFICA Y OCÉANO NO INTERACTIVO                             │
-│ - Fondo marino (#091b30), relieve topográfico y retícula submarina sutil    │
+│ 🗺️ MODO 50 (TEG Extendido — 8 Países en América del Sur)                   │
+│ 1. territory-south-america-colombia   ──► Colombia                         │
+│ 2. territory-south-america-venezuela  ──► Venezuela (Nuevo en Modo 50)     │
+│ 3. territory-south-america-peru       ──► Perú                             │
+│ 4. territory-south-america-brazil     ──► Brasil                           │
+│ 5. territory-south-america-bolivia    ──► Bolivia (Nuevo en Modo 50)       │
+│ 6. territory-south-america-chile      ──► Chile                            │
+│ 7. territory-south-america-argentina  ──► Argentina                        │
+│ 8. territory-south-america-uruguay    ──► Uruguay (Nuevo en Modo 50)       │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
----
-
-## 3. Disposición de Etiquetas vs Badges de Tropas (Sin Colisiones)
-
-* **Etiquetas de Nombre (`.territory-label`)**: Ubicadas estrictamente en el **tercio superior** del polígono territorial.
-* **Badges de Ejércitos (`.badge-circle` + `.badge-text`)**: Ubicados estrictamente en el **tercio inferior** del territorio.
-* **Resultado**: Distancia vertical mínima de 50px entre el texto de nombre y la ficha de ejércitos, impidiendo cualquier solapamiento o choque en pantallas 1920x1080 o 1366x768.
+*Estado de Compatibilidad*: **100% de IDs conservados sin renombrar ni modificar** dentro de sus respectivos modos.
 
 ---
 
-## 4. Estado de Propiedad de 6 Jugadores Simultáneos en América del Sur
+## 🌎 2. Justificación Geográfica de la Nueva Geometría (Cero Blobs / Cero Cápsulas)
 
-| Territorio | Jugador Ocupante | Color Hex | Borde (`stroke`) | Opacidad Relleno |
-| :--- | :--- | :--- | :--- | :--- |
-| **Argentina** | Jugador León (Rojo) | `#ef4444` | Stroke 8px + Pulse Dorado | 22% (Topografía visible) |
-| **Brasil** | Jugador Águila (Azul) | `#3b82f6` | Stroke 6px + Resplandor | 22% (Topografía visible) |
-| **Perú / Uruguay** | Jugador Elefante (Verde) | `#10b981` | Stroke 6px + Resplandor | 22% (Topografía visible) |
-| **Colombia / Chile**| Jugador Sol (Amarillo) | `#eab308` | Stroke 6px + Resplandor | 22% (Topografía visible) |
-| **Bolivia** | Jugador Dragón (Púrpura) | `#a855f7` | Stroke 6px + Resplandor | 22% (Topografía visible) |
-| **Venezuela** | Jugador Tridente (Cian) | `#06b6d4` | Stroke 6px + Resplandor | 22% (Topografía visible) |
+La nueva geometría abandona las formas ovoides confusas y se construye como un **rompecabezas geográfico encastado**:
+
+1. **Brasil (`territory-south-america-brazil`)**: Se dibuja con el prominente abombamiento oriental sobre la costa Atlántica, bordeando a Venezuela, Colombia, Perú, Bolivia y Uruguay.
+2. **Argentina (`territory-south-america-argentina`)**: Cono Sur real, amplio al norte (región pampeana/chaco) y afinándose hacia la Patagonia y Tierra del Fuego, lindando con Chile por los Andes.
+3. **Chile (`territory-south-america-chile`)**: Franja andina delgada e icónica que corre paralela al Océano Pacífico al oeste de Argentina y Perú.
+4. **Uruguay (`territory-south-america-uruguay`)**: Pieza pequeña y redondeada en la costa atlántica sobre el estuario del Río de la Plata entre Argentina y Brasil.
+5. **Colombia / Venezuela**: Ocupan el borde norte Caribe/Pacífico conectando con América Central.
+6. **Perú / Bolivia**: Ubicados en la franja andina del Pacífico (Perú) y el interior mediterráneo (Bolivia).
 
 ---
 
-## 5. Prototipo de Validación Navegable
+## 🎨 3. Disposición de Etiquetas vs Badges de Tropas (Sin Choques)
 
-Acceso directo a la prueba interactiva del piloto:
-👉 [`frontend/public/prototype/south-america-pilot.html`](file:///home/ndf/workspace/TEG-LOPDA/frontend/public/prototype/south-america-pilot.html)
+* **Etiquetas de Nombre (`.territory-label`)**: Posicionadas estrictamente en el **tercio superior** de cada polígono.
+* **Badges de Ejércitos (`.badge-circle` + `.badge-text`)**: Posicionados estrictamente en el **tercio inferior**.
+* **Limpieza de HUD**: Eliminados todos los textos genéricos de RTS tipo `GLOBAL DOMINATION` o recursos militares falsos. El HUD se limita a los datos autoritativos de TEG-LOPDA.
+
+---
+
+## 📱 4. Prototipo Navegable con Toggle de Modo (Modo 26 / Modo 50)
+
+Acceso directo a la prueba interactiva de la región piloto:
+👉 **Prototipo Piloto**: [`frontend/public/prototype/south-america-pilot.html`](file:///home/ndf/workspace/TEG-LOPDA/frontend/public/prototype/south-america-pilot.html)
+
+**Nuevos Controles de Validación**:
+* Botón `🗺️ Modo 50 (8 Países)` vs `🗺️ Modo 26 (5 Países)`: Permite conmutar en vivo entre el alcance de 5 y 8 territorios.
+* Botón `🙈 Sin Etiquetas (<1s)`: Verificación de reconocibilidad inmediata.
+* Botón `🚀 Ataque en Ejecución`: Muestra la flecha vectorial animada como overlay hacia África.
