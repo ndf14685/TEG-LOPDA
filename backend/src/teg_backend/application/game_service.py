@@ -903,12 +903,20 @@ class GameService:
             )
 
             result = eng.resolve_combat(attacker_dice, defender_dice)
+            # la Arena de Combate reconstruye la batalla completa con estos
+            # datos: territorios, tropas antes/después y desglose de parejas
             payload = {
                 "attacker_dice": result.attacker_dice,
                 "defender_dice": result.defender_dice,
                 "attacker_losses": result.attacker_losses,
                 "defender_losses": result.defender_losses,
                 "comparisons": result.comparisons,
+                "source_territory_id": src_terr.territory_id if src_terr else None,
+                "target_territory_id": tgt_terr.territory_id if tgt_terr else None,
+                "attacker_armies_before": src_terr.armies if src_terr else None,
+                "defender_armies_before": tgt_terr.armies if tgt_terr else None,
+                "attacker_armies_after": (src_terr.armies - result.attacker_losses) if src_terr else None,
+                "defender_armies_after": (tgt_terr.armies - result.defender_losses) if tgt_terr else None,
             }
             await self.emit(
                 game_id, EventType.ATTACK_RESOLVED, actor_id=player_id,

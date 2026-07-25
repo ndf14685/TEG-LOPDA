@@ -2,22 +2,27 @@ import { test, expect, type Page } from '@playwright/test';
 
 const ADMIN_TOKEN = 'dev-admin';
 
-async function placeArmies(page: Page, count: number) {
-  for (let i = 0; i < count; i++) {
-    await page.locator('path.territory[data-mine="true"]').first().click();
-    await page.waitForTimeout(200); // el WS confirma con placement.updated
-  }
+/** Colocación con el menú radial: click en país propio → botón MÁX. */
+async function placeAllViaRadial(page: Page) {
+  await page.locator('path.territory[data-mine="true"]').first().click();
+  const max = page.locator('.radial-menu button', { hasText: 'MÁX' });
+  const plusOne = page.locator('.radial-menu button', { hasText: '+1' });
+  if (await max.count()) await max.first().click();
+  else await plusOne.first().click();
+  await page.waitForTimeout(250);
 }
 
-/** Colocación inicial canónica 5+3 en ambas pantallas. */
+/** Colocación inicial canónica 5+3 en ambas pantallas vía menú radial. */
 async function completePlacement(admin: Page, player: Page) {
-  await expect(admin.getByTestId('placement-banner')).toContainText('5 ejércitos');
-  await placeArmies(admin, 5);
-  await placeArmies(player, 5);
-  await expect(admin.getByTestId('placement-banner')).toContainText('Segunda ronda', { timeout: 10_000 });
-  await placeArmies(admin, 3);
-  await placeArmies(player, 3);
-  await expect(admin.getByTestId('placement-banner')).toHaveCount(0, { timeout: 10_000 });
+  await expect(admin.getByTestId('tribune-turn-box')).toContainText('COLOCACIÓN INICIAL', { timeout: 10_000 });
+  await placeAllViaRadial(admin);
+  await placeAllViaRadial(player);
+  // segunda ronda (3 tropas): el box lo anuncia
+  await expect(admin.getByTestId('tribune-turn-box')).toContainText('(3 tropas)', { timeout: 10_000 });
+  await placeAllViaRadial(admin);
+  await placeAllViaRadial(player);
+  // al terminar arranca el primer turno: el HUD muestra la fase
+  await expect(admin.getByTestId('hud-phase')).toContainText('REFUERZOS', { timeout: 10_000 });
 }
 
 async function createGameAsAdmin(admin: Page, nickname: string) {
@@ -30,12 +35,11 @@ async function createGameAsAdmin(admin: Page, nickname: string) {
 }
 
 /**
- * Vertical slice contra el backend FastAPI real, con DOS contextos de
- * navegador independientes: admin crea partida y link → jugador entra por
- * link → ambos en lobby → listo → inicio → tablero → comentario IA en ambos
- * → una tirada de dados visible en ambos.
+ * Slice real multi-contexto contra el backend FastAPI: crear → invitar →
+ * lobby → iniciar → colocación por menú radial → primer turno sincronizado
+ * en ambos navegadores → refuerzos y cambio de fase visibles para todos.
  */
-test('slice real: crear, invitar, lobby, iniciar, IA y dados sincronizados', async ({ browser }) => {
+test('slice real: lobby, colocación radial, turno y fases sincronizadas', async ({ browser }) => {
   const adminCtx = await browser.newContext();
   const playerCtx = await browser.newContext();
   const admin = await adminCtx.newPage();
@@ -77,36 +81,58 @@ test('slice real: crear, invitar, lobby, iniciar, IA y dados sincronizados', asy
   await expect(admin.getByTestId('countdown')).toBeVisible();
   await expect(player.getByTestId('countdown')).toBeVisible();
 
-  // 7. tablero inicial en ambos
+  // 7. tablero con HUD y Tribuna en ambos
   await expect(admin.getByTestId('game-board')).toBeVisible({ timeout: 15_000 });
   await expect(player.getByTestId('game-board')).toBeVisible({ timeout: 15_000 });
   await expect(admin.getByTestId('map-panel')).toBeVisible();
+  await expect(admin.getByTestId('top-hud')).toBeVisible();
+  await expect(admin.getByTestId('tribune-panel')).toBeVisible();
 
-  // 8-9. el comentarista arranca silenciado por default: se activa y ambos lo ven
-  await admin.getByRole('button', { name: 'activar' }).click();
-  await player.getByRole('button', { name: 'activar' }).click();
+  // 8. el relator comenta en ambos navegadores (mock determinista)
   await expect(admin.getByTestId('ai-comment')).toBeVisible({ timeout: 20_000 });
   await expect(player.getByTestId('ai-comment')).toBeVisible({ timeout: 20_000 });
-  const adminComment = await admin.getByTestId('ai-comment').locator('p').textContent();
-  const playerComment = await player.getByTestId('ai-comment').locator('p').textContent();
-  expect(adminComment).toBeTruthy();
-  expect(playerComment).toBe(adminComment);
 
-  // 10. colocación inicial canónica (5+3) en ambas pantallas
+  // 9. colocación inicial 5+3 con el menú radial en ambas pantallas
   await completePlacement(admin, player);
 
-  // 11. mismo estado: quien tiene el turno tira dados y AMBOS ven el resultado
-  const adminHasTurn = (await admin.getByTestId('turn-panel').textContent())?.includes('sos vos');
-  const roller = adminHasTurn ? admin : player;
-  await roller.getByTestId('roll-dice').click();
-  await expect(admin.getByTestId('dice-result')).toBeVisible({ timeout: 10_000 });
-  await expect(player.getByTestId('dice-result')).toBeVisible();
-  const adminDice = await admin.getByTestId('dice-result').textContent();
-  const playerDice = await player.getByTestId('dice-result').textContent();
-  expect(adminDice).toBe(playerDice);
+  // 10. claridad de turno: los DOS saben quién juega y qué fase es
+  await expect(player.getByTestId('hud-phase')).toContainText('REFUERZOS', { timeout: 10_000 });
+  // el sorteo es aleatorio: encontrar al activo esperando su "ES TU TURNO"
+  let active = admin;
+  let passive = player;
+  await expect
+    .poll(async () => {
+      const a = (await admin.getByTestId('tribune-turn-box').textContent()) ?? '';
+      const p = (await player.getByTestId('tribune-turn-box').textContent()) ?? '';
+      if (a.includes('ES TU TURNO')) { active = admin; passive = player; return true; }
+      if (p.includes('ES TU TURNO')) { active = player; passive = admin; return true; }
+      return false;
+    }, { timeout: 10_000 })
+    .toBe(true);
+  await expect(passive.getByTestId('tribune-turn-box')).toContainText('TURNO DE');
 
-  await admin.screenshot({ path: 'test-results/slice-admin-board.png', fullPage: true });
-  await player.screenshot({ path: 'test-results/slice-player-board.png', fullPage: true });
+  // 11. el jugador activo coloca TODOS sus refuerzos vía radial y pasa a ataque
+  await placeAllViaRadial(active);
+  await expect(active.getByTestId('hud-phase')).toContainText('ATAQUE', { timeout: 10_000 });
+  await expect(passive.getByTestId('hud-phase')).toContainText('ATAQUE', { timeout: 10_000 });
+
+  // 12. combate real: radial → Atacar → objetivo resaltado → Arena en AMBOS
+  await active.locator('path.territory.can-attack').first().click();
+  await active.locator('.radial-menu button', { hasText: 'Atacar' }).click();
+  await active.locator('path.territory.attackable').first().click();
+  await expect(active.getByTestId('combat-arena')).toBeVisible({ timeout: 10_000 });
+  await expect(active.getByTestId('battle-summary')).toContainText('RESUMEN ACUMULADO');
+  await expect(passive.getByTestId('combat-arena')).toBeVisible({ timeout: 10_000 });
+  await active.screenshot({ path: 'test-results/product-combat-arena.png' });
+  await active.getByTestId('stop-attack').click();
+  await expect(active.getByTestId('combat-arena')).toHaveCount(0);
+
+  // 13. capturas de evidencia en dos resoluciones
+  await admin.setViewportSize({ width: 1366, height: 768 });
+  await admin.screenshot({ path: 'test-results/product-1366x768-turn.png' });
+  await admin.setViewportSize({ width: 1920, height: 1080 });
+  await admin.screenshot({ path: 'test-results/product-1920x1080-turn.png' });
+  await player.screenshot({ path: 'test-results/product-player-view.png' });
 
   await adminCtx.close();
   await playerCtx.close();

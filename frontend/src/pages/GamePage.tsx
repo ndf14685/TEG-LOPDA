@@ -7,45 +7,32 @@ import { useGameStore } from '../state/gameStore';
 import { useConnectionStore } from '../state/connectionStore';
 import { MapPanel } from '../components/map/MapPanel';
 import { TurnPhaseBar } from '../components/game/TurnPhaseBar';
-import { AICommentatorPanel } from '../components/ai-commentator/AICommentatorPanel';
-import { ChatPanel } from '../components/chat/ChatPanel';
-import { SoundboardBar } from '../components/audio/SoundboardBar';
-import { AudioControls } from '../components/audio/AudioControls';
+import { TopHud } from '../components/hud/TopHud';
+import { TurnBanner } from '../components/hud/TurnBanner';
+import { TribunePanel } from '../components/tribune/TribunePanel';
+import { CombatArena } from '../components/combat/CombatArena';
 import { ConnectionBanner } from '../components/ConnectionBanner';
-import { PlayerAvatar } from '../components/players/PlayerAvatar';
 import { colorValue } from '../utils/playerColors';
-import { audioService } from '../services/audio/AudioService';
-import { CombatOverlay } from '../components/dice/CombatOverlay';
-import { Dice3D } from '../components/dice/Dice3D';
 import { PostGameModal } from '../components/game/PostGameModal';
 import { WagerToast } from '../components/game/WagerToast';
 
+/**
+ * Pantalla de juego productiva (layout del prototipo aprobado): HUD superior
+ * de jugadores, mapa protagonista con interacción directa y La Tribuna como
+ * dock lateral plegable. La viñeta ambiental toma el color del jugador activo.
+ */
 export function GamePage() {
   const { code = '' } = useParams();
   const navigate = useNavigate();
   const session = useSessionStore((s) => s.session);
   const restore = useSessionStore((s) => s.restore);
   const game = useGameStore((s) => s.game);
-  const players = useGameStore((s) => s.players);
-  const turn = useGameStore((s) => s.turn);
   const stage = useGameStore((s) => s.stage);
-  const placementRemaining = useGameStore((s) => s.placementRemaining);
-  const placementDone = useGameStore((s) => s.placementDone);
-  const hasPactWith = useGameStore((s) => s.hasPactWith);
   const pactProposalFrom = useGameStore((s) => s.pactProposalFrom);
-  const lastDice = useGameStore((s) => s.lastDice);
-  const lastAttack = useGameStore((s) => s.lastAttack);
-  const finished = useGameStore((s) => s.finished);
-  const lastError = useGameStore((s) => s.lastError);
   const playerById = useGameStore((s) => s.playerById);
   const currentPlayerId = useGameStore((s) => s.currentPlayerId);
   const syncState = useConnectionStore((s) => s.syncState);
-  const selectedSource = useGameStore((s) => s.selectedSourceTerritory);
-  const selectedTarget = useGameStore((s) => s.selectedTargetTerritory);
-  const territories = useGameStore((s) => s.territories);
-  const [fortifyCount, setFortifyCount] = useState(1);
-  const setSelectedSource = useGameStore((s) => s.setSelectedSourceTerritory);
-  const setSelectedTarget = useGameStore((s) => s.setSelectedTargetTerritory);
+  const [tribuneOpen, setTribuneOpen] = useState(true);
 
   useEffect(() => {
     if ((!session || session.code !== code) && !restore(code)) navigate('/');
@@ -62,22 +49,18 @@ export function GamePage() {
   const currentId = currentPlayerId();
   const current = playerById(currentId);
   const myTurn = currentId === session.playerId;
-  const actionsBlocked = syncState !== 'synced' || game?.status !== 'running';
-  const combatants = players.filter((p) => (p.role === 'player' || p.role === 'admin' || p.role === 'ai_player') && !p.eliminated);
-  const diceRoller = lastDice ? playerById(lastDice.playerId) : undefined;
-
-  function send(action: () => void) {
-    audioService.unlock();
-    action();
-  }
+  const running = game?.status === 'running';
+  const ambientColor = current ? colorValue(current.color) : '#d97706';
 
   return (
-    <main className="flex h-screen flex-col" data-testid="game-board">
+    <main className="flex h-screen flex-col overflow-hidden bg-war-950" data-testid="game-board">
       <ConnectionBanner />
+      <TopHud />
+      <TurnBanner />
 
       {/* propuesta de pacto entrante */}
       {pactProposalFrom && (
-        <div className="fixed left-1/2 top-4 z-40 flex -translate-x-1/2 items-center gap-3 rounded-xl border border-gold-500/60 bg-war-900/95 px-4 py-2.5 shadow-2xl backdrop-blur-md" data-testid="pact-proposal">
+        <div className="fixed left-1/2 top-16 z-40 flex -translate-x-1/2 items-center gap-3 rounded-xl border border-gold-500/60 bg-war-900/95 px-4 py-2.5 shadow-2xl backdrop-blur-md" data-testid="pact-proposal">
           <span className="text-sm text-stone-200">
             🤝 <strong style={{ color: colorValue(playerById(pactProposalFrom)?.color) }}>
               {playerById(pactProposalFrom)?.nickname ?? '???'}
@@ -99,255 +82,54 @@ export function GamePage() {
         </div>
       )}
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 p-3 lg:grid-cols-[230px_1fr_300px]">
-        {/* izquierda: ejércitos */}
-        <aside className="hidden min-h-0 flex-col gap-2 overflow-y-auto lg:flex">
-          <h2 className="text-xs font-semibold tracking-wider text-stone-400">EJÉRCITOS</h2>
-          {combatants.map((p) => {
-            const isMe = p.id === session.playerId;
-            const allied = hasPactWith(p.id);
-            return (
-              <div key={p.id} className={`rounded-lg border bg-war-900 px-3 py-2 ${currentId === p.id ? 'border-gold-500' : 'border-war-700'}`}>
-                <div className="flex items-center gap-2">
-                  <PlayerAvatar avatarAssetId={p.avatar_asset_id} role={p.role} color={p.color} size="sm" />
-                  <span className="truncate text-sm font-semibold" style={{ color: colorValue(p.color) }}>{p.nickname}</span>
-                  {p.role === 'ai_player' && <span className="rounded bg-war-700 px-1 text-[10px]">🤖 IA</span>}
-                  {allied && <span title="Pacto de no agresión" className="text-[10px]">🤝</span>}
-                </div>
-                <p className="mt-1 text-xs text-stone-400">
-                  {p.presence === 'online' ? '🟢' : p.presence === 'reconnecting' ? '🟡' : '⚫'} {p.presence ?? '—'}
-                </p>
-                {!isMe && session.role !== 'spectator' && game?.status === 'running' && (
-                  allied ? (
-                    <button
-                      onClick={() => wsClient.send({ type: 'pact.break', payload: { target_player_id: p.id } })}
-                      className="mt-1 rounded border border-red-800 px-1.5 py-0.5 text-[10px] text-red-300 hover:border-red-500"
-                    >
-                      🗡️ romper pacto
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => wsClient.send({ type: 'pact.propose', payload: { target_player_id: p.id } })}
-                      className="mt-1 rounded border border-war-700 px-1.5 py-0.5 text-[10px] text-stone-300 hover:border-gold-500"
-                    >
-                      🤝 proponer pacto
-                    </button>
-                  )
-                )}
-              </div>
-            );
-          })}
-        </aside>
-
-        {/* centro: mapa y barra de fases */}
-        <section className="relative flex min-h-0 flex-col gap-2">
-          {stage === 'placement_1' || stage === 'placement_2' ? (
-            <div className="rounded-lg border border-amber-700 bg-amber-950/60 px-4 py-2 text-center" data-testid="placement-banner">
-              <p className="font-bold text-amber-300">
-                {stage === 'placement_1' ? 'Colocación inicial: 5 ejércitos' : 'Segunda ronda: 3 ejércitos'}
-              </p>
-              <p className="text-sm text-stone-300">
-                {placementRemaining > 0
-                  ? `Te quedan ${placementRemaining} por colocar — tocá tus países`
-                  : 'Listo. Esperando al resto…'}
-              </p>
-              <p className="text-xs text-stone-400">
-                {placementDone.length}/{combatants.length} jugadores terminaron
-              </p>
-            </div>
-          ) : (
-            <TurnPhaseBar />
-          )}
-          <div className="relative min-h-0 flex-1 rounded-xl border border-war-700 bg-war-900 overflow-hidden">
+      <div className={`grid min-h-0 flex-1 grid-cols-1 ${tribuneOpen ? 'lg:grid-cols-[1fr_360px]' : ''}`}>
+        {/* mapa protagonista */}
+        <section className="relative flex min-h-0 flex-col">
+          <div className="px-2 pt-2">
+            {stage !== 'placement_1' && stage !== 'placement_2' && <TurnPhaseBar />}
+          </div>
+          <div className="relative min-h-0 flex-1 overflow-hidden p-2">
             <MapPanel />
-            {actionsBlocked && game?.status === 'paused' && (
-              <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-war-950/70">
+            {/* viñeta ambiental del jugador activo */}
+            <div
+              className={`ambient-vignette ${running && current ? 'active' : ''}`}
+              style={{
+                boxShadow: myTurn
+                  ? `inset 0 0 110px ${ambientColor}55`
+                  : `inset 0 0 70px ${ambientColor}33`,
+              }}
+              aria-hidden
+            />
+            {game?.status === 'paused' && (
+              <div className="absolute inset-0 z-10 flex items-center justify-center bg-war-950/70">
                 <p className="rounded-lg bg-war-800 px-4 py-2 text-sm">⏸️ Partida pausada por el admin</p>
               </div>
             )}
             {syncState !== 'synced' && (
-              <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-war-950/70">
-                <p className="rounded-lg bg-war-800 px-4 py-2 text-sm">⏳ Sincronizando — acciones bloqueadas</p>
+              <div className="absolute inset-0 z-10 flex items-center justify-center bg-war-950/70">
+                <p className="rounded-lg bg-war-800 px-4 py-2 text-sm">📡 Sincronizando — acciones bloqueadas un instante</p>
               </div>
             )}
           </div>
+
+          {/* toggle de La Tribuna (siempre accesible, nunca tapa el mapa) */}
+          <button
+            onClick={() => setTribuneOpen((o) => !o)}
+            data-testid="tribune-toggle"
+            className="absolute right-2 top-2 z-20 rounded-lg border border-war-600 bg-war-900/90 px-2.5 py-1 text-xs font-bold text-stone-300 backdrop-blur-sm hover:border-gold-500"
+            title={tribuneOpen ? 'Plegar La Tribuna' : 'Abrir La Tribuna'}
+          >
+            🏟️ {tribuneOpen ? '▸' : '◂ LA TRIBUNA'}
+          </button>
         </section>
 
-        {/* derecha: turno, acciones, resultados, IA */}
-        <aside className="flex min-h-0 flex-col gap-3 overflow-y-auto">
-          <div className="rounded-lg border border-war-700 bg-war-900 p-3" data-testid="turn-panel">
-            <h2 className="mb-1 text-xs font-semibold tracking-wider text-stone-400">TURNO {turn?.turn_number ?? '—'}</h2>
-            {current ? (
-              <p className="text-sm">
-                Juega <strong style={{ color: colorValue(current.color) }}>{current.nickname}</strong>
-                {myTurn && <span className="text-gold-400"> — ¡sos vos!</span>}
-              </p>
-            ) : (
-              <p className="text-sm text-stone-500">…</p>
-            )}
-          </div>
-
-          {session.role !== 'spectator' && stage !== 'placement_1' && stage !== 'placement_2' && (
-            <div className="rounded-lg border border-war-700 bg-war-900 p-3" data-testid="actions-panel">
-              <h2 className="mb-2 text-xs font-semibold tracking-wider text-stone-400">ACCIONES</h2>
-              <div className="flex flex-col gap-2">
-                <button
-                  disabled={actionsBlocked || !myTurn}
-                  onClick={() => send(() => wsClient.send({ type: 'dice.roll', payload: { count: 3 } }))}
-                  data-testid="roll-dice"
-                  className="rounded-lg bg-gold-500 px-3 py-2 text-sm font-bold text-war-950 hover:bg-gold-400 disabled:opacity-30"
-                >
-                  🎲 Dados de práctica (sin efecto)
-                </button>
-
-                {/* Acción táctica sobre la selección del mapa */}
-                {selectedSource && selectedTarget && (() => {
-                  const targetIsMine = territories[selectedTarget]?.owner_player_id === session.playerId;
-                  const maxMove = Math.max(1, (territories[selectedSource]?.armies ?? 1) - 1);
-                  const clearSelection = () => { setSelectedSource(null); setSelectedTarget(null); };
-                  return (
-                    <div className="rounded-md border border-red-900/50 bg-red-950/40 p-2 text-xs">
-                      <p className="font-semibold text-red-300">
-                        {targetIsMine ? '🛡️ Reagrupar:' : '⚔️ Ataque táctico:'}
-                      </p>
-                      <p className="text-stone-300 truncate">
-                        {selectedSource.replace('territory-', '').replaceAll('-', ' ')} →{' '}
-                        <span className="font-bold text-gold-400">{selectedTarget.replace('territory-', '').replaceAll('-', ' ')}</span>
-                      </p>
-                      {!targetIsMine ? (
-                        <button
-                          disabled={actionsBlocked || !myTurn || turn?.phase !== 'attack'}
-                          onClick={() => send(() => wsClient.send({
-                            type: 'attack',
-                            payload: {
-                              source_territory_id: selectedSource,
-                              target_territory_id: selectedTarget,
-                              attacker_dice: 3,
-                            },
-                          }))}
-                          data-testid="attack-territory"
-                          className="mt-2 w-full rounded-lg bg-red-700 px-3 py-1.5 text-sm font-bold text-red-50 hover:bg-red-600 disabled:opacity-30"
-                        >
-                          ⚔️ Atacar{turn?.phase !== 'attack' ? ' (pasá a fase de ataque)' : ''}
-                        </button>
-                      ) : (
-                        <div className="mt-2 flex items-center gap-2">
-                          <input
-                            type="number"
-                            min={1}
-                            max={maxMove}
-                            value={Math.min(fortifyCount, maxMove)}
-                            onChange={(e) => setFortifyCount(Math.max(1, Number(e.target.value) || 1))}
-                            aria-label="Ejércitos a mover"
-                            className="w-16 rounded border border-war-700 bg-war-800 px-2 py-1 text-sm"
-                          />
-                          <button
-                            disabled={actionsBlocked || !myTurn || turn?.phase !== 'fortify'}
-                            onClick={() => send(() => {
-                              wsClient.send({
-                                type: 'turn.fortify',
-                                payload: {
-                                  source_territory_id: selectedSource,
-                                  target_territory_id: selectedTarget,
-                                  count: Math.min(fortifyCount, maxMove),
-                                },
-                              });
-                              clearSelection();
-                            })}
-                            data-testid="fortify-button"
-                            className="flex-1 rounded-lg bg-sky-700 px-3 py-1.5 text-sm font-bold text-sky-50 hover:bg-sky-600 disabled:opacity-30"
-                          >
-                            🛡️ Mover{turn?.phase !== 'fortify' ? ' (pasá a reagrupar)' : ''}
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()}
-
-                {myTurn && turn?.phase === 'attack' && !(selectedSource && selectedTarget) && (
-                  <p className="rounded-md border border-red-900/40 bg-red-950/30 px-2 py-1.5 text-[11px] text-red-200">
-                    Tocá un país tuyo y después un país enemigo lindante para atacar.
-                  </p>
-                )}
-                <button
-                  disabled={actionsBlocked || !myTurn}
-                  onClick={() => send(() => wsClient.send({ type: 'turn.end' }))}
-                  data-testid="end-turn"
-                  className="rounded-lg border border-war-700 bg-war-800 px-3 py-1.5 text-sm hover:border-gold-500 disabled:opacity-30"
-                >
-                  Terminar turno →
-                </button>
-              </div>
-              {lastError && Date.now() - lastError.at < 6000 && (
-                <p role="alert" className="mt-2 text-xs text-red-400">{lastError.message}</p>
-              )}
-            </div>
-          )}
-
-          {lastDice && (
-            <div className="rounded-lg border border-war-700 bg-war-900 p-3" data-testid="dice-result">
-              <h2 className="mb-2 text-xs font-semibold tracking-wider text-stone-400">DADOS DE TIRADA</h2>
-              <p className="mb-2 text-xs">
-                <span style={{ color: colorValue(diceRoller?.color) }}>{diceRoller?.nickname ?? '???'}</span> sacó:
-              </p>
-              <div className="flex gap-2 justify-center">
-                {lastDice.dice.map((d, i) => (
-                  <Dice3D key={i} value={d} variant="attacker" size="sm" />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {lastAttack && (
-            <div className="rounded-lg border border-war-700 bg-war-900 p-3" data-testid="attack-result">
-              <h2 className="mb-2 text-xs font-semibold tracking-wider text-stone-400">ÚLTIMA BATALLA</h2>
-              <div className="flex items-center justify-between text-xs mb-2">
-                <span style={{ color: colorValue(playerById(lastAttack.attackerId)?.color) }}>
-                  {playerById(lastAttack.attackerId)?.nickname ?? '???'} (−{lastAttack.attackerLosses})
-                </span>
-                <span className="text-red-400 font-bold">VS</span>
-                <span style={{ color: colorValue(playerById(lastAttack.defenderId)?.color) }}>
-                  {playerById(lastAttack.defenderId)?.nickname ?? '???'} (−{lastAttack.defenderLosses})
-                </span>
-              </div>
-              <div className="flex justify-around items-center pt-1">
-                <div className="flex gap-1">
-                  {lastAttack.attackerDice.map((d, i) => (
-                    <Dice3D key={i} value={d} variant="attacker" size="sm" />
-                  ))}
-                </div>
-                <span className="text-stone-500 font-bold">:</span>
-                <div className="flex gap-1">
-                  {lastAttack.defenderDice.map((d, i) => (
-                    <Dice3D key={i} value={d} variant="defender" size="sm" />
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          <AudioControls />
-          <AICommentatorPanel />
-        </aside>
+        {/* La Tribuna */}
+        {tribuneOpen && <TribunePanel />}
       </div>
 
-      {/* Overlay modal de batalla táctica 3D */}
-      <CombatOverlay />
-
-      {/* Resultado de la auto-apuesta */}
+      <CombatArena />
       <WagerToast />
-
-      {/* Modal Infografía de Trofeos Post-Partida */}
       <PostGameModal />
-
-      <footer className="grid gap-3 border-t border-war-700 bg-war-900/60 p-3 lg:grid-cols-[1fr_380px]">
-        <div>
-          <h2 className="mb-1.5 text-xs font-semibold tracking-wider text-stone-400">BARDEO RÁPIDO</h2>
-          <SoundboardBar />
-        </div>
-        <ChatPanel compact />
-      </footer>
     </main>
   );
 }

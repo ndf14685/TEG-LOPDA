@@ -54,6 +54,13 @@ export const AttackResolvedPayload = z.object({
   attacker_losses: z.number().int(),
   defender_losses: z.number().int(),
   comparisons: z.array(z.object({ attacker: z.number().int(), defender: z.number().int() })),
+  // contexto de batalla para la Arena de Combate (reconstrucción sin logs)
+  source_territory_id: z.string().nullable().optional(),
+  target_territory_id: z.string().nullable().optional(),
+  attacker_armies_before: z.number().int().nullable().optional(),
+  defender_armies_before: z.number().int().nullable().optional(),
+  attacker_armies_after: z.number().int().nullable().optional(),
+  defender_armies_after: z.number().int().nullable().optional(),
 });
 export const ChatMessagePayload = z.object({ text: z.string() });
 export const TauntTriggeredPayload = z.object({
