@@ -471,3 +471,83 @@ Si se acepta el parche en Frontend, cada overlay futuro puede volver a romper in
 ## Criterio de revisión
 
 `pnpm e2e` completo verde; diagnostico confirma que centro/borde de territorios propios llegan al territorio/hitbox correcto; capturas 1920/1366 sin choques graves.
+
+## Decision 2026-07-25-13
+
+## Decisión
+
+Aprobar el mapamundi completo Modo 50 como base jugable para integracion y playtest privado.
+
+## Problema
+
+El mapa anterior estaba bloqueado por dos fallas P0: no era reconocible como mapamundi y los handoffs posteriores no eran jugables porque overlays/badges interceptaban clicks.
+
+## Evidencia
+
+Commit `0afff3e`. Verificacion estatica local: 50 territorios visibles, 50 hitboxes unicas con `data-territory`, 0 faltantes contra `TERRITORIES_50`, 0 referencias a `data-territory-id`, `#layer-4-overlays` con `pointer-events="none"`. Verificacion completa local: `pnpm test` 33/33, `pnpm typecheck` 0 errores, `pnpm build` OK, `pnpm e2e` 4/4 verde. Diagnostico e2e: centro y borde de Alaska reciben `path.territory-hitbox [territory-north-america-alaska]`; `badge_pointer_events` = `none`.
+
+## Opciones consideradas
+
+1. Mantener rechazo hasta que no exista ningun solape menor de labels.
+2. Aprobar el mapa como P0 jugable y mover ajustes visuales finos a P2.
+3. Volver a pedir otra generacion completa a Agy.
+
+## Decisión elegida
+
+Aprobar Modo 50 para integracion/playtest. No aprobar Modo 26 ni seguir iterando variantes visuales ahora.
+
+## Motivo
+
+Para un juego privado, el bloqueo P0 queda resuelto: el mundo se reconoce, los IDs coinciden, las hitboxes funcionan en partida real y la suite e2e pasa. Los solapes menores restantes no justifican frenar el playtest.
+
+## Impacto
+
+Agy: queda liberado del ida y vuelta de mapa Modo 50 salvo bugs nuevos. Frontend: debe verificar deploy real y playtest con el asset aprobado. Backend: no entra. Tester: debe validar clicks, seleccion, refuerzo, ataque y legibilidad en Modo 50.
+
+## Riesgos
+
+Europa, Oriente Medio y Oceania siguen densos; pueden requerir polish P2 despues de jugar. El Modo 26 conserva arte anterior y no debe presentarse como corregido.
+
+## Criterio de revisión
+
+Se reabre solo si el tester demuestra click incorrecto, territorio no seleccionable, labels/tropas que impidan jugar a 1366x768, o perdida de reconocibilidad general del mapamundi en captura aislada.
+
+## Decision 2026-07-25-14
+
+## Decisión
+
+Aprobar el saneo runtime del export Modo 50 en Frontend para playtest privado.
+
+## Problema
+
+El export aprobado seguia incluyendo arte demo que degradaba la partida real: badges horneados duplicaban tropas falsas, clases `p-*` mostraban propiedad inexistente y el `viewBox` recortaba el sur del mapa.
+
+## Evidencia
+
+Commit `b5284b4`. El saneo esta acotado a `frontend/src/components/map/MapPanel.tsx`: oculta `.badge-group`, remueve clases `p-*` de `.territory` al cargar y ajusta `viewBox` segun `getBBox()`. Verificacion local: `pnpm test` 33/33, `pnpm typecheck` OK, `pnpm build` OK, `pnpm e2e` 4/4.
+
+## Opciones consideradas
+
+1. Rechazar y volver a Agy por un export limpio.
+2. Aceptar saneo runtime para acelerar playtest y dejar export limpio como P2.
+3. Editar manualmente el SVG productivo.
+
+## Decisión elegida
+
+Aceptar el saneo runtime en Frontend. No pedir nueva iteracion de Arte ahora.
+
+## Motivo
+
+El saneo elimina informacion falsa sin mover reglas al cliente: propiedad y tropas siguen viniendo del estado del juego. Es una correccion acotada, verificable y mas barata que reabrir el ciclo de export antes del playtest.
+
+## Impacto
+
+Frontend: aprobado para playtest privado. Agy: deuda P2 de export limpio. Backend: sin cambios. Tester: validar URL real con Modo 50.
+
+## Riesgos
+
+`getBBox()` puede variar si un futuro SVG cambia estructura; el catch conserva viewBox anterior. Hitboxes con geometria propia siguen pudiendo solaparse en bordes, pero e2e demuestra jugabilidad suficiente.
+
+## Criterio de revisión
+
+Reabrir si el tester encuentra tropas duplicadas visibles, colores de dueño falsos, recorte sur, radial fuera de vista o clicks incorrectos en territorios vecinos.

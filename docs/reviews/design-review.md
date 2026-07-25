@@ -4,7 +4,7 @@ Fecha: 2026-07-25
 
 ## Resultado
 
-Aprobacion parcial fuerte del prototipo de direccion UX para turno, combate y Tribuna. Actualizacion P0 mapa: la direccion visual hibrida A+B+C queda aprobada como direccion estetica, pero no queda aprobado saltar directo a generar 26/100 territorios completos.
+Aprobacion parcial fuerte del prototipo de direccion UX para turno, combate y Tribuna. Actualizacion P0 mapa: el mapamundi Modo 50 queda aprobado como base jugable para integracion y playtest privado. No es arte final perfecto, pero supera el bloqueo P0: reconoce el mundo, conserva contratos, recibe clicks por hitboxes y pasa e2e en partida real.
 
 ## Evidencia
 
@@ -53,7 +53,9 @@ Aprobacion parcial fuerte del prototipo de direccion UX para turno, combate y Tr
 - `docs/design/map-world-50-p0.md` sigue desactualizado: describe `data-territory-id` aunque el manifest y SVG ya usan `data-territory`.
 - Persisten solapes visuales relevantes: `P/Mexico`, Alemania/Polonia, Arabia/Etiopia, Sumatra/Borneo y densidad general Europa/Medio Oriente a 1366x768.
 - Correccion 2026-07-25 `5b16c23`: documento tecnico y contrato estatico quedan corregidos, pero el handoff sigue rechazado. `pnpm e2e` falla en `south-america-pilot.spec.ts`; diagnostico `diagnostic-global-svg.spec.ts` muestra que los badges horneados interceptan clicks (`circle.badge-circle`, `pointer-events:auto`) y que en bordes puede recibir un hitbox vecino.
+- Correccion 2026-07-25 `0afff3e`: el mapamundi Modo 50 queda aprobado para integracion/playtest. Verificacion local: 50 territorios visibles, 50 hitboxes unicas con `data-territory`, 0 faltantes contra `TERRITORIES_50`, sin `data-territory-id`, overlays con `pointer-events="none"`, y `pnpm test && pnpm typecheck && pnpm build && pnpm e2e` verde. Diagnostico e2e: centro y borde de Alaska reciben `path.territory-hitbox [territory-north-america-alaska]`; `badge_pointer_events` = `none`.
+- Integracion Frontend `b5284b4`: saneo runtime aprobado para el playtest privado. Oculta badges demo horneados, remueve clases demo `p-*` y ajusta `viewBox` al contenido real para evitar recorte sur/radial fuera de vista. Esto no cambia el contrato de Arte, pero evita que defectos del export bloqueen el deploy.
 
 ## Proxima accion
 
-Integracion piloto de America del Sur completada por Frontend en modo 50 y aprobada en e2e real. El mapamundi completo de Agy sigue rechazado como handoff productivo. Siguiente paso: Agy debe eliminar o neutralizar overlays horneados que capturan clicks y ajustar hitboxes en bordes; Frontend no integra globalmente hasta `pnpm e2e` verde.
+Integracion piloto de America del Sur completada por Frontend en modo 50 y aprobada en e2e real. El mapamundi completo Modo 50 queda aprobado en deploy con saneo runtime. Siguiente paso: tester Windows debe ejecutar mini-regresion sobre URL real. Agy no debe seguir iterando el mapa Modo 50 salvo defectos nuevos de playtest; limpieza del export queda P2.

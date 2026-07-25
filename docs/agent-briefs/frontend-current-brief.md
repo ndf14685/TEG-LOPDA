@@ -123,3 +123,39 @@ Integrar la region piloto America del Sur corregida en el mapa productivo o en u
 - `pnpm build`
 - `pnpm e2e`
 - Capturas 1920x1080 y 1366x768 de America del Sur: normal, sin labels, seleccionado, atacable y ataque.
+
+## Mapa P0 - Mapamundi Modo 50
+
+Fecha: 2026-07-25
+
+Estado: habilitado para integracion/playtest. No tocar backend ni modo 26.
+
+### Objetivo
+
+Usar el mapamundi completo Modo 50 aprobado como base de partida real y verificar que el deploy privado queda jugable con el asset corregido.
+
+### Fuentes aprobadas
+
+- `assets/maps/base/map-base-tactical-50-001.svg`
+- `assets/manifests/map-world-50-manifest.json`
+- `docs/design/map-world-50-p0.md`
+- `frontend/public/prototype/world-50-pilot.html`
+
+### Contrato obligatorio
+
+- Territorios visibles: `path.territory[id="territory-*"]`
+- Hitboxes interactivas: `path.territory-hitbox[data-territory="territory-*"]`
+- Overlays decorativos: `#layer-4-overlays` y descendientes con `pointer-events: none`
+- Mantener IDs contra `TERRITORIES_50`; no renombrar.
+
+### Verificacion obligatoria
+
+- `pnpm test`
+- `pnpm typecheck`
+- `pnpm build`
+- `pnpm e2e`
+- Capturas 1920x1080 y 1366x768: vista normal, sin labels, seleccionado, atacable, ataque en ejecucion.
+
+### Limites
+
+No adaptar handlers para aceptar contratos alternativos. Si algun overlay vuelve a capturar clicks o una hitbox apunta al territorio equivocado, se devuelve a Arte. Modo 26 no se corrige en esta etapa.
