@@ -11,6 +11,14 @@ import { territoryName } from '../../utils/territoryName';
 const RUNTIME_STYLE = `
   /* los badges demo horneados en exports se ocultan: el juego dibuja los reales */
   .badge-group { display: none; }
+  /* con base geográfica: la propiedad se lee por stroke/halo del color del
+     dueño + tintado suave, para que costas y continentes sigan visibles.
+     (las reglas de estado van DESPUÉS y ganan el empate de especificidad) */
+  svg[data-geo-base] .territory.owned {
+    stroke: var(--owner-color);
+    stroke-width: 5;
+    filter: drop-shadow(0 0 6px var(--owner-color));
+  }
   .territory.hb-hover { stroke: #38bdf8; filter: brightness(1.25); }
   svg.hide-labels .territory-label, svg.hide-labels .continent-title { display: none; }
   .territory.attackable { stroke: #22d3ee; stroke-width: 6; stroke-dasharray: 6 6; }
@@ -98,6 +106,38 @@ export function MapPanel({ mode }: { mode?: GameMode }) {
             } catch {
               // getBBox falla si el nodo no está montado: se conserva el viewBox
             }
+            // base geográfica no interactiva debajo de la capa jugable:
+            // misma convención de nombres (map-world-geographic-base-XX).
+            // Si el modo no tiene base (p. ej. 26), el fetch falla y se sigue.
+            const baseUrl = url.replace('map-base-tactical-', 'map-world-geographic-base-');
+            if (baseUrl !== url) {
+              try {
+                const baseRes = await fetch(baseUrl);
+                if (baseRes.ok) {
+                  const baseText = await baseRes.text();
+                  const doc = new DOMParser().parseFromString(baseText, 'image/svg+xml');
+                  const baseRoot = doc.documentElement;
+                  if (baseRoot && baseRoot.tagName.toLowerCase() === 'svg' && !cancelled) {
+                    // la base vieja del export táctico se apaga: la reemplaza el mundo real
+                    svg.querySelector('#layer-1-geo-base')?.setAttribute('display', 'none');
+                    const imported: Node[] = [];
+                    Array.from(baseRoot.children).forEach((child) => {
+                      const node = document.importNode(child, true);
+                      if (node instanceof Element && node.id === 'layer-1-geo-base') {
+                        node.setAttribute('id', 'layer-0-geo-world');
+                        node.setAttribute('pointer-events', 'none');
+                      }
+                      imported.push(node);
+                    });
+                    // primeros hijos = se pintan primero = quedan DEBAJO de todo
+                    imported.reverse().forEach((n) => svg.insertBefore(n, svg.firstChild));
+                    svg.setAttribute('data-geo-base', '1');
+                  }
+                }
+              } catch {
+                // sin base geográfica: el mapa táctico funciona igual
+              }
+            }
           }
         }
         setState('ready');
@@ -138,13 +178,21 @@ export function MapPanel({ mode }: { mode?: GameMode }) {
       const ownerColorHex = owner ? colorValue(owner.color) : 'rgba(30, 35, 45, 0.85)';
       path.dataset.mine = String(tState?.owner_player_id === youId);
 
-      // 1. Pintar territorio según dueño
+      // 1. Pintar territorio según dueño. Con base geográfica el tintado es
+      // suave (0.34) para que las costas se vean; la propiedad se sostiene con
+      // el stroke/halo del color del dueño (clase .owned + --owner-color).
+      const hasGeoBase = svg.hasAttribute('data-geo-base');
+      path.classList.remove('owned');
       if (tState && tState.owner_player_id) {
         path.style.fill = ownerColorHex;
-        path.style.fillOpacity = '0.75';
+        path.style.fillOpacity = hasGeoBase ? '0.34' : '0.75';
+        if (hasGeoBase) {
+          path.classList.add('owned');
+          path.style.setProperty('--owner-color', ownerColorHex);
+        }
       } else {
         path.style.fill = 'rgba(30, 35, 45, 0.85)';
-        path.style.fillOpacity = '0.85';
+        path.style.fillOpacity = hasGeoBase ? '0.35' : '0.85';
       }
 
       // 2. Estado de Selección + vecinos atacables del origen elegido
