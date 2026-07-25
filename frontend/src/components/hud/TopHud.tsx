@@ -78,12 +78,19 @@ export function TopHud() {
                   {inPlacement && <span className={done ? 'text-emerald-400' : 'text-amber-400'}> {done ? '✓' : '…'}</span>}
                 </p>
               </div>
+              {/* punto de conexión en CSS puro: nunca depende de fuentes emoji */}
               <span
-                className="text-[9px]"
+                className={`inline-block h-2 w-2 shrink-0 rounded-full ${
+                  p.presence === 'online'
+                    ? 'bg-emerald-400'
+                    : p.presence === 'reconnecting'
+                      ? 'animate-pulse bg-amber-400'
+                      : 'bg-stone-600'
+                }`}
+                role="img"
+                aria-label={p.presence === 'online' ? 'conectado' : p.presence === 'reconnecting' ? 'reconectando' : 'desconectado'}
                 title={p.presence === 'online' ? 'conectado' : p.presence === 'reconnecting' ? 'reconectando' : 'desconectado'}
-              >
-                {p.presence === 'online' ? '🟢' : p.presence === 'reconnecting' ? '🟡' : '⚫'}
-              </span>
+              />
               {p.role === 'ai_player' && <span className="rounded bg-war-700 px-1 text-[9px]" title="Jugador IA">🤖</span>}
               {!me && hasPactWith(p.id) && <span className="text-[10px]" title="Pacto de no agresión vigente">🤝</span>}
             </div>

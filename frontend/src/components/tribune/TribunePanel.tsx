@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useGameStore } from '../../state/gameStore';
+import { useConnectionStore } from '../../state/connectionStore';
 import { useSessionStore } from '../../state/sessionStore';
 import { colorValue } from '../../utils/playerColors';
 import { wsClient } from '../../services/websocket/wsClient';
@@ -29,6 +30,7 @@ export function TribunePanel() {
   const hasPactWith = useGameStore((s) => s.hasPactWith);
   const lastError = useGameStore((s) => s.lastError);
   const game = useGameStore((s) => s.game);
+  const syncState = useConnectionStore((s) => s.syncState);
   const session = useSessionStore((s) => s.session);
   const [diplomacyOpen, setDiplomacyOpen] = useState(false);
 
@@ -48,7 +50,11 @@ export function TribunePanel() {
   // instrucción concreta según estado (regla de claridad: qué puedo hacer)
   let turnTitle: string;
   let turnSub: string;
-  if (inPlacement) {
+  if (syncState !== 'synced') {
+    // design-review: la reconexión cambia el panel persistente, no solo un toast
+    turnTitle = 'SINCRONIZANDO CON EL SERVIDOR…';
+    turnSub = 'Recuperando el estado de la partida. Las acciones se desbloquean solas al terminar.';
+  } else if (inPlacement) {
     turnTitle = `🪖 COLOCACIÓN INICIAL ${stage === 'placement_1' ? '(5 tropas)' : '(3 tropas)'}`;
     turnSub = placementRemaining > 0
       ? `Te quedan ${placementRemaining} por colocar — tocá tus países.`
@@ -94,7 +100,7 @@ export function TribunePanel() {
         <p className="text-[10px] font-bold tracking-widest text-stone-500">ESTADO DEL TURNO</p>
         <p className="text-sm font-bold text-stone-100">{turnTitle}</p>
         <p className="mt-0.5 text-xs text-stone-400">{turnSub}</p>
-        {myTurn && running && !inPlacement && (
+        {myTurn && running && !inPlacement && syncState === 'synced' && (
           <div className="mt-2 flex gap-2">
             {phase !== 'fortify' ? (
               <button
