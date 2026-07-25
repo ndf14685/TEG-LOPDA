@@ -62,3 +62,18 @@ código de interacción.
 3. `viewBox` que contenga toda la geometría (p. ej. `0 0 2560 1600`) o
    geometría reescalada a 1440.
 4. Capa visible sin clases `p-*` de demostración.
+
+## Adenda: el e2e del piloto SA (validado ayer) ahora FALLA con el export global
+
+`south-america-pilot.spec.ts` pasaba 3/3 con la integración del piloto y falla
+con el export global: al clickear una frontera del sur (Chile/Argentina,
+recortados por el viewBox), el menú radial se abre pero posicionado FUERA del
+área visible del contenedor (overflow hidden) — los botones +1/MÁX existen en
+el DOM pero nunca son visibles/clickeables. Confirma el defecto de viewBox
+como rotura funcional, no solo estética.
+
+Nota de honestidad del test: el spec del piloto clickea hitboxes con `force`,
+lo que ESQUIVA la intercepción de los badges demo (causa raíz A) — por eso el
+primer síntoma lo vieron los humanos y no el e2e. Cuando Agy corrija el
+export, conviene quitar el `force` para que el e2e proteja también la
+interceptación de clicks.
