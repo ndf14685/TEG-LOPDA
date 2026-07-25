@@ -14,6 +14,28 @@ describe('estado canónico', () => {
     expect(after.placementDone).toEqual(['p2']);
   });
 
+  it('eco optimista de colocación: baja el pool y sube el pendiente del país', () => {
+    const s = useGameStore.getState();
+    s.setPlacement(3, {});
+    s.optimisticPlace('t1');
+    let after = useGameStore.getState();
+    expect(after.placementRemaining).toBe(2);
+    expect(after.placementPending).toEqual({ t1: 1 });
+    s.optimisticPlace('t1');
+    after = useGameStore.getState();
+    expect(after.placementRemaining).toBe(1);
+    expect(after.placementPending).toEqual({ t1: 2 });
+  });
+
+  it('eco optimista no baja de cero cuando el pool está agotado', () => {
+    const s = useGameStore.getState();
+    s.setPlacement(0, { t1: 5 });
+    s.optimisticPlace('t1');
+    const after = useGameStore.getState();
+    expect(after.placementRemaining).toBe(0);
+    expect(after.placementPending).toEqual({ t1: 5 });
+  });
+
   it('guarda acciones legales y objetivo del ganador', () => {
     const s = useGameStore.getState();
     s.setLegalActions([{ action: 'attack', params: {} }]);

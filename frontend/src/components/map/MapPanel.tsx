@@ -33,6 +33,7 @@ export function MapPanel({ mode }: { mode?: GameMode }) {
   const stage = useGameStore((s) => s.stage);
   const placementRemaining = useGameStore((s) => s.placementRemaining);
   const placementPending = useGameStore((s) => s.placementPending);
+  const optimisticPlace = useGameStore((s) => s.optimisticPlace);
   const mapAdjacency = useGameStore((s) => s.mapAdjacency);
   const territories = useGameStore((s) => s.territories);
   const players = useGameStore((s) => s.players);
@@ -154,6 +155,7 @@ export function MapPanel({ mode }: { mode?: GameMode }) {
         // colocación inicial: cada click suma 1 ejército oculto en tu país
         if (stage === 'placement_1' || stage === 'placement_2') {
           if (tState && tState.owner_player_id === youId && placementRemaining > 0) {
+            optimisticPlace(id);
             wsClient.send({
               type: 'placement.place',
               payload: { territory_id: id, count: 1 },
@@ -261,7 +263,7 @@ export function MapPanel({ mode }: { mode?: GameMode }) {
       line.setAttribute('pointer-events', 'none');
       overlayGroup.appendChild(line);
     }
-  }, [state, territories, players, youId, playerById, selectedSource, selectedTarget, setSelectedSource, setSelectedTarget, turn, mapAdjacency, stage, placementRemaining, placementPending]);
+  }, [state, territories, players, youId, playerById, selectedSource, selectedTarget, setSelectedSource, setSelectedTarget, turn, mapAdjacency, stage, placementRemaining, placementPending, optimisticPlace]);
 
   // Flash de conquista: animación breve sobre el territorio recién tomado
   const conquestFlash = useGameStore((s) => s.conquestFlash);

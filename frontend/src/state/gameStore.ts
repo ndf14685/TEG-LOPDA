@@ -94,6 +94,7 @@ interface GameState {
   setSecretObjective: (objective: SecretObjective | null) => void;
   setStage: (stage: GameStage | null) => void;
   setPlacement: (remaining: number, pending: Record<string, number>) => void;
+  optimisticPlace: (territoryId: string) => void;
   setPlacementDone: (players: string[]) => void;
   setLegalActions: (actions: LegalAction[]) => void;
   setFinishedObjective: (objective: SecretObjective | null) => void;
@@ -179,6 +180,20 @@ export const useGameStore = create<GameState>((set, get) => ({
   setStage: (stage) => set({ stage }),
   setPlacement: (placementRemaining, placementPending) =>
     set({ placementRemaining, placementPending }),
+  // eco optimista de un click de colocación: mueve el contador al instante.
+  // El server responde placement.updated y reescribe con la verdad autoritativa.
+  optimisticPlace: (territoryId) =>
+    set((s) =>
+      s.placementRemaining <= 0
+        ? {}
+        : {
+            placementRemaining: s.placementRemaining - 1,
+            placementPending: {
+              ...s.placementPending,
+              [territoryId]: (s.placementPending[territoryId] ?? 0) + 1,
+            },
+          }
+    ),
   setPlacementDone: (placementDone) => set({ placementDone }),
   setLegalActions: (legalActions) => set({ legalActions }),
   setFinishedObjective: (finishedObjective) => set({ finishedObjective }),

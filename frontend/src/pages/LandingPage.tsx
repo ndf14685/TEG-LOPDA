@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api } from '../services/api/apiClient';
+import { api, ApiRequestError } from '../services/api/apiClient';
 import { audioService } from '../services/audio/AudioService';
 import { useSessionStore } from '../state/sessionStore';
 import { ALL_COLORS, PLAYER_COLOR_LABEL } from '../utils/playerColors';
@@ -51,7 +51,11 @@ export function LandingPage() {
       });
       navigate(`/admin/${created.game.id}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo crear la partida');
+      if (err instanceof ApiRequestError && err.status === 401) {
+        setError('Esa no es la clave de organizador. Si sos jugador, no necesitás clave: pedile el link de invitación al que arma la partida y pegalo abajo en «¿Te invitaron?».');
+      } else {
+        setError(err instanceof Error ? err.message : 'No se pudo crear la partida');
+      }
     } finally {
       setCreating(false);
     }
@@ -116,7 +120,8 @@ export function LandingPage() {
       </section>
 
       <section className="w-full rounded-xl border border-war-700 bg-war-900 p-6">
-        <h2 className="mb-3 font-display text-xl font-bold text-stone-100">¿Te invitaron?</h2>
+        <h2 className="mb-1 font-display text-xl font-bold text-stone-100">¿Te invitaron?</h2>
+        <p className="mb-3 text-sm text-stone-400">Si vas a jugar, esto es todo lo que necesitás: pedile el link al organizador y pegalo acá. La clave de arriba es solo para quien funda la partida.</p>
         <form onSubmit={joinByLink} className="flex gap-2">
           <input value={joinUrl} onChange={(e) => setJoinUrl(e.target.value)} placeholder="Pegá tu link de invitación" aria-label="Link de invitación" className="min-w-0 flex-1 rounded border border-war-700 bg-war-800 px-3 py-2 text-sm outline-none focus:border-gold-500" />
           <button className="rounded border border-war-700 bg-war-800 px-4 py-2 text-sm font-semibold hover:border-gold-500">Entrar</button>
