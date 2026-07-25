@@ -41,16 +41,9 @@ export function GamePage() {
   const selectedSource = useGameStore((s) => s.selectedSourceTerritory);
   const selectedTarget = useGameStore((s) => s.selectedTargetTerritory);
   const territories = useGameStore((s) => s.territories);
-  const [attackTarget, setAttackTarget] = useState('');
   const [fortifyCount, setFortifyCount] = useState(1);
   const setSelectedSource = useGameStore((s) => s.setSelectedSourceTerritory);
   const setSelectedTarget = useGameStore((s) => s.setSelectedTargetTerritory);
-
-  useEffect(() => {
-    if (selectedTarget && territories[selectedTarget]?.owner_player_id) {
-      setAttackTarget(territories[selectedTarget].owner_player_id!);
-    }
-  }, [selectedTarget, territories]);
 
   useEffect(() => {
     if ((!session || session.code !== code) && !restore(code)) navigate('/');
@@ -69,7 +62,6 @@ export function GamePage() {
   const myTurn = currentId === session.playerId;
   const actionsBlocked = syncState !== 'synced' || game?.status !== 'running';
   const combatants = players.filter((p) => (p.role === 'player' || p.role === 'admin' || p.role === 'ai_player') && !p.eliminated);
-  const targets = combatants.filter((p) => p.id !== session.playerId);
   const diceRoller = lastDice ? playerById(lastDice.playerId) : undefined;
 
   function send(action: () => void) {
@@ -271,25 +263,11 @@ export function GamePage() {
                   );
                 })()}
 
-                <div className="flex gap-2">
-                  <select
-                    value={attackTarget}
-                    onChange={(e) => setAttackTarget(e.target.value)}
-                    aria-label="Objetivo del ataque"
-                    className="min-w-0 flex-1 rounded border border-war-700 bg-war-800 px-2 py-1.5 text-sm"
-                  >
-                    <option value="">Atacar a…</option>
-                    {targets.map((p) => <option key={p.id} value={p.id}>{p.nickname}</option>)}
-                  </select>
-                  <button
-                    disabled={actionsBlocked || !myTurn || !attackTarget}
-                    onClick={() => send(() => wsClient.send({ type: 'attack', payload: { target_player_id: attackTarget, attacker_dice: 3 } }))}
-                    data-testid="attack-button"
-                    className="rounded-lg bg-red-700 px-3 py-1.5 text-sm font-bold text-red-50 hover:bg-red-600 disabled:opacity-30"
-                  >
-                    ⚔️
-                  </button>
-                </div>
+                {myTurn && turn?.phase === 'attack' && !(selectedSource && selectedTarget) && (
+                  <p className="rounded-md border border-red-900/40 bg-red-950/30 px-2 py-1.5 text-[11px] text-red-200">
+                    Tocá un país tuyo y después un país enemigo lindante para atacar.
+                  </p>
+                )}
                 <button
                   disabled={actionsBlocked || !myTurn}
                   onClick={() => send(() => wsClient.send({ type: 'turn.end' }))}

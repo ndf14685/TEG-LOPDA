@@ -13,6 +13,8 @@ export function TurnPhaseBar() {
   const [studioOpen, setStudioOpen] = useState(false);
   const profileToken = getStoredProfileToken();
   const turn = useGameStore((s) => s.turn);
+  const reinforceBatch = useGameStore((s) => s.reinforceBatch);
+  const setReinforceBatch = useGameStore((s) => s.setReinforceBatch);
   const session = useSessionStore((s) => s.session);
   const currentPlayerId = useGameStore((s) => s.currentPlayerId);
   const currentId = currentPlayerId();
@@ -82,6 +84,7 @@ export function TurnPhaseBar() {
             {phaseStep === 1 && myTurn && (
               <p className="mt-0.5 text-[10px] text-amber-200">
                 Disponibles: <strong className="text-gold-400">{availableReinforcements}</strong>
+                <span className="text-amber-200/70"> · cada click coloca {Math.min(reinforceBatch, availableReinforcements) || 1}</span>
               </p>
             )}
           </div>
@@ -119,6 +122,31 @@ export function TurnPhaseBar() {
           </div>
         </div>
       </div>
+
+      {/* Colocación de refuerzos por lote: evita clickear de a 1 */}
+      {phaseStep === 1 && myTurn && availableReinforcements > 0 && (
+        <div className="flex items-center gap-2 text-[11px]">
+          <span className="text-stone-400">Colocar por click:</span>
+          {([['x1', 1], ['x5', 5], ['Todas', availableReinforcements]] as const).map(([label, n]) => {
+            const active = label === 'Todas'
+              ? reinforceBatch >= availableReinforcements
+              : reinforceBatch === n && reinforceBatch < availableReinforcements;
+            return (
+              <button
+                key={label}
+                onClick={() => setReinforceBatch(label === 'Todas' ? Number.MAX_SAFE_INTEGER : n)}
+                className={`rounded-md border px-2 py-0.5 font-bold transition ${
+                  active
+                    ? 'border-amber-400 bg-amber-500/90 text-war-950'
+                    : 'border-war-700 bg-war-800 text-stone-300 hover:border-amber-500'
+                }`}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

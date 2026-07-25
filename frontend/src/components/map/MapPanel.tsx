@@ -34,6 +34,7 @@ export function MapPanel({ mode }: { mode?: GameMode }) {
   const placementRemaining = useGameStore((s) => s.placementRemaining);
   const placementPending = useGameStore((s) => s.placementPending);
   const optimisticPlace = useGameStore((s) => s.optimisticPlace);
+  const reinforceBatch = useGameStore((s) => s.reinforceBatch);
   const mapAdjacency = useGameStore((s) => s.mapAdjacency);
   const territories = useGameStore((s) => s.territories);
   const players = useGameStore((s) => s.players);
@@ -168,10 +169,14 @@ export function MapPanel({ mode }: { mode?: GameMode }) {
 
         if (currentPhase === 'reinforcement') {
           if (tState && tState.owner_player_id === youId) {
-            wsClient.send({
-              type: 'turn.place_reinforcement',
-              payload: { territory_id: id, count: 1 },
-            });
+            const available = turn?.reinforcements_available ?? 0;
+            const count = Math.min(reinforceBatch, available);
+            if (count > 0) {
+              wsClient.send({
+                type: 'turn.place_reinforcement',
+                payload: { territory_id: id, count },
+              });
+            }
           }
           return;
         }
@@ -263,7 +268,7 @@ export function MapPanel({ mode }: { mode?: GameMode }) {
       line.setAttribute('pointer-events', 'none');
       overlayGroup.appendChild(line);
     }
-  }, [state, territories, players, youId, playerById, selectedSource, selectedTarget, setSelectedSource, setSelectedTarget, turn, mapAdjacency, stage, placementRemaining, placementPending, optimisticPlace]);
+  }, [state, territories, players, youId, playerById, selectedSource, selectedTarget, setSelectedSource, setSelectedTarget, turn, mapAdjacency, stage, placementRemaining, placementPending, optimisticPlace, reinforceBatch]);
 
   // Flash de conquista: animación breve sobre el territorio recién tomado
   const conquestFlash = useGameStore((s) => s.conquestFlash);

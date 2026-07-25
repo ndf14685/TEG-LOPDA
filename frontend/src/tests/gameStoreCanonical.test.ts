@@ -36,6 +36,13 @@ describe('estado canónico', () => {
     expect(after.placementPending).toEqual({ t1: 5 });
   });
 
+  it('reinforceBatch por defecto 1 y actualizable', () => {
+    expect(useGameStore.getState().reinforceBatch).toBe(1);
+    useGameStore.getState().setReinforceBatch(5);
+    expect(useGameStore.getState().reinforceBatch).toBe(5);
+    useGameStore.getState().setReinforceBatch(1);
+  });
+
   it('guarda acciones legales y objetivo del ganador', () => {
     const s = useGameStore.getState();
     s.setLegalActions([{ action: 'attack', params: {} }]);

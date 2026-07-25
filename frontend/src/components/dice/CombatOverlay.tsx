@@ -16,7 +16,7 @@ export function CombatOverlay() {
     setIsRolling(true);
 
     const rollTimer = setTimeout(() => setIsRolling(false), 600);
-    const hideTimer = setTimeout(() => setVisible(false), 5000);
+    const hideTimer = setTimeout(() => setVisible(false), 4500);
 
     return () => {
       clearTimeout(rollTimer);
@@ -35,13 +35,14 @@ export function CombatOverlay() {
   const pairsCount = Math.min(sortedAttacker.length, sortedDefender.length);
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-md transition-opacity duration-300"
-      onClick={() => setVisible(false)}
-    >
+    // Panel no bloqueante: fijo abajo-centro, no cubre el tablero ni intercepta
+    // clicks (wrapper pointer-events-none). Solo la tarjeta es interactiva y un
+    // toque la cierra; además se autooculta. Lo ven todos sin frenar su juego.
+    <div className="pointer-events-none fixed inset-x-0 bottom-4 z-50 flex justify-center px-4">
       <div
-        className="relative w-full max-w-xl rounded-2xl border border-gold-500/40 bg-gradient-to-b from-war-900 via-war-950 to-stone-950 p-6 text-slate-100 shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
+        className="pointer-events-auto relative w-full max-w-md cursor-pointer rounded-2xl border border-gold-500/40 bg-gradient-to-b from-war-900 via-war-950 to-stone-950 p-5 text-slate-100 shadow-2xl transition-opacity duration-300"
+        onClick={() => setVisible(false)}
+        title="Tocá para cerrar"
       >
         <button
           onClick={() => setVisible(false)}
@@ -52,7 +53,7 @@ export function CombatOverlay() {
         </button>
 
         {/* Encabezado del Combate */}
-        <div className="mb-6 text-center">
+        <div className="mb-4 text-center">
           <span className="inline-block rounded-full bg-red-950/80 px-3 py-1 text-xs font-bold tracking-widest text-red-300 border border-red-800/60">
             ⚔️ BATALLA TÁCTICA
           </span>
@@ -62,7 +63,7 @@ export function CombatOverlay() {
         </div>
 
         {/* Duelistas: Avatares y Dados 3D */}
-        <div className="grid grid-cols-2 gap-6 border-y border-war-800 py-6">
+        <div className="grid grid-cols-2 gap-6 border-y border-war-800 py-4">
           {/* ATACANTE */}
           <div className="flex flex-col items-center gap-3">
             <div className="flex items-center gap-2">

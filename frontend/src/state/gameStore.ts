@@ -58,6 +58,7 @@ interface GameState {
   placementRemaining: number;
   placementPending: Record<string, number>;
   placementDone: string[];
+  reinforceBatch: number;
   legalActions: LegalAction[];
   finishedObjective: SecretObjective | null;
   pacts: string[][];
@@ -96,6 +97,7 @@ interface GameState {
   setPlacement: (remaining: number, pending: Record<string, number>) => void;
   optimisticPlace: (territoryId: string) => void;
   setPlacementDone: (players: string[]) => void;
+  setReinforceBatch: (n: number) => void;
   setLegalActions: (actions: LegalAction[]) => void;
   setFinishedObjective: (objective: SecretObjective | null) => void;
   setPacts: (pacts: string[][]) => void;
@@ -134,6 +136,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   placementRemaining: 0,
   placementPending: {},
   placementDone: [],
+  reinforceBatch: 1,
   legalActions: [],
   finishedObjective: null,
   pacts: [],
@@ -195,6 +198,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           }
     ),
   setPlacementDone: (placementDone) => set({ placementDone }),
+  setReinforceBatch: (reinforceBatch) => set({ reinforceBatch }),
   setLegalActions: (legalActions) => set({ legalActions }),
   setFinishedObjective: (finishedObjective) => set({ finishedObjective }),
   setPacts: (pacts) => set({ pacts }),
