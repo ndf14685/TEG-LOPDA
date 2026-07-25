@@ -431,3 +431,43 @@ Si Frontend parchea el handler para acomodar un SVG defectuoso, puede romper el 
 ## Criterio de revisión
 
 Se reconsidera cuando `pnpm e2e` pase completo y las capturas no muestren choques graves en las zonas densas.
+
+## Decision 2026-07-25-12
+
+## Decisión
+
+Rechazar nuevamente el mapamundi completo Modo 50 despues de la correccion documental final.
+
+## Problema
+
+El contrato estatico `data-territory` esta correcto, pero el mapa sigue sin ser jugable en partida real: los overlays horneados interceptan clicks y algunos hitboxes cubren zonas de territorios vecinos.
+
+## Evidencia
+
+Commits `5b16c23`, `927d636`, `fc4c56d`. Verificacion estatica: 50 territorios visibles, 50 hitboxes con `data-territory`. `pnpm test`, `pnpm typecheck`, `pnpm build` pasan. `pnpm e2e` falla en `south-america-pilot.spec.ts` esperando menu radial. Diagnostico imprime: centro recibe `circle.badge-circle`, borde recibe `path.territory-hitbox [territory-north-america-new-york]`, `badge_pointer_events` = `auto`.
+
+## Opciones consideradas
+
+1. Aprobar porque la documentacion ya esta corregida.
+2. Pedir a Frontend que parchee clicks sobre overlays.
+3. Rechazar handoff y exigir SVG productivo sin overlays interceptores ni hitboxes invasivas.
+
+## Decisión elegida
+
+Rechazar handoff. El SVG productivo debe corregirse antes de integracion global.
+
+## Motivo
+
+El mapa no puede bloquear colocacion/refuerzo. El contrato visible es correcto, pero el comportamiento real no.
+
+## Impacto
+
+Agy debe corregir SVG/overlays/hitboxes. Frontend solo conserva diagnostico; no debe integrar globalmente ni adaptar reglas de click para tapar un asset defectuoso. Backend no entra.
+
+## Riesgos
+
+Si se acepta el parche en Frontend, cada overlay futuro puede volver a romper interaccion. La capa de overlays debe ser no interactiva por diseño.
+
+## Criterio de revisión
+
+`pnpm e2e` completo verde; diagnostico confirma que centro/borde de territorios propios llegan al territorio/hitbox correcto; capturas 1920/1366 sin choques graves.

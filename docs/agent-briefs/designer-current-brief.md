@@ -8,7 +8,7 @@ Corregir el mapamundi completo Modo 50 para que pueda pasar a integracion produc
 
 ## Problema
 
-La integracion piloto de America del Sur fue aprobada en partida real. El mapamundi completo Modo 50 entregado despues corrigio el contrato estatico de hitboxes, pero sigue sin pasar e2e de partida real y mantiene solapes visuales.
+La integracion piloto de America del Sur fue aprobada en partida real. El mapamundi completo Modo 50 corrigio el contrato estatico de hitboxes, pero sigue sin pasar e2e de partida real. El diagnostico muestra que los overlays/badges horneados interceptan clicks y que algunas zonas de borde caen sobre hitboxes vecinas.
 
 ## Evidencia
 
@@ -20,6 +20,7 @@ La integracion piloto de America del Sur fue aprobada en partida real. El mapamu
 - `frontend/src/components/map/MapPanel.tsx`
 - `e2e/south-america-pilot.spec.ts`
 - Resultado `pnpm e2e` 2026-07-25: falla en `placeAllViaRadial`, esperando boton radial `+1`; el click sobre el territorio/hitbox no abre menu radial.
+- Diagnostico `diagnostic-global-svg.spec.ts`: centro de Colombia recibe `circle.badge-circle`, borde recibe `path.territory-hitbox [territory-north-america-new-york]`, `badge_pointer_events` es `auto`.
 
 ## Cambio solicitado
 
@@ -40,6 +41,8 @@ La direccion aprobada debe poder producirse en cuatro capas:
 - 50 territorios visibles con IDs conservados.
 - 50 hitboxes con atributo `data-territory`.
 - Documento `map-world-50-p0.md` corregido para no mencionar `data-territory-id`.
+- Overlays horneados no deben capturar clicks: badges/labels/flechas decorativas deben tener `pointer-events="none"` o estar fuera del SVG productivo si Frontend los genera dinamicamente.
+- Hitboxes no deben cubrir centros/bordes operativos de territorios vecinos en los puntos de click usuales.
 - 50 labels y 50 badges reposicionados para no chocar a 1920x1080 ni 1366x768.
 - Correccion especifica de solapes en:
   - Mexico / Colombia / Peru / Sudamerica norte.
@@ -55,6 +58,8 @@ La direccion aprobada debe poder producirse en cuatro capas:
 - `pnpm e2e` no debe fallar.
 - Cada hitbox debe ser detectable por selector `path.territory-hitbox[data-territory="<territory-id>"]`.
 - En partida real, click sobre hitbox/territorio propio durante colocacion y refuerzo debe abrir menu radial.
+- Diagnostico no debe reportar `circle.badge-circle` como receptor del centro de un territorio.
+- Diagnostico no debe reportar un hitbox vecino al probar borde/centro de Colombia u otros territorios propios.
 - Labels y tropas no se solapan en las regiones indicadas.
 - Los seis colores de jugador preservan textura/geografia.
 - Seleccion y objetivo atacable se distinguen sin tapar el mapa.

@@ -52,7 +52,8 @@ Aprobacion parcial fuerte del prototipo de direccion UX para turno, combate y Tr
 - Correccion 2026-07-25 `54f33a0`: el contrato estatico de hitboxes queda corregido (`50` hitboxes con `data-territory`, sin faltantes contra los `50` IDs visibles y `TERRITORIES_50`), pero el handoff sigue rechazado porque `pnpm e2e` falla en partida real: durante colocacion/refuerzo el click via hitbox no abre el menu radial.
 - `docs/design/map-world-50-p0.md` sigue desactualizado: describe `data-territory-id` aunque el manifest y SVG ya usan `data-territory`.
 - Persisten solapes visuales relevantes: `P/Mexico`, Alemania/Polonia, Arabia/Etiopia, Sumatra/Borneo y densidad general Europa/Medio Oriente a 1366x768.
+- Correccion 2026-07-25 `5b16c23`: documento tecnico y contrato estatico quedan corregidos, pero el handoff sigue rechazado. `pnpm e2e` falla en `south-america-pilot.spec.ts`; diagnostico `diagnostic-global-svg.spec.ts` muestra que los badges horneados interceptan clicks (`circle.badge-circle`, `pointer-events:auto`) y que en bordes puede recibir un hitbox vecino.
 
 ## Proxima accion
 
-Integracion piloto de America del Sur completada por Frontend en modo 50 y aprobada en e2e real. El mapamundi completo de Agy sigue rechazado como handoff productivo. Siguiente paso: correccion conjunta acotada, pero no integracion global: Frontend debe diagnosticar por que el click sobre hitbox no abre radial con el SVG global, y Agy debe corregir solapes/documento tecnico.
+Integracion piloto de America del Sur completada por Frontend en modo 50 y aprobada en e2e real. El mapamundi completo de Agy sigue rechazado como handoff productivo. Siguiente paso: Agy debe eliminar o neutralizar overlays horneados que capturan clicks y ajustar hitboxes en bordes; Frontend no integra globalmente hasta `pnpm e2e` verde.
