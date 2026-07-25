@@ -140,7 +140,6 @@ ISLANDS = {
     "baleares": iso(2.9,39.6,0.8,0.4),
     # Índico / sudeste asiático
     "hainan": iso(109.8,19.2,1.0,0.8),
-    "shikoku": iso(133.5,33.7,0.9,0.5),
     "timor": iso(125.4,-9.0,1.9,0.6),
     "flores-sumbawa": iso(119.5,-8.6,2.3,0.4),
     "halmahera": iso(128.0,0.8,0.9,1.2),

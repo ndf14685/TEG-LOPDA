@@ -1,13 +1,14 @@
 {
   "schema_version": "1.0.0",
   "project": "TEG-LOPDA",
-  "updated_at": "2026-07-25T21:30:00Z",
+  "updated_at": "2026-07-25T23:10:00Z",
   "assets": {
     "brand": {
       "palette_json": "assets/brand/palette/palette.json"
     },
     "map": {
-      "canonical_50": "assets/maps/base/map-world-canonical-50-001.svg",
+      "canonical_50": "assets/maps/base/map-world-canonical-50-002.svg",
+      "canonical_50_001_superseded": "assets/maps/base/map-world-canonical-50-001.svg",
       "geographic_base_50": "assets/maps/base/map-world-geographic-base-50-003.svg",
       "geographic_base_50_001_deprecated": "assets/maps/base/map-world-geographic-base-50-001.svg",
       "geographic_base_50_002_deprecated": "assets/maps/base/map-world-geographic-base-50-002.svg",
