@@ -11,6 +11,7 @@ import { territoryName } from '../../utils/territoryName';
 const RUNTIME_STYLE = `
   .territory.attackable { stroke: #22d3ee; stroke-width: 6; stroke-dasharray: 6 6; }
   .territory.can-attack { stroke: #f59e0b; stroke-width: 5; stroke-dasharray: 10 6; cursor: crosshair; }
+  .territory.frontier { stroke: #fbbf24; stroke-width: 4; stroke-dasharray: 4 8; }
   @keyframes teg-conquest-flash {
     0% { fill-opacity: 1; stroke: #fbbf24; stroke-width: 14; }
     50% { fill-opacity: 0.4; stroke: #fde68a; stroke-width: 8; }
@@ -122,7 +123,17 @@ export function MapPanel({ mode }: { mode?: GameMode }) {
 
       // 2. Estado de Selección + vecinos atacables del origen elegido
       const myTurn = turn && turn.order[turn.index] === youId;
-      path.classList.remove('selected', 'attack-source', 'attack-target', 'attackable', 'can-attack');
+      const isFrontier = (mapAdjacency[id] ?? []).some(
+        (n) => territories[n]?.owner_player_id !== youId,
+      );
+      path.classList.remove('selected', 'attack-source', 'attack-target', 'attackable', 'can-attack', 'frontier');
+      // frontera propia: dónde conviene colocar (refuerzos y colocación inicial)
+      const placing =
+        (stage === 'placement_1' || stage === 'placement_2') ||
+        (myTurn && stage === 'turns' && turn?.phase === 'reinforcement');
+      if (placing && tState?.owner_player_id === youId && isFrontier && !selectedSource) {
+        path.classList.add('frontier');
+      }
       if (id === selectedSource) {
         path.classList.add('attack-source', 'selected');
       } else if (id === selectedTarget) {

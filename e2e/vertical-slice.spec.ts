@@ -2,9 +2,12 @@ import { test, expect, type Page } from '@playwright/test';
 
 const ADMIN_TOKEN = 'dev-admin';
 
-/** Colocación con el menú radial: click en país propio → botón MÁX. */
+/** Colocación con el menú radial: prioriza una FRONTERA propia (la UI las
+ * marca), garantizando que después exista un origen de ataque real. */
 async function placeAllViaRadial(page: Page) {
-  await page.locator('path.territory[data-mine="true"]').first().click();
+  const frontier = page.locator('path.territory.frontier[data-mine="true"]');
+  if (await frontier.count()) await frontier.first().click();
+  else await page.locator('path.territory[data-mine="true"]').first().click();
   const max = page.locator('.radial-menu button', { hasText: 'MÁX' });
   const plusOne = page.locator('.radial-menu button', { hasText: '+1' });
   if (await max.count()) await max.first().click();

@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { wsClient } from '../../services/websocket/wsClient';
 import { audioService } from '../../services/audio/AudioService';
 import { useGameStore } from '../../state/gameStore';
-import { REACTION_EMOJIS } from '../../config/reactions';
+import { REACTION_EMOJIS, REACTION_LABELS } from '../../config/reactions';
+import { emojiSupported } from '../../utils/emojiSupport';
 
 export interface FloatingEmoteItem {
   id: string;
@@ -42,6 +43,10 @@ export function FloatingEmotes() {
     wsClient.send({ type: 'chat.send', payload: { text: emoji } });
   }
 
+  // sin fuente emoji a color, los botones y los flotantes usan texto:
+  // en el tablero principal jamás se muestran cuadros (design-review)
+  const emojiOk = emojiSupported();
+
   return (
     <>
       <div className="absolute top-3 right-3 z-20 flex gap-1.5 rounded-full border border-war-700 bg-war-950/80 p-1.5 backdrop-blur-md shadow-lg">
@@ -53,10 +58,12 @@ export function FloatingEmotes() {
               e.stopPropagation();
               react(emoji);
             }}
-            className="flex h-8 w-8 items-center justify-center rounded-full text-base transition-transform hover:scale-125 hover:bg-war-800 active:scale-95"
-            title={`Reaccionar con ${emoji}`}
+            className={`flex h-8 items-center justify-center rounded-full transition-transform hover:scale-110 hover:bg-war-800 active:scale-95 ${
+              emojiOk ? 'w-8 text-base' : 'px-2 text-[10px] font-bold text-stone-300'
+            }`}
+            title={`Reaccionar: ${REACTION_LABELS[emoji] ?? emoji}`}
           >
-            {emoji}
+            {emojiOk ? emoji : REACTION_LABELS[emoji] ?? '?'}
           </button>
         ))}
       </div>
@@ -65,14 +72,14 @@ export function FloatingEmotes() {
         {emotes.map((item) => (
           <div
             key={item.id}
-            className="absolute text-4xl"
+            className={emojiOk ? 'absolute text-4xl' : 'absolute rounded-full bg-war-900/90 px-3 py-1 text-sm font-bold text-gold-400'}
             style={{
               left: `${item.x}%`,
               top: `${item.y}%`,
               animation: 'floatUp 2.5s ease-out forwards',
             }}
           >
-            {item.emoji}
+            {emojiOk ? item.emoji : REACTION_LABELS[item.emoji] ?? item.emoji}
           </div>
         ))}
       </div>

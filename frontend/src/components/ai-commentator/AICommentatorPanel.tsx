@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useGameStore } from '../../state/gameStore';
 import { colorValue } from '../../utils/playerColors';
 import { audioService } from '../../services/audio/AudioService';
+import { emojiSupported } from '../../utils/emojiSupport';
 
 /** Emociones del backend (ai/commentator.py) → glifo. */
 const EMOTION_GLYPH: Record<string, string> = {
@@ -41,9 +42,11 @@ export function AICommentatorPanel() {
     <section aria-label="Comentarista IA" data-testid="ai-commentator" className="rounded-lg border border-war-700 bg-war-900 p-3">
       <header className="mb-2 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-2xl" aria-hidden>
-            {latest ? EMOTION_GLYPH[latest.emotion] ?? '🎙️' : '🎙️'}
-          </span>
+          {emojiSupported() && (
+            <span className="text-2xl" aria-hidden>
+              {latest ? EMOTION_GLYPH[latest.emotion] ?? '🎙️' : '🎙️'}
+            </span>
+          )}
           <h3 className="font-display text-sm font-bold tracking-wide text-gold-400">EL RELATOR</h3>
         </div>
         <button
