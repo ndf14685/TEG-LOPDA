@@ -91,40 +91,32 @@ export function MapPanel({ mode }: { mode?: GameMode }) {
                 .filter((c) => c.startsWith('p-'))
                 .forEach((c) => t.classList.remove(c));
             });
-            // viewBox ajustado al contenido real: exports con geometría más
-            // alta que el lienzo (p. ej. y=1620 > 1440) no se recortan
-            try {
-              const bb = (svg as unknown as SVGGraphicsElement).getBBox();
-              const vb = (svg.getAttribute('viewBox') ?? '0 0 2560 1440').split(' ').map(Number);
-              // margen para las insignias dinámicas (desplazadas ~62px bajo el centro)
-              const MARGIN = 80;
-              const needW = Math.max(vb[2], bb.x + bb.width + MARGIN / 2);
-              const needH = Math.max(vb[3], bb.y + bb.height + MARGIN);
-              if (needW > vb[2] || needH > vb[3]) {
-                svg.setAttribute('viewBox', `0 0 ${Math.ceil(needW)} ${Math.ceil(needH)}`);
-              }
-            } catch {
-              // getBBox falla si el nodo no está montado: se conserva el viewBox
-            }
-            // base geográfica no interactiva debajo de la capa jugable:
-            // misma convención de nombres (map-world-geographic-base-XX).
-            // Si el modo no tiene base (p. ej. 26), el fetch falla y se sigue.
-            const baseUrl = url.replace('map-base-tactical-', 'map-world-geographic-base-');
-            if (baseUrl !== url) {
+            // Base cartográfica V3 no interactiva DEBAJO de la capa jugable.
+            // La URL sale del manifiesto (map.mode.geo_base_<N>) → apunta a la
+            // versión aprobada (-003) sin hardcodear el número de export.
+            // El modo 26 no declara base y queda intacto.
+            const geoDigits = effectiveMode.replace(/\D/g, '');
+            const geoBaseUrl = geoDigits && effectiveMode !== 'classic_26'
+              ? assetRegistry.mapUrl(`geo_base_${geoDigits}` as GameMode)
+              : null;
+            if (geoBaseUrl) {
               try {
-                const baseRes = await fetch(baseUrl);
+                const baseRes = await fetch(geoBaseUrl);
                 if (baseRes.ok) {
                   const baseText = await baseRes.text();
                   const doc = new DOMParser().parseFromString(baseText, 'image/svg+xml');
                   const baseRoot = doc.documentElement;
                   if (baseRoot && baseRoot.tagName.toLowerCase() === 'svg' && !cancelled) {
-                    // la base vieja del export táctico se apaga: la reemplaza el mundo real
+                    // la base horneada del export táctico se apaga: la sustituye el mundo real
                     svg.querySelector('#layer-1-geo-base')?.setAttribute('display', 'none');
                     const imported: Node[] = [];
                     Array.from(baseRoot.children).forEach((child) => {
                       const node = document.importNode(child, true);
                       if (node instanceof Element && node.id === 'layer-1-geo-base') {
                         node.setAttribute('id', 'layer-0-geo-world');
+                      }
+                      // toda la base es decorativa: nunca captura clicks
+                      if (node instanceof Element && node.tagName.toLowerCase() !== 'defs') {
                         node.setAttribute('pointer-events', 'none');
                       }
                       imported.push(node);
@@ -135,8 +127,32 @@ export function MapPanel({ mode }: { mode?: GameMode }) {
                   }
                 }
               } catch {
-                // sin base geográfica: el mapa táctico funciona igual
+                // sin base: el mapa táctico funciona igual (fallback aprobado)
               }
+            }
+            // viewBox ajustado al contenido real (base + territorios): exports
+            // con geometría más alta que el lienzo (p. ej. y=1620 > 1440) no se
+            // recortan, y el océano de la base cubre TODO el lienzo final para
+            // que ningún territorio quede flotando sin costa detrás.
+            try {
+              const bb = (svg as unknown as SVGGraphicsElement).getBBox();
+              const vb = (svg.getAttribute('viewBox') ?? '0 0 2560 1440').split(' ').map(Number);
+              // margen para las insignias dinámicas (desplazadas ~62px bajo el centro)
+              const MARGIN = 80;
+              const needW = Math.max(vb[2], bb.x + bb.width + MARGIN / 2);
+              const needH = Math.max(vb[3], bb.y + bb.height + MARGIN);
+              if (needW > vb[2] || needH > vb[3]) {
+                svg.setAttribute('viewBox', `0 0 ${Math.ceil(needW)} ${Math.ceil(needH)}`);
+                // estirar los fondos de la base (océano/retícula) al lienzo final
+                svg.querySelectorAll<SVGRectElement>('#layer-0-geo-world rect').forEach((r) => {
+                  if (Number(r.getAttribute('width')) >= vb[2] - 1) {
+                    r.setAttribute('width', String(Math.ceil(needW)));
+                    r.setAttribute('height', String(Math.ceil(needH)));
+                  }
+                });
+              }
+            } catch {
+              // getBBox falla si el nodo no está montado: se conserva el viewBox
             }
           }
         }

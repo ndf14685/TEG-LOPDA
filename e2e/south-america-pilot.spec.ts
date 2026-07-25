@@ -114,11 +114,13 @@ test('piloto SA: geometría real integrada en partida productiva modo 50', async
   await expect(active.getByTestId('hud-phase')).toContainText('ATAQUE', { timeout: 10_000 });
   await active.waitForTimeout(3200); // pasa el banner de turno
 
-  // ── captura 1 y 2: normal 1920x1080 y 1366x768 (propiedad multi-color) ──
-  await active.setViewportSize({ width: 1920, height: 1080 });
-  await active.screenshot({ path: 'test-results/sa-pilot-1920x1080.png' });
-  await active.setViewportSize({ width: 1366, height: 768 });
-  await active.screenshot({ path: 'test-results/sa-pilot-1366x768.png' });
+  // ── capturas normales en 4 resoluciones (base geográfica visible) ──
+  // incluye QHD 2560x1440 y 4K 3840x2160 para validar responsive
+  for (const [w, h] of [[1366, 768], [1920, 1080], [2560, 1440], [3840, 2160]] as const) {
+    await active.setViewportSize({ width: w, height: h });
+    await active.waitForTimeout(200);
+    await active.screenshot({ path: `test-results/sa-pilot-${w}x${h}.png` });
+  }
   await active.setViewportSize({ width: 1920, height: 1080 });
 
   // ── captura 3: sin labels (toggle Aa) ──
