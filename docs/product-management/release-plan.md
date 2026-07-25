@@ -6,6 +6,10 @@ Fecha: 2026-07-25
 
 Release por verticales jugables, no por capas tecnicas. Ninguna vertical se declara terminada sin pasar: diseño, contratos, backend, frontend, integracion, playtest, correccion y aprobacion.
 
+## Fast-track privado
+
+Actualizacion 2026-07-25: por decision del owner humano, se habilita una version jugable acelerada para amigos. Se permite implementar Frontend antes de cerrar todos los gates formales, manteniendo guardrails P0. Las verticales siguen siendo utiles para ordenar correcciones, pero no bloquean sacar una version usable.
+
 ## Vertical 1 - Identidad, lobby, turno y refuerzos
 
 Estado: parcialmente implementada, no aprobada.

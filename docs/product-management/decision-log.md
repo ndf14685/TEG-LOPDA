@@ -113,3 +113,41 @@ Puede confundir al usuario y al equipo si sigue visible sin contexto.
 ## Criterio de revisión
 
 Solo se aprueba Tribuna cuando existan ledger, mercado, tickets, bloqueo y pruebas de doble pago/reembolso.
+
+## Decision 2026-07-25-04
+
+## Decisión
+
+Activar fast-track de Frontend para version jugable privada.
+
+## Problema
+
+El owner humano prioriza velocidad y experiencia jugable para amigos sobre proceso formal de gates antes de implementar.
+
+## Evidencia
+
+Solicitud directa del owner: "no planifiquen, saquen version final y vamos corrigiendo en el camino... Aceleralo".
+
+## Opciones consideradas
+
+Mantener congelamiento; habilitar solo plan; habilitar implementacion frontend con guardrails P0.
+
+## Decisión elegida
+
+Habilitar implementacion directa de Frontend usando prototipo como referencia, con verificacion rapida y correcciones iterativas.
+
+## Motivo
+
+El producto es privado, no comercial ni publico; el costo principal ahora es demora, no compliance formal.
+
+## Impacto
+
+Frontend puede modificar UI productiva ya. Backend solo toca contratos/logica si Frontend queda bloqueado por datos faltantes. Designer queda disponible para ajustes visuales puntuales.
+
+## Riesgos
+
+Puede entrar deuda visual/tecnica y algunas inconsistencias de Tribuna si se simula antes del ledger real.
+
+## Criterio de revisión
+
+Se frena el fast-track solo si aparece P0: partida imposible de continuar, estado inconsistente, perdida de datos, reglas criticas en cliente o corrupcion de monedas/apuestas.

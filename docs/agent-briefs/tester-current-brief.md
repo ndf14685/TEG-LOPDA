@@ -4,9 +4,9 @@ Fecha: 2026-07-25
 
 ## Estado
 
-Todavia no hay candidata para tester externo Windows.
+Candidata habilitada para playtest privado fast-track.
 
-## Cuando se habilite
+## Instruccion
 
 Probar URL desplegada real, sin leer codigo primero.
 
@@ -21,6 +21,7 @@ Probar URL desplegada real, sin leer codigo primero.
 - Reconexión.
 - Resoluciones 1366x768 y 1920x1080.
 - Capturas, consola y red.
+ - Confusion o no entre apuesta de refuerzos y mercado de espectadores bloqueado.
 
 ## Clasificacion
 

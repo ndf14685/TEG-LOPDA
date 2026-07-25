@@ -4,20 +4,37 @@ Fecha: 2026-07-25
 
 ## Resultado
 
-Compila y funciona en slice local, pero no aprobado como experiencia final.
+Aprobado para playtest privado fast-track. No es cierre final del producto, pero ya es una candidata valida para jugar con amigos y corregir por evidencia real.
 
 ## Evidencia
 
-`pnpm test`, `pnpm typecheck`, `pnpm build` y `pnpm e2e` pasan. Capturas en `test-results/`.
+- Commits revisados: `f440873` y `26c8204`.
+- Documento de entrega: `docs/reviews/frontend-delivery-2026-07-25.md`.
+- `pnpm test` -> 33 passed.
+- `pnpm typecheck` -> passed.
+- `pnpm build` -> passed.
+- `cd backend && uv run pytest -q` -> 83 passed.
+- `pnpm e2e` -> 2 passed despues de `1dfa7f8`.
+- Capturas regeneradas: `test-results/product-player-view.png`, `test-results/product-combat-arena.png`, `test-results/product-1366x768-turn.png`, `test-results/product-1920x1080-turn.png`.
 
-## Hallazgos
+## Aprobado
 
-- UI muestra turno/fase/refuerzos, pero el mapa no domina la pantalla en 1280x720.
-- Hay panel de acciones con "Dados de practica (sin efecto)", que contradice calidad percibida.
-- Reagrupamiento usa input numerico.
-- Hay caracteres rotos donde deberian ir iconos.
-- Tribuna real no existe; hay bardeo/chat y apuesta de refuerzos.
+- Turno/fase/accion son mucho mas visibles que en la version anterior.
+- Mapa domina la pantalla y ya no se siente como panel administrativo.
+- Refuerzos/ataque se operan desde el mapa con menu radial y seleccion directa.
+- Se elimino el boton de dados de practica.
+- Captura limpia de turno muestra mercado de espectadores como `BLOQUEADO`, sin botones fantasma.
+- Tribuna existe como dock de espera activa, con estado honesto para mercado de espectadores bloqueado por ledger faltante.
+- Reconexión cambia estado persistente del panel.
+- Fallback textual de emotes evita cuadros de glifo en el tablero principal.
+- E2E determinista refuerza fronteras para asegurar origen de ataque real.
+
+## Correcciones pendientes
+
+- P1 post-playtest: nombres largos del HUD pueden quedar truncados; aceptable para candidata, revisar si molesta jugando.
+- P1 post-playtest: mercado de espectadores sigue bloqueado hasta ledger Backend; no tratar como bug de Frontend.
+- P2: flecha por arrastre, pings, planes privados, set de iconos SVG y assets de Arte quedan para iteracion.
 
 ## Proxima accion
 
-Esperar diseno aprobado y contrato sincronizado de Vertical 1.
+Ejecutar playtest privado controlado. Registrar defectos por severidad y no abrir Backend salvo que el playtest confirme necesidad de ledger de Tribuna o datos autoritativos faltantes.

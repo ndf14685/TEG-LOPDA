@@ -4,40 +4,37 @@ Fecha: 2026-07-25
 
 ## Objetivo
 
-Corregir el handoff visual para que turno, combate y Tribuna puedan pasar a evaluacion de implementacion sin ambiguedades.
+Cerrar las ultimas correcciones de handoff visual para que turno, combate y Tribuna puedan pasar a planificacion tecnica sin ambiguedades.
 
 ## Problema
 
-La entrega actual ya tiene prototipo navegable y direccion correcta, pero no alcanza el gate de implementacion. El prototipo usa dos territorios esquematicos, no valida mapa real, no demuestra 1920x1080/1366x768, no cubre estados de error/reconexion/pago/reembolso y declara assets inexistentes como READY.
+La segunda entrega ya valida mapa real, estados navegables y resoluciones 1366x768/1920x1080. Quedan problemas puntuales: el manifest JSON todavia referencia un icono inexistente, algunos emoji se renderizan como cuadros y el estado de reconexion no cambia el panel persistente.
 
 ## Evidencia
 
 - `frontend/public/prototype/index.html`
-- `test-results/designer-prototype-home.png`
-- `test-results/designer-prototype-combat.png`
+- `test-results/prototype-1366x768-turn.png`
+- `test-results/prototype-1366x768-combat.png`
+- `test-results/prototype-1920x1080-turn.png`
+- `test-results/prototype-1920x1080-combat.png`
 - `assets/manifests/missing-assets.md`
-- `test-results/slice-admin-board.png`
-- `test-results/slice-player-board.png`
+- `assets/manifests/assets-manifest.json`
 
 ## Cambio solicitado
 
-Entregar una iteracion unica con:
+Entregar una correccion acotada con:
 
-- Prototipo navegable actualizado usando el mapa real o una version reducida visualmente equivalente del mapa real, no solo Argentina/Brasil.
-- Estados navegables: turno propio, turno ajeno, refuerzos, ataque, arena de combate, Tribuna abierta, apuesta aceptada, apuesta rechazada, mercado bloqueado, pago, reembolso, error y reconexion.
-- Capturas exportadas de 1920x1080 y 1366x768 para turno, combate y Tribuna.
-- Correccion del header/prototipo para que no se parta ni solape a 1280px o superior.
-- Cierre accesible del modal de combate con boton visible y Escape.
-- Manifest/inventario corregido: solo marcar `ready` si el archivo existe fisicamente. Todo faltante debe quedar como `missing` o `planned` con fallback.
+- Eliminar o reemplazar en `assets/manifests/assets-manifest.json` la referencia a `assets/ui/icons/icon-betting-lopda-coin-001.svg`.
+- Reemplazar emoji criticos del prototipo por texto/iconografia CSS/SVG controlada cuando hoy se rendericen como cuadros.
+- Hacer que el estado `sync-state` cambie el panel persistente de turno/reconexion, no solo el toast.
+- Exportar captura de Tribuna en estados aceptada, rechazada, bloqueada, pago y reembolso en 1366x768.
 
 ## Criterios de aceptacion
 
-- En cada pantalla se responde en menos de 2 segundos: quien juega, fase, accion siguiente y si yo puedo actuar.
-- La arena explica cantidad de dados, empate defensor, bajas por par y acumulado.
+- Ningun manifest oficial referencia un archivo inexistente como disponible.
+- Reconexión es visible como estado persistente, no solo como notificacion temporal.
+- No hay cuadros de glifo en elementos criticos.
 - La Tribuna explica saldo, mercado, timer, ticket, rechazo, bloqueo, pago y reembolso.
-- El mapa conserva protagonismo en 1366x768 y 1920x1080.
-- No hay texto cortado, solapado ni caracteres rotos.
-- Ningun asset inexistente aparece como `ready`.
 
 ## Limites
 

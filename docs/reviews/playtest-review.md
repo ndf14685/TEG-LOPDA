@@ -4,12 +4,24 @@ Fecha: 2026-07-25
 
 ## Resultado
 
-No ejecutado todavia.
+Candidata habilitada para playtest privado fast-track.
 
-## Motivo
+## Evidencia de entrada
 
-No hay candidata aprobada de Vertical 1 y no corresponde usar al tester externo para descubrir brechas que ya son visibles localmente.
+- Commit candidato: `1dfa7f8`.
+- `pnpm test`, `pnpm typecheck`, `pnpm build`, `pnpm e2e` verdes.
+- Capturas limpias regeneradas en `test-results/`.
 
-## Condicion de inicio
+## Alcance recomendado
 
-Vertical 1 debe tener diseno aprobado, contratos sincronizados, build verde, E2E local verde y URL desplegada real.
+- Dos jugadores humanos por links personalizados.
+- Lobby, ready, colocacion 5+3, refuerzos, ataque, Arena, pasar fase, terminar turno.
+- Revisar claridad de turno propio y turno ajeno.
+- Revisar si Tribuna entretiene o estorba.
+- Registrar cualquier confusion sobre apuestas de refuerzos vs mercado bloqueado.
+
+## Clasificacion
+
+- P0: no se puede continuar la partida, estado inconsistente, perdida de sesion, dados/bajas incorrectas.
+- P1: se puede jugar pero hay confusion de turno/fase/accion o UI tapa informacion.
+- P2: polish visual, sonidos, animacion, copy o assets.
