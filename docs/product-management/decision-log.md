@@ -271,3 +271,43 @@ Si se acepta esta geometria ahora, el mapa completo puede terminar siendo otra m
 ## Criterio de revisión
 
 Se aprueba la region piloto cuando Brasil, Argentina, Chile, Uruguay, Colombia, Venezuela, Peru y Bolivia se lean como subdivisiones plausibles de America del Sur, sin solapamiento de labels/tropas y manteniendo los estados de seleccion/ataque ya demostrados.
+
+## Decision 2026-07-25-08
+
+## Decisión
+
+Aprobar la geometria corregida de America del Sur para integracion piloto acotada en Frontend.
+
+## Problema
+
+La iteracion anterior resolvia capas/interaccion, pero mantenia blobs. La nueva entrega reconstruye la region con piezas encastradas y aclara alcance modo 26 vs modo 50.
+
+## Evidencia
+
+Capturas revisadas: `test-results/south-america-real-geo-mode50-1920x1080.png`, `test-results/south-america-real-geo-mode26-1920x1080.png`, `test-results/south-america-real-geo-no-labels.png`, `test-results/south-america-real-geo-executing.png`, `test-results/south-america-real-geo-1366x768.png`. Documento: `docs/design/south-america-pilot-p0.md`. Prototipo: `frontend/public/prototype/south-america-pilot.html`.
+
+## Opciones consideradas
+
+1. Pedir otra iteracion visual de Agy.
+2. Aprobar y generar todo el mundo.
+3. Aprobar solo para integracion piloto de America del Sur.
+
+## Decisión elegida
+
+Aprobar solo para integracion piloto de America del Sur.
+
+## Motivo
+
+La region supera el umbral P0 visual: se reconoce como America del Sur, los territorios son plausibles y los estados de seleccion/ataque son legibles. Todavia falta prueba productiva de hitboxes, labels y ataque antes de escalar al resto del mundo.
+
+## Impacto
+
+Frontend queda habilitado para integrar America del Sur de forma acotada. Agy debe corregir el manifest para declarar alcance modo 26/50. Backend no entra salvo ruptura real de IDs o adyacencias.
+
+## Riesgos
+
+El manifest `south-america-pilot-manifest.json` no refleja todavia el alcance separado modo 26/modo 50 ni timestamp 2.3.0. La integracion puede descubrir problemas de posicion al mezclar esta region con el resto del mapa viejo.
+
+## Criterio de revisión
+
+Se habilita extender al resto del mapa solo despues de que Frontend demuestre en flujo real seleccion, propiedad, tropas, hitboxes, ataque y reconexion usando America del Sur en 1920x1080 y 1366x768.

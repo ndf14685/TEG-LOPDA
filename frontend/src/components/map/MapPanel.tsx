@@ -9,6 +9,8 @@ import { RadialMenu } from './RadialMenu';
 import { territoryName } from '../../utils/territoryName';
 
 const RUNTIME_STYLE = `
+  .territory.hb-hover { stroke: #38bdf8; filter: brightness(1.25); }
+  svg.hide-labels .territory-label, svg.hide-labels .continent-title { display: none; }
   .territory.attackable { stroke: #22d3ee; stroke-width: 6; stroke-dasharray: 6 6; }
   .territory.can-attack { stroke: #f59e0b; stroke-width: 5; stroke-dasharray: 10 6; cursor: crosshair; }
   .territory.frontier { stroke: #fbbf24; stroke-width: 4; stroke-dasharray: 4 8; }
@@ -180,7 +182,8 @@ export function MapPanel({ mode }: { mode?: GameMode }) {
       titleEl.textContent = `${prettyName} — ${ownerName} (${tState?.armies ?? 0} tropas)`;
 
       // 4. Interacción directa: menú radial en territorios propios, puntería
-      //    directa cuando ya hay un origen elegido
+      //    directa cuando ya hay un origen elegido. La capa de hitboxes
+      //    (piloto Sudamérica) reusa este mismo handler más abajo.
       path.onclick = (e) => {
         e.stopPropagation();
         const state = useGameStore.getState();

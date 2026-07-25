@@ -81,3 +81,45 @@ Corregir los P1 del playtest sin abrir rediseños grandes.
 ## Proximo alcance
 
 No abrir nuevos cambios de Frontend hasta completar mini-playtest de regresion con tres clientes. Si aparecen P0/P1, corregir solo esos defectos. DEF-05 mobile, flecha por arrastre, pings, planes privados e iconos/assets quedan fuera del alcance inmediato.
+
+## Piloto P0 Mapa - America del Sur
+
+Fecha: 2026-07-25
+
+Estado: habilitado para integracion acotada. No integrar todavia el mundo completo.
+
+### Objetivo
+
+Integrar la region piloto America del Sur corregida en el mapa productivo o en un modo de prueba productivo, conservando contratos de juego y validando interaccion real.
+
+### Fuentes
+
+- `frontend/public/prototype/south-america-pilot.html`
+- `docs/design/south-america-pilot-p0.md`
+- `assets/manifests/south-america-pilot-manifest.json` (referencia parcial; requiere alcance modo 26/50 actualizado antes de usarlo como contrato final)
+- Capturas `test-results/south-america-real-geo-*.png`
+
+### Alcance
+
+- Integrar solo America del Sur.
+- Mantener IDs existentes.
+- Soportar modo 50 con 8 territorios.
+- Soportar modo 26 con 5 territorios o dejarlo explicitamente fuera si la app actual corre solo modo 50; no mezclar modos silenciosamente.
+- Separar territorio visible, hitbox y overlays.
+- Mantener labels y badges sin choque.
+- Validar propiedad con seis colores.
+- Validar seleccionado, atacable y ataque en ejecucion.
+
+### Fuera de alcance
+
+- No generar ni integrar el resto del mundo.
+- No redisenar HUD, Tribuna, combate ni reglas.
+- No tocar backend salvo que haya ruptura real de IDs/adyacencias.
+
+### Verificacion obligatoria
+
+- `pnpm test`
+- `pnpm typecheck`
+- `pnpm build`
+- `pnpm e2e`
+- Capturas 1920x1080 y 1366x768 de America del Sur: normal, sin labels, seleccionado, atacable y ataque.

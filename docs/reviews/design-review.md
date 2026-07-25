@@ -27,6 +27,7 @@ Aprobacion parcial fuerte del prototipo de direccion UX para turno, combate y Tr
 - La solucion de tintado suave + borde de jugador preserva mejor la geografia que el relleno plano opaco.
 - Region piloto America del Sur: la separacion de capas, labels, badges, seleccion, objetivo atacable y flecha de ataque quedan aprobados como patron de interaccion.
 - Region piloto America del Sur: los IDs del modo 50 se preservan para los 8 territorios declarados.
+- Region piloto America del Sur corregida: la geometria encastrada de modo 26 y modo 50 queda aprobada para integracion piloto acotada en Frontend.
 
 ## Lo rechazado
 
@@ -41,7 +42,8 @@ Aprobacion parcial fuerte del prototipo de direccion UX para turno, combate y Tr
 - Region piloto America del Sur no queda aprobada como geometria final: los territorios siguen leyendose como capsulas/blobs superpuestos sobre una silueta tenue, no como subdivisiones geograficas coherentes del continente.
 - La afirmacion "0 cambios tecnicos en el motor" solo aplica al modo 50 en esta region. El modo 26 actual no contiene todos esos IDs, por lo que debe declararse explicitamente el alcance.
 - La region piloto no demuestra todavia integracion productiva ni hitboxes verificadas con Playwright; es prototipo de diseno.
+- `assets/manifests/south-america-pilot-manifest.json` no quedo actualizado con el alcance separado modo 26/modo 50 ni con timestamp de la version 2.3.0. Frontend puede usar el HTML/prototipo como referencia, pero el manifest debe corregirse antes de tratarlo como contrato final de assets.
 
 ## Proxima accion
 
-Agy debe iterar una sola vez sobre America del Sur: conservar el patron de capas/interaccion aprobado, pero rehacer la geometria de territorios para que parezcan subdivisiones de una America del Sur real y no blobs. Frontend solo entra despues de aprobar esta iteracion.
+Frontend queda habilitado para una integracion piloto acotada de America del Sur, sin completar el resto del mundo. Debe integrar la region en el flujo real y validar seleccion, hitboxes, labels, tropas, propiedad, ataque y 1366x768. Agy debe corregir el manifest de modo 26/50 en paralelo o antes del handoff definitivo.
