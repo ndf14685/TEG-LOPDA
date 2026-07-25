@@ -1,6 +1,10 @@
 {
   "schema_version": "1.0",
   "maps": {
+    "geo_base_50": {
+      "id": "map.world.geographic-base-50",
+      "path": "maps/base/map-world-geographic-base-50-003.svg"
+    },
     "classic_26": {
       "id": "map.tactical.26",
       "path": "maps/base/map-base-tactical-26-001.svg"
