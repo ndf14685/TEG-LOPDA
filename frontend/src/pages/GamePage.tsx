@@ -18,6 +18,7 @@ import { audioService } from '../services/audio/AudioService';
 import { CombatOverlay } from '../components/dice/CombatOverlay';
 import { Dice3D } from '../components/dice/Dice3D';
 import { PostGameModal } from '../components/game/PostGameModal';
+import { WagerToast } from '../components/game/WagerToast';
 
 export function GamePage() {
   const { code = '' } = useParams();
@@ -333,6 +334,9 @@ export function GamePage() {
 
       {/* Overlay modal de batalla táctica 3D */}
       <CombatOverlay />
+
+      {/* Resultado de la auto-apuesta */}
+      <WagerToast />
 
       {/* Modal Infografía de Trofeos Post-Partida */}
       <PostGameModal />

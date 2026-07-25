@@ -72,6 +72,7 @@ interface GameState {
   lastDice: DiceResult | null;
   lastAttack: AttackResult | null;
   lastReaction: { id: number; emoji: string; fromPlayerId: string | null } | null;
+  lastWager: { id: number; playerId: string | null; won: boolean; wagered: number; payout: number } | null;
   aiComments: AICommentView[];
   aiMuted: boolean;
   soundsMuted: boolean;
@@ -116,6 +117,7 @@ interface GameState {
   setDice: (dice: DiceResult) => void;
   setAttack: (attack: AttackResult) => void;
   pushReaction: (emoji: string, fromPlayerId: string | null) => void;
+  pushWagerResult: (playerId: string | null, won: boolean, wagered: number, payout: number) => void;
   addAiComment: (comment: AICommentView) => void;
   setAiMuted: (muted: boolean) => void;
   setSoundsMuted: (muted: boolean) => void;
@@ -154,6 +156,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   lastDice: null,
   lastAttack: null,
   lastReaction: null,
+  lastWager: null,
   aiComments: [],
   aiMuted: true, // comentarista silenciado por default; se activa desde el panel
   soundsMuted: true, // sonidos silenciados por default; toggle en el juego
@@ -229,6 +232,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   setAttack: (lastAttack) => set({ lastAttack }),
   pushReaction: (emoji, fromPlayerId) =>
     set((s) => ({ lastReaction: { id: (s.lastReaction?.id ?? 0) + 1, emoji, fromPlayerId } })),
+  pushWagerResult: (playerId, won, wagered, payout) =>
+    set((s) => ({ lastWager: { id: (s.lastWager?.id ?? 0) + 1, playerId, won, wagered, payout } })),
   addAiComment: (comment) => set((s) => ({ aiComments: [...s.aiComments.slice(-4), comment] })),
   setAiMuted: (aiMuted) => set({ aiMuted }),
   setSoundsMuted: (soundsMuted) => set({ soundsMuted }),

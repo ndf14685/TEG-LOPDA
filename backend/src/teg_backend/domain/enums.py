@@ -63,6 +63,8 @@ class EventType(StrEnum):
 
     TURN_STARTED = "turn.started"
     TURN_ENDED = "turn.ended"
+    WAGER_PLACED = "wager.placed"        # el activo arriesga refuerzos
+    WAGER_RESOLVED = "wager.resolved"    # resultado al cerrar el turno
     DICE_ROLLED = "dice.rolled"
     ATTACK_STARTED = "attack.started"
     ATTACK_RESOLVED = "attack.resolved"

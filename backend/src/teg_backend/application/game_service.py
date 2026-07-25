@@ -1078,12 +1078,36 @@ class GameService:
             )
             await self._emit_hand(game_id, engine, player_id)
 
+    async def set_wager(self, game_id: str, player_id: str, amount: int) -> dict:
+        async with self.lock(game_id):
+            engine = await self._require_running_turn(game_id, player_id)
+            try:
+                turn = engine.set_wager(player_id, int(amount))
+            except EngineError as exc:
+                raise ServiceError(ErrorCode.INVALID_ACTION, str(exc)) from exc
+            await self._save_engine(game_id)
+            await self.emit(
+                game_id, EventType.WAGER_PLACED, actor_id=player_id,
+                payload={"turn": turn.to_dict(), "wager": turn.wager},
+            )
+            return turn.to_dict()
+
+    async def _resolve_wager_on_turn_close(self, game_id: str, engine, player_id: str) -> None:
+        """Resuelve la apuesta ANTES de otorgar la tarjeta (que resetea la
+        marca de conquista). Emite el resultado para el toast del cliente."""
+        result = engine.resolve_wager(player_id)
+        if result is not None:
+            await self.emit(
+                game_id, EventType.WAGER_RESOLVED, actor_id=player_id, payload=result,
+            )
+
     async def next_phase(self, game_id: str, player_id: str) -> dict:
         async with self.lock(game_id):
             engine = await self._require_running_turn(game_id, player_id)
             old_index = engine.turn.index
             if engine.turn.phase == "fortify":
-                # cerrar el turno otorga la tarjeta por conquista si corresponde
+                # cerrar el turno: primero la apuesta, después la tarjeta
+                await self._resolve_wager_on_turn_close(game_id, engine, player_id)
                 await self._award_card_on_turn_close(game_id, engine, player_id)
             turn = engine.next_phase(player_id)
             await self._save_engine(game_id)
@@ -1100,6 +1124,7 @@ class GameService:
     async def end_turn(self, game_id: str, player_id: str) -> None:
         async with self.lock(game_id):
             engine = await self._require_running_turn(game_id, player_id)
+            await self._resolve_wager_on_turn_close(game_id, engine, player_id)
             await self._award_card_on_turn_close(game_id, engine, player_id)
             await self.emit(game_id, EventType.TURN_ENDED, actor_id=player_id, payload={})
             turn = engine.advance_turn()

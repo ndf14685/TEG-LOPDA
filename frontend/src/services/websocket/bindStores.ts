@@ -23,6 +23,8 @@ import {
   ObjectiveAssignedPayload,
   LegalActionsPayload,
   StatsReadyPayload,
+  WagerPlacedPayload,
+  WagerResolvedPayload,
 } from '@teg/contracts';
 import { wsClient } from './wsClient';
 import { REACTION_SET } from '../../config/reactions';
@@ -129,6 +131,7 @@ export function bindWsToStores(): void {
         turn_number: 1,
         phase: payload.phase ?? 'reinforcement',
         reinforcements_available: payload.reinforcements_available ?? 3,
+        wager: 0,
       });
     }
     game().markStarted();
@@ -194,6 +197,17 @@ export function bindWsToStores(): void {
         reinforcements_available: payload.reinforcements_available ?? turn.reinforcements_available,
       });
     }
+  });
+
+  wsClient.on('wager.placed', (p) => {
+    const payload = p as z.infer<typeof WagerPlacedPayload>;
+    game().setTurn(payload.turn);
+  });
+
+  wsClient.on('wager.resolved', (p, env) => {
+    const payload = p as z.infer<typeof WagerResolvedPayload>;
+    game().pushWagerResult(env.actor_id ?? payload.player_id, payload.won, payload.wagered, payload.payout);
+    game().pushReaction(payload.won ? '🎉' : '💸', env.actor_id ?? payload.player_id);
   });
 
   wsClient.on('territory.updated', (p) => {

@@ -148,6 +148,8 @@ async def _dispatch(
             )
         case "turn.next_phase":
             await service.next_phase(game["id"], player["id"])
+        case "turn.wager":
+            await service.set_wager(game["id"], player["id"], int(payload.get("amount", 0)))
         case "placement.place":
             await service.place_initial(
                 game["id"], player["id"],

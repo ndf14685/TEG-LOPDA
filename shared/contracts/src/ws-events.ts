@@ -152,6 +152,20 @@ export const PlayerEliminatedPayload = z.object({
   eliminated_by: z.string(),
 });
 
+export const WagerPlacedPayload = z.object({
+  turn: TurnState,
+  wager: z.number().int(),
+});
+export type WagerPlacedPayload = z.infer<typeof WagerPlacedPayload>;
+
+export const WagerResolvedPayload = z.object({
+  player_id: z.string(),
+  won: z.boolean(),
+  wagered: z.number().int(),
+  payout: z.number().int(),
+});
+export type WagerResolvedPayload = z.infer<typeof WagerResolvedPayload>;
+
 /**
  * Mapa event_type→schema de payload. El cliente valida contra esto y descarta
  * lo inválido. Eventos sin entrada se aceptan con payload opaco (forward-compat).
@@ -164,6 +178,8 @@ export const EVENT_PAYLOAD_SCHEMAS = {
   'game.started': GameStartedPayload,
   'turn.started': TurnStartedPayload,
   'turn.ended': TurnEndedPayload,
+  'wager.placed': WagerPlacedPayload,
+  'wager.resolved': WagerResolvedPayload,
   'dice.rolled': DiceRolledPayload,
   'attack.resolved': AttackResolvedPayload,
   'territory.updated': TerritoryUpdatedPayload,
@@ -223,6 +239,10 @@ export const ClientMessage = z.discriminatedUnion('type', [
     }),
   }),
   z.object({ type: z.literal('turn.next_phase'), payload: z.object({}).optional() }),
+  z.object({
+    type: z.literal('turn.wager'),
+    payload: z.object({ amount: z.number().int().min(1).max(50) }),
+  }),
   z.object({
     type: z.literal('cards.trade'),
     payload: z.object({ card_ids: z.array(z.string()).length(3) }),

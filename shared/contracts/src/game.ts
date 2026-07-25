@@ -42,6 +42,7 @@ export const TurnState = z.object({
   turn_number: z.number().int(),
   phase: TurnPhase.default('attack'),
   reinforcements_available: z.number().int().default(0),
+  wager: z.number().int().default(0),
 });
 export type TurnState = z.infer<typeof TurnState>;
 

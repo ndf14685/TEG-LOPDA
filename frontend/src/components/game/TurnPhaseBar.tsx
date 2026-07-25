@@ -147,6 +147,25 @@ export function TurnPhaseBar() {
           })}
         </div>
       )}
+
+      {/* Apuesta por recursos: arriesgás refuerzos a conquistar este turno */}
+      {phaseStep === 1 && myTurn && (availableReinforcements > 0 || turn.wager > 0) && (
+        <div className="flex flex-wrap items-center gap-2 rounded-md border border-red-900/40 bg-red-950/20 px-2 py-1.5 text-[11px]" data-testid="wager-control">
+          <span className="text-red-200">🎰 Apuesta:</span>
+          <strong className="text-gold-400" data-testid="wager-amount">{turn.wager}</strong>
+          {[1, 5].map((n) => (
+            <button
+              key={n}
+              disabled={availableReinforcements < n}
+              onClick={() => { audioService.unlock(); wsClient.send({ type: 'turn.wager', payload: { amount: n } }); }}
+              className="rounded-md border border-red-700 bg-red-900/40 px-2 py-0.5 font-bold text-red-100 hover:bg-red-800/60 disabled:opacity-30"
+            >
+              +{n}
+            </button>
+          ))}
+          <span className="text-stone-500">arriesgás refuerzos a conquistar: si lo lográs cobrás el doble el próximo turno, si no los perdés</span>
+        </div>
+      )}
     </div>
   );
 }

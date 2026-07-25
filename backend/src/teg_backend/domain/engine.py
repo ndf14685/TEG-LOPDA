@@ -64,6 +64,7 @@ class TurnState:
     turn_number: int = 0
     phase: str = "reinforcement"  # "reinforcement" | "attack" | "fortify"
     reinforcements_available: int = 3
+    wager: int = 0  # apuesta del turno: ejércitos arriesgados a conquistar
 
     @property
     def current_player_id(self) -> str | None:
@@ -78,6 +79,7 @@ class TurnState:
             "turn_number": self.turn_number,
             "phase": self.phase,
             "reinforcements_available": self.reinforcements_available,
+            "wager": self.wager,
         }
 
     @classmethod
@@ -88,6 +90,7 @@ class TurnState:
             turn_number=int(data.get("turn_number", 0)),
             phase=str(data.get("phase", "attack")),
             reinforcements_available=int(data.get("reinforcements_available", 0)),
+            wager=int(data.get("wager", 0)),
         )
 
 
@@ -125,6 +128,8 @@ class GameEngine:
         self.objectives: dict[str, Objective] = {}
         self.eliminated_by: dict[str, str] = {}
         self.conquered_this_turn = False
+        # bono de apuesta ganado, a cobrar en el próximo cálculo de refuerzos
+        self.pending_bonus: dict[str, int] = {}
         # pactos de no agresión (no vinculantes): clave ordenada "a|b";
         # proposals: destinatario -> proponente pendiente
         self.pacts: set[str] = set()
@@ -139,8 +144,10 @@ class GameEngine:
         return terr is not None and b in terr.neighbor_ids
 
     def calculate_reinforcements(self, player_id: str | None) -> int:
+        # el bono por apuesta ganada se cobra siempre (incluso en los casos base)
+        bonus = self.pending_bonus.pop(player_id, 0) if player_id else 0
         if not player_id or not self.territories:
-            return 3
+            return 3 + bonus
         owned = [t for t in self.territories.values() if t.owner_player_id == player_id]
         base = max(3, len(owned) // 2)
 
@@ -157,7 +164,7 @@ class GameEngine:
         except Exception:
             pass
 
-        return base
+        return base + bonus
 
     def start(self, player_ids: list[str]) -> TurnState:
         if len(player_ids) < 2:
@@ -339,6 +346,35 @@ class GameEngine:
     def register_conquest(self, conqueror_id: str) -> None:
         self.conquered_this_turn = True
 
+    def set_wager(self, player_id: str, amount: int) -> TurnState:
+        """El jugador activo arriesga refuerzos a conquistar algo este turno.
+        Se descuentan del pool ya (no se pueden colocar). Si conquista al menos
+        un país, se le devuelven al doble el próximo turno; si no, los pierde."""
+        self.require_turn(player_id)
+        if self.turn.phase != "reinforcement":
+            raise EngineError("solo podés apostar en la fase de refuerzos")
+        amount = int(amount)
+        if amount <= 0:
+            raise EngineError("la apuesta debe ser mayor a cero")
+        if amount > self.turn.reinforcements_available:
+            raise EngineError("no te alcanzan los refuerzos para esa apuesta")
+        self.turn.reinforcements_available -= amount
+        self.turn.wager += amount
+        return self.turn
+
+    def resolve_wager(self, player_id: str) -> dict[str, Any] | None:
+        """Resuelve la apuesta al cerrar el turno. Debe llamarse ANTES de
+        award_card_if_due (que resetea conquered_this_turn)."""
+        if self.turn.wager <= 0:
+            return None
+        won = self.conquered_this_turn
+        wagered = self.turn.wager
+        payout = wagered * 2 if won else 0
+        if won:
+            self.pending_bonus[player_id] = self.pending_bonus.get(player_id, 0) + payout
+        self.turn.wager = 0
+        return {"player_id": player_id, "won": won, "wagered": wagered, "payout": payout}
+
     def award_card_if_due(self, player_id: str) -> Card | None:
         if not self.conquered_this_turn or not self.cards.deck:
             self.conquered_this_turn = False
@@ -449,6 +485,7 @@ class GameEngine:
         self.turn.index = (self.turn.index + 1) % len(self.turn.order)
         self.turn.turn_number += 1
         self.turn.phase = "reinforcement"
+        self.turn.wager = 0
         self.turn.reinforcements_available = self.calculate_reinforcements(self.turn.current_player_id)
         return self.turn
 
@@ -478,6 +515,7 @@ class GameEngine:
             "objectives": {pid: o.to_dict() for pid, o in self.objectives.items()},
             "eliminated_by": dict(self.eliminated_by),
             "conquered_this_turn": self.conquered_this_turn,
+            "pending_bonus": dict(self.pending_bonus),
             "pacts": sorted(self.pacts),
             "pact_proposals": dict(self.pact_proposals),
         }
@@ -511,6 +549,7 @@ class GameEngine:
         }
         engine.eliminated_by = dict(data.get("eliminated_by", {}))
         engine.conquered_this_turn = bool(data.get("conquered_this_turn", False))
+        engine.pending_bonus = {k: int(v) for k, v in data.get("pending_bonus", {}).items()}
         engine.pacts = set(data.get("pacts", []))
         engine.pact_proposals = dict(data.get("pact_proposals", {}))
         return engine
