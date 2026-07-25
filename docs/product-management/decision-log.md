@@ -551,3 +551,83 @@ Frontend: aprobado para playtest privado. Agy: deuda P2 de export limpio. Backen
 ## Criterio de revisión
 
 Reabrir si el tester encuentra tropas duplicadas visibles, colores de dueño falsos, recorte sur, radial fuera de vista o clicks incorrectos en territorios vecinos.
+
+## Decision 2026-07-25-15
+
+## Decisión
+
+Reabrir el bloqueo P0 visual del mapa y aceptar `map-world-geographic-base-50-001.svg` solo como insumo de capa base, no como aprobacion final.
+
+## Problema
+
+La version productiva sigue pareciendo poligonos flotando sobre fondo azul. La nueva base geografica existe, pero no esta integrada en el juego y el prototipo overlay todavia permite que los territorios dominen visualmente sobre la geografia.
+
+## Evidencia
+
+Commit `25ea8c5`. Nuevo asset `assets/maps/base/map-world-geographic-base-50-001.svg`. Manifest actualizado en `assets/manifests/assets-manifest.json` y `assets/manifests/assets-inventory.csv`. Prototipo `frontend/public/prototype/geo-base-pilot.html`. Capturas `test-results/geo-base-pure-1920x1080.png`, `test-results/geo-base-overlay-1920x1080.png`, `test-results/geo-base-overlay-1366x768.png`. Busqueda local: `MapPanel.tsx` no referencia ni carga `map-world-geographic-base-50-001.svg`.
+
+## Opciones consideradas
+
+1. Aprobar el asset de Agy como mapa final.
+2. Rechazar todo y pedir otra base desde cero.
+3. Aceptar la base como insumo e integrar en Frontend para validar producto real.
+
+## Decisión elegida
+
+Aceptar como insumo y habilitar integracion Frontend acotada. No aprobar todavia el mapa final.
+
+## Motivo
+
+El problema principal era ausencia de capa geografica; ahora existe un asset candidato. La prueba real es verlo debajo de los territorios runtime con seis jugadores, hitboxes y overlays reales.
+
+## Impacto
+
+Agy: no iterar poligonos; esperar captura integrada y ajustar solo base si hace falta. Frontend: integrar base debajo sin tocar reglas/backend. Tester: esperar nueva build integrada. Backend: no entra.
+
+## Riesgos
+
+La base puede quedar demasiado oscura o desalineada con territorios. Los fills actuales de territorios pueden ocultar la geografia si no se baja opacidad.
+
+## Criterio de revisión
+
+Se aprueba solo con capturas del producto real 1920x1080 y 1366x768 donde se vean costas y continentes continuos con seis colores, labels/tropas legibles e hitboxes funcionando.
+
+## Decision 2026-07-25-16
+
+## Decisión
+
+Levantar el bloqueo P0 visual del mapa para Modo 50 y habilitar playtest privado.
+
+## Problema
+
+La base geografica existia como insumo pero no estaba integrada. El mapa necesitaba demostrar continuidad geografica en producto real sin romper hitboxes ni legibilidad.
+
+## Evidencia
+
+Commit `fc8e5d7`. `MapPanel.tsx` inyecta `map-world-geographic-base-50-001.svg` debajo de la capa jugable por convencion de nombres, con `pointer-events: none`; apaga la base vieja del export tactico; baja opacidad de territorios a `0.34/0.35` con base activa; propiedad por stroke/halo. Capturas revisadas: `test-results/sa-pilot-1920x1080.png`, `test-results/sa-pilot-no-labels.png`, `test-results/sa-pilot-1366x768.png`. Verificacion local: `pnpm test` 33/33, `pnpm typecheck` OK, `pnpm build` OK, `pnpm e2e` 4/4.
+
+## Opciones consideradas
+
+1. Mantener bloqueo hasta tener mapa perfecto.
+2. Aprobar Modo 50 para playtest privado y dejar polish/export limpio como P2.
+3. Pedir otro asset geografico antes de integrar.
+
+## Decisión elegida
+
+Aprobar Modo 50 para playtest privado. Mantener Modo 26 fuera de alcance.
+
+## Motivo
+
+El criterio P0 queda satisfecho para el objetivo actual: el mapa ya tiene capa geografica continua visible, los territorios se apoyan sobre ella, la interaccion sigue funcionando y la captura se sostiene como juego privado presentable.
+
+## Impacto
+
+Tester Windows pasa a ser el agente activo. Agy y Frontend quedan en espera salvo defectos P0/P1. Backend no entra.
+
+## Riesgos
+
+Puede haber zonas densas (Europa/Medio Oriente) que pidan polish P2 despues del playtest. El modo 26 sigue sin base geografica nueva.
+
+## Criterio de revisión
+
+Reabrir solo si tester demuestra que sin etiquetas no se reconoce el mapa, que la base desaparece con seis colores, que un territorio no es clickeable, o que la legibilidad falla a 1366x768.

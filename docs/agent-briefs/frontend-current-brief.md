@@ -128,18 +128,19 @@ Integrar la region piloto America del Sur corregida en el mapa productivo o en u
 
 Fecha: 2026-07-25
 
-Estado: habilitado para integracion/playtest. No tocar backend ni modo 26.
+Estado: aprobado para playtest privado en Modo 50. No tocar backend ni modo 26.
 
 ### Objetivo
 
-Usar el mapamundi completo Modo 50 aprobado como base de partida real y verificar que el deploy privado queda jugable con el asset corregido.
+Mantener la integracion de la base geografica continua debajo del mapa tactico Modo 50 y corregir solo defectos P0/P1 encontrados por tester.
 
 ### Fuentes aprobadas
 
 - `assets/maps/base/map-base-tactical-50-001.svg`
+- `assets/maps/base/map-world-geographic-base-50-001.svg`
 - `assets/manifests/map-world-50-manifest.json`
 - `docs/design/map-world-50-p0.md`
-- `frontend/public/prototype/world-50-pilot.html`
+- `frontend/public/prototype/geo-base-pilot.html`
 
 ### Contrato obligatorio
 
@@ -147,6 +148,8 @@ Usar el mapamundi completo Modo 50 aprobado como base de partida real y verifica
 - Hitboxes interactivas: `path.territory-hitbox[data-territory="territory-*"]`
 - Overlays decorativos: `#layer-4-overlays` y descendientes con `pointer-events: none`
 - Mantener IDs contra `TERRITORIES_50`; no renombrar.
+- La base geografica debe ser no interactiva y quedar debajo de territorios/hitboxes.
+- Bajar la opacidad/tintado de territorios lo necesario para que costas y continentes sigan visibles.
 
 ### Verificacion obligatoria
 
@@ -154,8 +157,8 @@ Usar el mapamundi completo Modo 50 aprobado como base de partida real y verifica
 - `pnpm typecheck`
 - `pnpm build`
 - `pnpm e2e`
-- Capturas 1920x1080 y 1366x768: vista normal, sin labels, seleccionado, atacable, ataque en ejecucion.
+- Capturas 1920x1080 y 1366x768: vista normal con base, sin labels, seis jugadores, seleccionado, atacable, ataque en ejecucion.
 
 ### Limites
 
-No adaptar handlers para aceptar contratos alternativos. Si algun overlay vuelve a capturar clicks o una hitbox apunta al territorio equivocado, se devuelve a Arte. Modo 26 no se corrige en esta etapa.
+No adaptar reglas, backend ni modo 26. No rehacer poligonos. No abrir pulido visual secundario hasta que tester Windows valide la URL real.

@@ -4,11 +4,11 @@ Fecha: 2026-07-25
 
 ## Objetivo
 
-Mapa Modo 50 aprobado para integracion y playtest privado. No continuar iterando el mapa salvo defectos nuevos de playtest o pedido explicito de Producto.
+Mapa Modo 50 aprobado para playtest privado con base geografica continua integrada. No iterar mas formas ni base salvo defectos P0/P1 de tester.
 
 ## Estado
 
-La integracion piloto de America del Sur fue aprobada en partida real. El mapamundi completo Modo 50 corregido en `0afff3e` queda aprobado tecnicamente y tacticamente para avanzar. El diagnostico ya no muestra overlays capturando clicks: centro y borde de Alaska llegan a `path.territory-hitbox [territory-north-america-alaska]` y `badge_pointer_events` es `none`.
+La entrega `25ea8c5` creo `map-world-geographic-base-50-001.svg` y Frontend la integro en `fc8e5d7`. La captura integrada de Modo 50 ya muestra masas continentales continuas debajo de los territorios, y `pnpm e2e` pasa 4/4. Modo 26 sigue fuera de alcance.
 
 ## Evidencia
 
@@ -17,15 +17,18 @@ La integracion piloto de America del Sur fue aprobada en partida real. El mapamu
 - `test-results/world-50-1366x768.png`
 - `test-results/world-50-attackable.png`
 - `assets/maps/base/map-base-tactical-50-001.svg`
+- `assets/maps/base/map-world-geographic-base-50-001.svg`
+- `frontend/public/prototype/geo-base-pilot.html`
+- `test-results/geo-base-pure-1920x1080.png`
+- `test-results/geo-base-overlay-1920x1080.png`
 - `frontend/src/components/map/MapPanel.tsx`
 - `e2e/south-america-pilot.spec.ts`
-- Resultado `pnpm e2e` 2026-07-25 posterior a `0afff3e`: 4/4 verde.
-- Diagnostico `diagnostic-global-svg.spec.ts`: centro y borde reciben `path.territory-hitbox` del territorio correcto; `badge_pointer_events` es `none`.
-- Integracion Frontend `b5284b4`: sanea en runtime badges demo, clases demo `p-*` y `viewBox` recortado para que el deploy use solo propiedad/tropas reales del juego.
+- `fc8e5d7 feat(map): base geográfica continua debajo de la capa jugable (Modo 50)`.
+- Verificacion local posterior: `pnpm test`, `pnpm typecheck`, `pnpm build`, `pnpm e2e` verde.
 
 ## Cambio solicitado
 
-No producir mas variantes del Modo 50 en esta etapa. Mantener disponibles `map-base-tactical-50-001.svg`, `world-50-pilot.html`, `map-world-50-manifest.json` y `map-world-50-p0.md` como handoff vigente.
+No producir nuevas variantes. Esperar mini-regresion Windows. Solo intervenir si el tester demuestra que el mapa integrado no se reconoce, pierde clicks, tapa tropas/labels o rompe legibilidad a 1366x768.
 
 ## Arquitectura visual obligatoria
 
@@ -36,26 +39,19 @@ La direccion aprobada debe poder producirse en cuatro capas:
 3. Hitboxes: areas invisibles independientes para hover, click, seleccion y drag.
 4. Overlays: nombres, tropas, estandartes, flechas, pings, animaciones e indicadores.
 
-## Entregables aceptados
+## Entregables aceptados como insumo
 
-- SVG Modo 50 corregido y probado en partida real.
-- 50 territorios visibles con IDs conservados.
-- 50 hitboxes con atributo `data-territory`.
-- Documento `map-world-50-p0.md` sin `data-territory-id`.
-- Overlays horneados transparentes a mouse (`pointer-events: none`).
-- Manifest actualizado con el atributo real de hitbox.
-- Capturas y e2e regenerados.
+- `assets/maps/base/map-world-geographic-base-50-001.svg`: base geografica continua no interactiva.
+- Registro en `assets/manifests/assets-manifest.json`.
+- Registro en `assets/manifests/assets-inventory.csv`.
+- Prototipo `frontend/public/prototype/geo-base-pilot.html`.
 
-## Criterios de aceptacion cumplidos
+## Criterios cumplidos para playtest
 
-- `pnpm test && pnpm typecheck && pnpm build && pnpm e2e` verde.
-- Cada hitbox es detectable por selector `path.territory-hitbox[data-territory="<territory-id>"]`.
-- En partida real, el click sobre hitbox/territorio propio abre menu radial.
-- Diagnostico no reporta `circle.badge-circle` como receptor del centro de un territorio.
-- Los seis colores de jugador preservan lectura general del mapamundi.
-- Seleccion y objetivo atacable se distinguen sin tapar el mapa.
-- 1366x768 sigue siendo jugable para desktop.
-- No incluye textos/HUD genericos de RTS ajenos a TEG-LOPDA.
+- La base se ve en producto real Modo 50.
+- Con seis colores de jugadores, masas continentales y rutas/relieves siguen visibles.
+- Los territorios se apoyan sobre un mundo continuo.
+- Capturas 1920x1080 y 1366x768 son aceptables para playtest privado.
 
 ## Limites
 
@@ -65,4 +61,4 @@ Modo 26 queda fuera de alcance y conserva arte anterior hasta nuevo brief. Ajust
 
 ## Deuda no bloqueante de Arte
 
-En una proxima pasada, el export ideal deberia venir sin badges demo horneados, sin clases demo `p-*` y con `viewBox` que contenga toda la geometria. Hoy Frontend lo sanea de forma segura en carga para acelerar el playtest privado; no se pide nueva entrega de Arte por esto.
+El export ideal del mapa tactico deberia venir sin badges demo horneados, sin clases demo `p-*` y con `viewBox` que contenga toda la geometria. Hoy Frontend lo sanea de forma segura en carga.

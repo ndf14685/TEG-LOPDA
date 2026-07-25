@@ -4,7 +4,7 @@ Fecha: 2026-07-25
 
 ## Resultado
 
-Aprobacion parcial fuerte del prototipo de direccion UX para turno, combate y Tribuna. Actualizacion P0 mapa: el mapamundi Modo 50 queda aprobado como base jugable para integracion y playtest privado. No es arte final perfecto, pero supera el bloqueo P0: reconoce el mundo, conserva contratos, recibe clicks por hitboxes y pasa e2e en partida real.
+Aprobacion parcial fuerte del prototipo de direccion UX para turno, combate y Tribuna. Actualizacion P0 mapa: Modo 50 aprobado para playtest privado. La base geografica continua ya esta integrada debajo de territorios/hitboxes, las masas continentales se leen en captura y la suite e2e pasa. Modo 26 sigue fuera de alcance.
 
 ## Evidencia
 
@@ -55,7 +55,9 @@ Aprobacion parcial fuerte del prototipo de direccion UX para turno, combate y Tr
 - Correccion 2026-07-25 `5b16c23`: documento tecnico y contrato estatico quedan corregidos, pero el handoff sigue rechazado. `pnpm e2e` falla en `south-america-pilot.spec.ts`; diagnostico `diagnostic-global-svg.spec.ts` muestra que los badges horneados interceptan clicks (`circle.badge-circle`, `pointer-events:auto`) y que en bordes puede recibir un hitbox vecino.
 - Correccion 2026-07-25 `0afff3e`: el mapamundi Modo 50 queda aprobado para integracion/playtest. Verificacion local: 50 territorios visibles, 50 hitboxes unicas con `data-territory`, 0 faltantes contra `TERRITORIES_50`, sin `data-territory-id`, overlays con `pointer-events="none"`, y `pnpm test && pnpm typecheck && pnpm build && pnpm e2e` verde. Diagnostico e2e: centro y borde de Alaska reciben `path.territory-hitbox [territory-north-america-alaska]`; `badge_pointer_events` = `none`.
 - Integracion Frontend `b5284b4`: saneo runtime aprobado para el playtest privado. Oculta badges demo horneados, remueve clases demo `p-*` y ajusta `viewBox` al contenido real para evitar recorte sur/radial fuera de vista. Esto no cambia el contrato de Arte, pero evita que defectos del export bloqueen el deploy.
+- Entrega Agy `25ea8c5`: existe `assets/maps/base/map-world-geographic-base-50-001.svg` y esta registrado en `assets/manifests/assets-manifest.json` + `assets/manifests/assets-inventory.csv`. No esta integrado en `MapPanel.tsx` ni en el asset registry runtime de mapas. El prototipo `frontend/public/prototype/geo-base-pilot.html` demuestra base y overlay, pero la captura overlay sigue mostrando territorios como piezas dominantes sobre una base muy oscura y parcialmente tapada. Se acepta como insumo, no como aprobacion final de mapa productivo.
+- Integracion Frontend `fc8e5d7`: base geografica continua integrada en `MapPanel.tsx` debajo de la capa jugable. Se apaga la base vieja del export, la nueva base entra con `pointer-events: none`, los territorios bajan a `fillOpacity 0.34/0.35` y la propiedad se lee por stroke/halo. Verificacion local: `pnpm test` 33/33, `pnpm typecheck` OK, `pnpm build` OK, `pnpm e2e` 4/4. Capturas revisadas: `test-results/sa-pilot-1920x1080.png`, `test-results/sa-pilot-no-labels.png`, `test-results/sa-pilot-1366x768.png`.
 
 ## Proxima accion
 
-Integracion piloto de America del Sur completada por Frontend en modo 50 y aprobada en e2e real. El mapamundi completo Modo 50 queda aprobado en deploy con saneo runtime. Siguiente paso: tester Windows debe ejecutar mini-regresion sobre URL real. Agy no debe seguir iterando el mapa Modo 50 salvo defectos nuevos de playtest; limpieza del export queda P2.
+Bloqueo P0 visual levantado para Modo 50. Siguiente paso: tester Windows debe ejecutar mini-regresion sobre URL real con foco en mapa Modo 50, no-labels, clicks, refuerzos, ataque y reconexion. No abrir nuevas iteraciones de Arte/Frontend salvo defectos P0/P1 detectados en playtest.

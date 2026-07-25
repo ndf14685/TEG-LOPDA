@@ -41,6 +41,7 @@ Aprobado para esta tanda fast-track posterior al hotfix Windows, mini-regresion 
 - Colocacion simultanea ya no comunica un turno unico falso.
 - Piloto P0 America del Sur integrado en modo 50 productivo: e2e real valida IDs, hitboxes, labels/tropas, seis colores, seleccion, atacable y ataque en ejecucion.
 - Mapamundi Modo 50 integrado en deploy con saneo runtime acotado: oculta badges demo, remueve clases demo `p-*` y ajusta `viewBox` para evitar recorte de Argentina/Chile y menu radial fuera de vista.
+- Base geografica continua Modo 50 integrada en `fc8e5d7`: capa no interactiva debajo de territorios/hitboxes, tintado suave y propiedad por stroke/halo. Verificacion local posterior: `pnpm test`, `pnpm typecheck`, `pnpm build`, `pnpm e2e` verde.
 
 ## Correcciones pendientes
 
@@ -49,9 +50,10 @@ Aprobado para esta tanda fast-track posterior al hotfix Windows, mini-regresion 
 - P2: banner central de turno puede tapar temporalmente parte del mapa en capturas de espera; no bloquea flujo.
 - P2: mobile 390x844 queda diferido si no es objetivo real del grupo.
 - P2: flecha por arrastre, pings, planes privados, set de iconos SVG y assets de Arte quedan para iteracion.
-- P2 mapa/export: Agy deberia entregar futuro SVG sin badges demo horneados, sin clases demo `p-*` y con `viewBox` correcto. No bloquea porque Frontend lo sanea al cargar.
+- P2 mapa/export: Agy deberia entregar futuro SVG tactico sin badges demo horneados, sin clases demo `p-*` y con `viewBox` correcto. No bloquea porque Frontend lo sanea al cargar.
 - P2 mapa/export: hitboxes con geometria propia pueden solaparse entre vecinos; jugable hoy, pero el export ideal deberia usar hitbox = geometria visible o justificar ampliaciones por territorio.
+- P2: Modo 26 no tiene base geografica continua y no debe presentarse como mapa corregido.
 
 ## Proxima accion
 
-Frontend aprobado para playtest privado con Modo 50. Siguiente agente activo: tester Windows debe ejecutar mini-regresion sobre URL real enfocada en mapa, refuerzo, ataque, reconexion y legibilidad. Backend no entra por esta entrega.
+Frontend aprobado para playtest privado con Modo 50 y base geografica. Siguiente agente activo: tester Windows debe ejecutar mini-regresion sobre URL real enfocada en mapa, no-labels, refuerzo, ataque, reconexion y legibilidad. Backend no entra por esta entrega.
