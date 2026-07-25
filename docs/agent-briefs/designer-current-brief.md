@@ -4,11 +4,11 @@ Fecha: 2026-07-25
 
 ## Objetivo
 
-Resolver el bloqueo P0 del mapa: entregar una direccion visual de mapamundi reconocible, original y jugable para TEG-LOPDA.
+Convertir la direccion visual hibrida A+B+C aprobada en una region piloto jugable del mapa.
 
 ## Problema
 
-El mapa actual queda rechazado. Aunque funciona tecnicamente, sus formas no permiten reconocer inmediatamente un mapamundi. El jugador depende de leer titulos de continentes para entender la pantalla. Eso bloquea la presentacion basica del juego.
+El mapa actual queda rechazado. La prueba hibrida A+B+C de Agy resuelve el reconocimiento del mapamundi en JPG, pero todavia no demuestra produccion tecnica real en SVG/hitboxes/overlays.
 
 ## Evidencia
 
@@ -20,18 +20,9 @@ El mapa actual queda rechazado. Aunque funciona tecnicamente, sus formas no perm
 
 ## Cambio solicitado
 
-Entregar tres propuestas visuales del mapamundi completo, sin nombres de continentes, para elegir una direccion.
+No generar todavia 26 ni 100 territorios completos.
 
-Cada propuesta debe mostrar:
-
-- America del Norte reconocible.
-- America del Sur reconocible.
-- Europa reconocible.
-- Africa reconocible.
-- Asia reconocible.
-- Oceania reconocible.
-- Oceanos que separen regiones.
-- Estetica original de mesa de guerra, sin copiar propiedad intelectual de Age of Empires ni TEG.
+Entregar una region piloto: America del Sur, basada en la direccion hibrida A+B+C aprobada.
 
 ## Arquitectura visual obligatoria
 
@@ -44,30 +35,33 @@ La direccion aprobada debe poder producirse en cuatro capas:
 
 ## Entregables de esta iteracion
 
-- Tres propuestas del mapamundi completo.
-- Version sin titulos de continentes para cada propuesta.
-- Version con territorios aproximados para cada propuesta.
-- Explicacion breve de como cada propuesta soporta territorios, hitboxes y overlays.
-- Riesgos visuales de cada propuesta.
-- Recomendacion de una direccion.
+- Base geografica de America del Sur coherente con el mapamundi aprobado.
+- SVG de territorios jugables de America del Sur, un path por territorio.
+- IDs conservados del mapa actual cuando existan; si algun ID cambia, entregar tabla `old_id -> new_id`.
+- Hitboxes invisibles independientes por territorio.
+- Posiciones de etiquetas.
+- Posiciones de tropas/badges.
+- Estado visual de propiedad para seis colores.
+- Estado seleccionado.
+- Estado atacable.
+- Flecha de ataque America del Sur -> Africa como prueba de overlay.
+- Manifest de assets y capas generadas.
+- Capturas 1920x1080 y 1366x768: sin etiquetas, con etiquetas/tropas, seleccionado, atacable y ataque en ejecucion.
 
-No producir todavia todo el set final de territorios/hitboxes del mundo. Primero se aprueba direccion.
+## Criterios de aceptacion de region piloto
 
-## Criterios de aceptacion de direccion
-
-- Se reconoce como mapamundi en menos de un segundo.
-- Los seis continentes/regiones principales se reconocen sin titulos.
-- America del Sur conserva silueta continental.
-- America del Norte conecta visualmente con Mexico/Centroamerica.
-- Europa no es un conjunto ilegible de manchas.
-- Africa conserva su forma general.
-- Rusia, Siberia, China, India y Japon integran visualmente Asia.
-- Oceania queda ubicada geograficamente y no como capsulas aisladas.
-- La propuesta permite colores de seis jugadores sin convertir continentes en manchas planas.
-- La propuesta es viable para 1366x768.
+- America del Sur se reconoce sin etiquetas.
+- Los territorios son visualmente coherentes con la geografia, no blobs arbitrarios.
+- Cada territorio tiene path visible y hitbox independiente.
+- Labels y tropas no se solapan.
+- Los seis colores de jugador preservan textura/geografia.
+- Seleccion y objetivo atacable se distinguen sin tapar el mapa.
+- La flecha de ataque funciona como overlay, no como parte del territorio.
+- 1366x768 sigue siendo legible.
+- No incluye textos/HUD genericos de RTS ajenos a TEG-LOPDA como `GLOBAL DOMINATION`, recursos militares falsos o interfaces decorativas no funcionales.
 
 ## Limites
 
 No definir nombres de componentes React, arquitectura frontend, persistencia backend ni contratos tecnicos no acordados. Los eventos y tablas de ledger pueden mencionarse como necesidades de producto, pero no como implementacion cerrada.
 
-Frontend no debe integrar todavia un mapa completo nuevo. Despues de aprobar direccion, se hara una prueba tecnica de una unica region, preferentemente America del Sur.
+Frontend no debe integrar todavia un mapa completo nuevo. Despues de aprobar esta region piloto, se hara una prueba tecnica acotada de America del Sur.

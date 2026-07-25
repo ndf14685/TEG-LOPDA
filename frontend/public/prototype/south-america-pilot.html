@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TEG LOPDA — Región Piloto América del Sur (Arquitectura 4 Capas)</title>
+  <style>
+    :root {
+      --ocean-navy: #091b30;
+      --bg-dark: #040a14;
+      --text-main: #f8fafc;
+      --border-gold: #d97706;
+      --player-red: #ef4444;
+      --player-blue: #3b82f6;
+      --player-green: #10b981;
+      --player-yellow: #eab308;
+      --player-purple: #a855f7;
+      --player-cyan: #06b6d4;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+    body {
+      font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-main);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    header {
+      background: #0f172a;
+      border-bottom: 2px solid var(--border-gold);
+      padding: 8px 16px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      z-index: 20;
+    }
+
+    .brand-title {
+      font-family: serif;
+      font-size: 16px;
+      font-weight: bold;
+      color: #fbbf24;
+      letter-spacing: 1.5px;
+    }
+
+    .toolbar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+
+    .btn {
+      background: linear-gradient(180deg, #334155, #1e293b);
+      border: 1px solid #475569;
+      color: #f8fafc;
+      padding: 5px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .btn:hover { background: #475569; border-color: #fbbf24; }
+    .btn-active { border-color: #fbbf24; background: #d97706; color: #000; }
+
+    .map-viewport {
+      flex: 1;
+      position: relative;
+      background: radial-gradient(circle at 50% 45%, #0f2b48 0%, #091b30 60%, #040a14 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px;
+      overflow: hidden;
+    }
+
+    .viewport-container {
+      width: 100%;
+      height: 100%;
+      max-width: 1920px;
+      max-height: 1080px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+    }
+    .mode-1366 {
+      max-width: 1366px;
+      max-height: 768px;
+      border: 2px stroke #3b82f6;
+      box-shadow: 0 0 25px rgba(2, 132, 199, 0.4);
+    }
+
+    svg.pilot-svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Territorios SVG en Capa 2 */
+    .territory {
+      fill: rgba(15, 23, 42, 0.75);
+      stroke: #0f172a;
+      stroke-width: 4.5;
+      transition: all 0.2s ease;
+    }
+
+    /* Tintado sutil + stroke brillante por jugador (sin manchas planas) */
+    .p-red { stroke: var(--player-red); stroke-width: 6; fill: rgba(239, 68, 68, 0.22); filter: drop-shadow(0 0 6px rgba(239,68,68,0.4)); }
+    .p-blue { stroke: var(--player-blue); stroke-width: 6; fill: rgba(59, 130, 246, 0.22); filter: drop-shadow(0 0 6px rgba(59,130,246,0.4)); }
+    .p-green { stroke: var(--player-green); stroke-width: 6; fill: rgba(16, 185, 129, 0.22); filter: drop-shadow(0 0 6px rgba(16,185,129,0.4)); }
+    .p-yellow { stroke: var(--player-yellow); stroke-width: 6; fill: rgba(234, 179, 8, 0.22); filter: drop-shadow(0 0 6px rgba(234,179,8,0.4)); }
+    .p-purple { stroke: var(--player-purple); stroke-width: 6; fill: rgba(168, 85, 247, 0.22); filter: drop-shadow(0 0 6px rgba(168,85,247,0.4)); }
+    .p-cyan { stroke: var(--player-cyan); stroke-width: 6; fill: rgba(6, 182, 212, 0.22); filter: drop-shadow(0 0 6px rgba(6,182,212,0.4)); }
+
+    .terr-selected { stroke: #ffffff !important; stroke-width: 8 !important; animation: pulseStroke 1.2s infinite alternate; }
+    .terr-target { stroke: #ef4444 !important; stroke-width: 8 !important; stroke-dasharray: 10 6; }
+
+    @keyframes pulseStroke {
+      0% { filter: drop-shadow(0 0 6px #fff); }
+      100% { filter: drop-shadow(0 0 20px #fbbf24); }
+    }
+
+    /* Hitboxes transparentes independientes en Capa 3 */
+    .hitbox-path {
+      fill: transparent;
+      stroke: transparent;
+      pointer-events: all;
+      cursor: pointer;
+    }
+    .hitbox-path:hover + .territory-hover-effect {
+      filter: brightness(1.4);
+    }
+
+    /* Overlays en Capa 4 */
+    .territory-label {
+      font-size: 26px;
+      font-weight: 800;
+      fill: #f8fafc;
+      paint-order: stroke;
+      stroke: #020617;
+      stroke-width: 7px;
+      text-anchor: middle;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+    .territory-label.hidden-labels { opacity: 0 !important; }
+
+    .badge-circle { fill: #0f172a; fill-opacity: 0.95; stroke-width: 5; }
+    .badge-text { fill: #fff; font-size: 34px; font-weight: 900; text-anchor: middle; }
+    .badge-group.hidden-badges { opacity: 0 !important; }
+
+    .vector-arrow {
+      stroke: #ef4444;
+      stroke-width: 8;
+      stroke-dasharray: 14 8;
+      fill: none;
+      animation: dashMove 1s linear infinite;
+      transition: opacity 0.3s ease;
+    }
+    .vector-arrow.hidden-arrow { opacity: 0 !important; }
+
+    @keyframes dashMove {
+      to { stroke-dashoffset: -44; }
+    }
+
+    .hud-header-bar {
+      background: linear-gradient(180deg, #1e293b, #0f172a);
+      border-bottom: 1px solid var(--border-gold);
+      padding: 6px 14px;
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand-title">🗺️ AMÉRICA DEL SUR — REGIÓN PILOTO EN 4 CAPAS (TEG-LOPDA)</div>
+    <div class="toolbar">
+      <button class="btn btn-active" id="btn-state-all" onclick="setProofState('all')">👁️ 1. Con Etiquetas y Tropas</button>
+      <button class="btn" id="btn-state-notitles" onclick="setProofState('no-labels')">🙈 2. Sin Etiquetas (<1s)</button>
+      <button class="btn" id="btn-state-selected" onclick="setProofState('selected')">🎯 3. Seleccionado (Origen)</button>
+      <button class="btn" id="btn-state-attackable" onclick="setProofState('attackable')">⚔️ 4. Ataque Posible</button>
+      <button class="btn" id="btn-state-executing" onclick="setProofState('executing')">🚀 5. Ataque en Ejecución</button>
+      <button class="btn" id="btn-res-1920" onclick="setResolution('1920')">🖥️ 1920x1080</button>
+      <button class="btn" id="btn-res-1366" onclick="setResolution('1366')">💻 1366x768</button>
+    </div>
+  </header>
+
+  <!-- HUD TEG-LOPDA STRICTO (SIN DATOS FALSOS / SIN RECURSOS RARO) -->
+  <div class="hud-header-bar">
+    <span>🪖 FASE: ATAQUE TÁCTICO | TURNO: JUGADOR ROJO (LEÓN)</span>
+    <span>🪙 MONEDAS LOPDA: 450</span>
+  </div>
+
+  <div class="map-viewport">
+    <div class="viewport-container" id="vp-container">
+      <svg class="pilot-svg" viewBox="0 0 2560 1440" id="svg-pilot">
+        
+        <!-- CAPA 1: BASE GEOGRÁFICA Y OCÉANO NO INTERACTIVO -->
+        <g id="layer-1-geo-base">
+          <rect width="2560" height="1440" fill="#091b30" />
+          <pattern id="grid" width="120" height="120" patternUnits="userSpaceOnUse">
+            <path d="M 120 0 L 0 0 0 120" fill="none" stroke="rgba(56, 189, 248, 0.04)" stroke-width="1.5" />
+          </pattern>
+          <rect width="2560" height="1440" fill="url(#grid)" />
+
+          <!-- Silueta geográfica de fondo de América del Sur y África vecina -->
+          <path d="M 680 320 C 850 300, 1180 340, 1220 580 C 1180 880, 920 1250, 780 1320 C 620 1280, 580 950, 680 320 Z" fill="#0d233a" stroke="rgba(56,189,248,0.15)" stroke-width="3" />
+          <path d="M 1600 480 C 1900 420, 2180 500, 2220 750 C 2150 1150, 1850 1280, 1680 1220 C 1580 1020, 1540 750, 1600 480 Z" fill="#0d233a" stroke="rgba(56,189,248,0.15)" stroke-width="3" />
+        </g>
+
+        <!-- CAPA 2: TERRITORIOS SVG JUGABLES (IDs EXACTOS CONSERVADOS 100%) -->
+        <g id="layer-2-playable-territories">
+          <!-- 1. Colombia (Jugador Amarillo) -->
+          <path id="territory-south-america-colombia" class="territory p-yellow" d="M 720 350 C 820 340, 920 370, 940 450 C 880 520, 780 530, 710 470 Z" />
+
+          <!-- 2. Venezuela (Jugador Cian) -->
+          <path id="territory-south-america-venezuela" class="territory p-cyan" d="M 940 360 C 1050 350, 1150 380, 1170 460 C 1080 510, 960 500, 940 450 Z" />
+
+          <!-- 3. Perú (Jugador Verde) -->
+          <path id="territory-south-america-peru" class="territory p-green" d="M 710 470 C 810 510, 890 530, 880 660 C 780 720, 700 650, 680 550 Z" />
+
+          <!-- 4. Brasil (Jugador Azul) -->
+          <path id="territory-south-america-brazil" class="territory p-blue" d="M 940 450 C 1150 460, 1220 580, 1200 780 C 1050 820, 910 750, 880 660 C 920 530, 880 500, 940 450 Z" />
+
+          <!-- 5. Bolivia (Jugador Púrpura) -->
+          <path id="territory-south-america-bolivia" class="territory p-purple" d="M 880 660 C 960 670, 1020 720, 980 820 C 890 850, 820 810, 810 730 Z" />
+
+          <!-- 6. Chile (Jugador Amarillo) -->
+          <path id="territory-south-america-chile" class="territory p-yellow" d="M 680 730 C 780 740, 790 820, 760 1150 C 710 1180, 680 1020, 670 850 Z" />
+
+          <!-- 7. Argentina (Jugador Rojo - Seleccionado Origen) -->
+          <path id="territory-south-america-argentina" class="territory p-red terr-selected" d="M 790 820 C 960 810, 1010 880, 960 1120 C 880 1280, 780 1310, 750 1220 C 760 1150, 780 980, 790 820 Z" />
+
+          <!-- 8. Uruguay (Jugador Verde) -->
+          <path id="territory-south-america-uruguay" class="territory p-green" d="M 980 880 C 1060 880, 1080 960, 1020 1010 C 960 1000, 950 940, 980 880 Z" />
+
+          <!-- Territorio Objetivo Externo: Sáhara - África (Para la flecha) -->
+          <path id="territory-africa-sahara" class="territory p-green" d="M 1650 540 C 1850 510, 1980 580, 2010 740 C 1900 820, 1720 830, 1630 750 Z" />
+        </g>
+
+        <!-- CAPA 3: HITBOXES INVISIBLES INDEPENDIENTES (Hover/Click/Drag) -->
+        <g id="layer-3-hitboxes">
+          <path class="hitbox-path" d="M 720 350 C 820 340, 920 370, 940 450 C 880 520, 780 530, 710 470 Z" onclick="selectTerritory('Colombia')" />
+          <path class="hitbox-path" d="M 940 360 C 1050 350, 1150 380, 1170 460 C 1080 510, 960 500, 940 450 Z" onclick="selectTerritory('Venezuela')" />
+          <path class="hitbox-path" d="M 710 470 C 810 510, 890 530, 880 660 C 780 720, 700 650, 680 550 Z" onclick="selectTerritory('Perú')" />
+          <path class="hitbox-path" d="M 940 450 C 1150 460, 1220 580, 1200 780 C 1050 820, 910 750, 880 660 C 920 530, 880 500, 940 450 Z" onclick="selectTerritory('Brasil')" />
+          <path class="hitbox-path" d="M 880 660 C 960 670, 1020 720, 980 820 C 890 850, 820 810, 810 730 Z" onclick="selectTerritory('Bolivia')" />
+          <path class="hitbox-path" d="M 680 730 C 780 740, 790 820, 760 1150 C 710 1180, 680 1020, 670 850 Z" onclick="selectTerritory('Chile')" />
+          <path class="hitbox-path" d="M 790 820 C 960 810, 1010 880, 960 1120 C 880 1280, 780 1310, 750 1220 C 760 1150, 780 980, 790 820 Z" onclick="selectTerritory('Argentina')" />
+          <path class="hitbox-path" d="M 980 880 C 1060 880, 1080 960, 1020 1010 C 960 1000, 950 940, 980 880 Z" onclick="selectTerritory('Uruguay')" />
+        </g>
+
+        <!-- CAPA 4: OVERLAYS DE ETIQUETAS, BADGES Y FLECHA AUTORITATIVA DE ATAQUE -->
+        <g id="layer-4-overlays">
+          <!-- Etiquetas en Tercio Superior de Territorios (No chocan con Badges) -->
+          <text x="830" y="410" class="territory-label" id="lbl-col">Colombia</text>
+          <text x="1050" y="410" class="territory-label" id="lbl-ven">Venezuela</text>
+          <text x="780" y="530" class="territory-label" id="lbl-per">Perú</text>
+          <text x="1050" y="550" class="territory-label" id="lbl-bra">Brasil</text>
+          <text x="910" y="720" class="territory-label" id="lbl-bol">Bolivia</text>
+          <text x="715" y="820" class="territory-label" id="lbl-chi">Chile</text>
+          <text x="880" y="910" class="territory-label" id="lbl-arg">Argentina</text>
+          <text x="1020" y="930" class="territory-label" id="lbl-uru">Uruguay</text>
+
+          <!-- Badges de Ejércitos Circulares en Tercio Inferior -->
+          <g class="badge-group" id="badge-col">
+            <circle cx="830" cy="460" r="32" class="badge-circle" stroke="#eab308" />
+            <text x="830" y="472" class="badge-text">3</text>
+          </g>
+          <g class="badge-group" id="badge-ven">
+            <circle cx="1050" cy="455" r="32" class="badge-circle" stroke="#06b6d4" />
+            <text x="1050" y="467" class="badge-text">2</text>
+          </g>
+          <g class="badge-group" id="badge-per">
+            <circle cx="780" cy="590" r="32" class="badge-circle" stroke="#10b981" />
+            <text x="780" y="602" class="badge-text">4</text>
+          </g>
+          <g class="badge-group" id="badge-bra">
+            <circle cx="1050" cy="650" r="38" class="badge-circle" stroke="#3b82f6" />
+            <text x="1050" y="663" class="badge-text">10</text>
+          </g>
+          <g class="badge-group" id="badge-bol">
+            <circle cx="910" cy="770" r="32" class="badge-circle" stroke="#a855f7" />
+            <text x="910" y="782" class="badge-text">2</text>
+          </g>
+          <g class="badge-group" id="badge-chi">
+            <circle cx="715" cy="940" r="32" class="badge-circle" stroke="#eab308" />
+            <text x="715" y="952" class="badge-text">5</text>
+          </g>
+          <g class="badge-group" id="badge-arg">
+            <circle cx="880" cy="1020" r="44" class="badge-circle" stroke="#ef4444" />
+            <text x="880" y="1034" class="badge-text">16</text>
+          </g>
+          <g class="badge-group" id="badge-uru">
+            <circle cx="1020" cy="970" r="30" class="badge-circle" stroke="#10b981" />
+            <text x="1020" y="981" class="badge-text">1</text>
+          </g>
+
+          <!-- Flecha Vectorial de Ataque: América del Sur (Brasil / Argentina) ➔ África (Sáhara) -->
+          <path id="attack-arrow" d="M 1050 650 Q 1350 520, 1650 620" class="vector-arrow" />
+        </g>
+      </svg>
+    </div>
+  </div>
+
+  <script>
+    let currentState = 'all';
+
+    function setProofState(state) {
+      currentState = state;
+      const labels = document.querySelectorAll('.territory-label');
+      const badges = document.querySelectorAll('.badge-group');
+      const arrow = document.getElementById('attack-arrow');
+      const arg = document.getElementById('territory-south-america-argentina');
+      const bra = document.getElementById('territory-south-america-brazil');
+      const sah = document.getElementById('territory-africa-sahara');
+
+      // Resetear clases de estado
+      arg.classList.remove('terr-selected');
+      bra.classList.remove('terr-target');
+      sah.classList.remove('terr-target');
+
+      // Resetear botones activos
+      document.querySelectorAll('.toolbar .btn').forEach(b => b.classList.remove('btn-active'));
+      const activeBtn = document.getElementById(`btn-state-${state}`);
+      if (activeBtn) activeBtn.classList.add('btn-active');
+
+      switch(state) {
+        case 'all':
+          labels.forEach(l => l.classList.remove('hidden-labels'));
+          badges.forEach(b => b.classList.remove('hidden-badges'));
+          arrow.classList.remove('hidden-arrow');
+          arg.classList.add('terr-selected');
+          bra.classList.add('terr-target');
+          break;
+
+        case 'no-labels':
+          labels.forEach(l => l.classList.add('hidden-labels'));
+          badges.forEach(b => b.classList.add('hidden-badges'));
+          arrow.classList.add('hidden-arrow');
+          break;
+
+        case 'selected':
+          labels.forEach(l => l.classList.remove('hidden-labels'));
+          badges.forEach(b => b.classList.remove('hidden-badges'));
+          arg.classList.add('terr-selected');
+          arrow.classList.add('hidden-arrow');
+          break;
+
+        case 'attackable':
+          labels.forEach(l => l.classList.remove('hidden-labels'));
+          badges.forEach(b => b.classList.remove('hidden-badges'));
+          arg.classList.add('terr-selected');
+          bra.classList.add('terr-target');
+          sah.classList.add('terr-target');
+          arrow.classList.add('hidden-arrow');
+          break;
+
+        case 'executing':
+          labels.forEach(l => l.classList.remove('hidden-labels'));
+          badges.forEach(b => b.classList.remove('hidden-badges'));
+          arg.classList.add('terr-selected');
+          sah.classList.add('terr-target');
+          arrow.classList.remove('hidden-arrow');
+          break;
+      }
+    }
+
+    function setResolution(res) {
+      const container = document.getElementById('vp-container');
+      const btn1920 = document.getElementById('btn-res-1920');
+      const btn1366 = document.getElementById('btn-res-1366');
+
+      if (res === '1366') {
+        container.classList.add('mode-1366');
+        btn1366.classList.add('btn-active');
+        btn1920.classList.remove('btn-active');
+      } else {
+        container.classList.remove('mode-1366');
+        btn1920.classList.add('btn-active');
+        btn1366.classList.remove('btn-active');
+      }
+    }
+
+    function selectTerritory(name) {
+      console.log('Territorio clickeado vía hitbox invisible:', name);
+    }
+  </script>
+</body>
+</html>

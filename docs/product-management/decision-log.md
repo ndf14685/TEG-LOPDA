@@ -191,3 +191,43 @@ Puede consumir cuota si se intenta resolver todo el mundo de una vez. Puede romp
 ## Criterio de revisión
 
 Se reconsidera solo si una propuesta demuestra en capturas 1920x1080 y 1366x768 que el mapa se reconoce sin etiquetas, conserva interaccion por territorio, mantiene legibilidad de tropas y respeta colores de seis jugadores sin destruir la geografia.
+
+## Decision 2026-07-25-06
+
+## Decisión
+
+Aprobar la direccion visual hibrida A+B+C del mapa solo como direccion estetica y exigir region piloto antes de producir el mundo completo.
+
+## Problema
+
+La entrega de Agy resuelve el reconocimiento visual del mapamundi en JPG, pero todavia no demuestra que esa calidad pueda convertirse en territorios SVG reales, hitboxes, posiciones de tropas y labels sin romper la jugabilidad.
+
+## Evidencia
+
+Capturas revisadas: `map_hybrid_proof_without_titles_1784966918011.jpg`, `map_hybrid_proof_with_titles_1784966886931.jpg`, `map_hybrid_proof_1366x768_1784966955835.jpg`. Documento: `docs/design/map-hybrid-proof-p0.md`. Prototipo: `frontend/public/prototype/map-hybrid-proof.html`.
+
+## Opciones consideradas
+
+1. Aprobar y pedir directamente 26 y 100 territorios completos.
+2. Rechazar la direccion y pedir nuevas propuestas.
+3. Aprobar direccion estetica y exigir una region piloto implementable.
+
+## Decisión elegida
+
+Aprobar la direccion estetica y bloquear la produccion completa hasta validar una region piloto, preferentemente America del Sur.
+
+## Motivo
+
+El salto de imagen de alta fidelidad a SVG jugable es el riesgo real. Una region piloto permite validar geometria, IDs, hitboxes, labels, tropas, colores, seleccion y ataque con bajo consumo de cuota.
+
+## Impacto
+
+Agy debe entregar America del Sur en capas. Frontend no integra el mundo completo; solo prepara prueba tecnica de esa region cuando los assets esten listos. Backend no entra.
+
+## Riesgos
+
+Las JPG tienen elementos de HUD generico de RTS y textos ajenos al producto; deben eliminarse. El prototipo HTML actual no reproduce la calidad de las JPG y no puede usarse como base final.
+
+## Criterio de revisión
+
+Se habilita completar el resto del mundo solo si America del Sur se reconoce, es clickeable, no solapa labels/tropas, conserva IDs o entrega tabla de mapeo, soporta seis colores y permite ataque/seleccion en 1920x1080 y 1366x768.

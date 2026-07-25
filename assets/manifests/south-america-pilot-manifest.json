@@ -1,0 +1,42 @@
+{
+  "schema_version": "1.0.0",
+  "pilot_region": "south-america",
+  "updated_at": "2026-07-25T05:16:00Z",
+  "id_mapping": {
+    "territory-south-america-argentina": "territory-south-america-argentina",
+    "territory-south-america-brazil": "territory-south-america-brazil",
+    "territory-south-america-chile": "territory-south-america-chile",
+    "territory-south-america-colombia": "territory-south-america-colombia",
+    "territory-south-america-peru": "territory-south-america-peru",
+    "territory-south-america-bolivia": "territory-south-america-bolivia",
+    "territory-south-america-uruguay": "territory-south-america-uruguay",
+    "territory-south-america-venezuela": "territory-south-america-venezuela"
+  },
+  "id_changes_count": 0,
+  "layers": [
+    {
+      "id": "layer-1-geo-base",
+      "type": "geo-base",
+      "interactive": false,
+      "description": "Fondo océano azul marino (#091b30), relieve topográfico sutil y líneas de costa continentales"
+    },
+    {
+      "id": "layer-2-playable-territories",
+      "type": "playable-svg",
+      "interactive": true,
+      "description": "Un <path class='territory'> por cada territorio con stroke brillante y tintado sutil"
+    },
+    {
+      "id": "layer-3-hitboxes",
+      "type": "hitboxes",
+      "interactive": true,
+      "description": "Path transparente independiente simplificado para capturar click/hover/drag"
+    },
+    {
+      "id": "layer-4-overlays",
+      "type": "overlays",
+      "interactive": false,
+      "description": "Nombres en tercio superior, badges circulares de tropas en tercio inferior y flechas vectoriales de ataque"
+    }
+  ]
+}
