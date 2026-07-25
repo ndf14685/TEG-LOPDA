@@ -351,3 +351,43 @@ El contraste entre America del Sur nueva y el resto del mundo viejo queda visibl
 ## Criterio de revisión
 
 Se habilita nueva integracion Frontend cuando Agy entregue America del Norte, Europa, Africa, Asia y Oceania con geometria encastrada, hitboxes, labels, posiciones de tropas, estados de seleccion/ataque y manifest por modo.
+
+## Decision 2026-07-25-10
+
+## Decisión
+
+Rechazar el mapamundi completo Modo 50 como handoff productivo.
+
+## Problema
+
+Aunque el SVG conserva 50 IDs visibles y una hitbox por territorio, no respeta el contrato vigente de Frontend para hitboxes y presenta solapes visuales que rompen legibilidad.
+
+## Evidencia
+
+`pnpm test`, `pnpm typecheck` y `pnpm build` pasan. `pnpm e2e` falla en `e2e/south-america-pilot.spec.ts` porque busca `path.territory-hitbox[data-territory="territory-south-america-argentina"]`, pero el SVG global usa `data-territory-id`. Capturas revisadas: `test-results/world-50-labels-badges-1920x1080.png`, `test-results/world-50-no-labels-1920x1080.png`, `test-results/world-50-1366x768.png`, `test-results/world-50-attackable.png`.
+
+## Opciones consideradas
+
+1. Habilitar Frontend y pedir que adapte el contrato.
+2. Corregir el contrato y solapes en Arte antes de integrar.
+3. Descartar todo el mapa global.
+
+## Decisión elegida
+
+Corregir en Arte antes de integrar. No habilitar Frontend todavia.
+
+## Motivo
+
+El e2e demuestra que el handoff no es compatible. Cambiar el contrato en Frontend para acomodar un asset no acordado genera retrabajo y rompe el piloto que ya estaba validado.
+
+## Impacto
+
+Agy debe corregir `data-territory` y solapes. Frontend queda pausado. Backend no entra.
+
+## Riesgos
+
+Si solo se corrige el atributo y se ignoran solapes, el mapa puede funcionar tecnicamente pero seguir fallando como P0 visual.
+
+## Criterio de revisión
+
+Se habilita Frontend cuando el SVG tenga 50 hitboxes con `data-territory`, pase `pnpm e2e`, y las capturas 1920/1366 muestren labels/tropas sin choques graves en Norteamerica, Europa/Asia, Africa y Oceania.

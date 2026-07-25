@@ -28,6 +28,7 @@ Aprobacion parcial fuerte del prototipo de direccion UX para turno, combate y Tr
 - Region piloto America del Sur: la separacion de capas, labels, badges, seleccion, objetivo atacable y flecha de ataque quedan aprobados como patron de interaccion.
 - Region piloto America del Sur: los IDs del modo 50 se preservan para los 8 territorios declarados.
 - Region piloto America del Sur corregida: la geometria encastrada de modo 26 y modo 50 queda aprobada para integracion piloto acotada en Frontend.
+- Mapamundi Modo 50: IDs visibles del SVG coinciden con `TERRITORIES_50` del backend (50/50, sin faltantes ni extras); existe una hitbox por territorio y una etiqueta/badge por territorio.
 
 ## Lo rechazado
 
@@ -45,7 +46,10 @@ Aprobacion parcial fuerte del prototipo de direccion UX para turno, combate y Tr
 - `assets/manifests/south-america-pilot-manifest.json` no quedo actualizado con el alcance separado modo 26/modo 50 ni con timestamp de la version 2.3.0. Frontend puede usar el HTML/prototipo como referencia, pero el manifest debe corregirse antes de tratarlo como contrato final de assets.
 - Manifiestos principales de assets: `assets-manifest.json` y `assets-inventory.csv` quedan aprobados en existencia fisica; verificacion local de referencias `READY` encontro 21 rutas y 0 faltantes.
 - `missing-assets.md` queda aceptado como inventario operativo, pero mantiene inconsistencias menores: no lista todos los nuevos READY del manifest principal y conserva observaciones antiguas de integracion frontend. No bloquea la integracion piloto del mapa.
+- Mapamundi Modo 50 no queda aprobado para integracion productiva. El e2e falla porque las hitboxes usan `data-territory-id`, mientras `MapPanel.tsx` y `e2e/south-america-pilot.spec.ts` esperan `data-territory`. Resultado: `path.territory-hitbox[data-territory="territory-south-america-argentina"]` no existe.
+- Mapamundi Modo 50 no pasa el gate visual: hay solapes fuertes de labels/tropas/territorios en America del Norte, Europa/Asia, Africa y enlace Mexico/Colombia/Sudamerica. A 1366x768 la lectura empeora.
+- La version sin etiquetas reconoce continentes generales, pero varios territorios se perciben como piezas superpuestas, no como subdivisiones limpias.
 
 ## Proxima accion
 
-Integracion piloto de America del Sur completada por Frontend en modo 50 y aprobada en e2e real. Agy debe producir el resto del mapa con el mismo patron de geometria encastrada, capas separadas e IDs conservados por modo. Frontend no debe inventar continentes ni extrapolar geometria sin assets aprobados.
+Integracion piloto de America del Sur completada por Frontend en modo 50 y aprobada en e2e real. El mapamundi completo de Agy queda rechazado como handoff productivo. Agy debe corregir contrato de hitboxes y reducir solapes antes de volver a pedir integracion Frontend.

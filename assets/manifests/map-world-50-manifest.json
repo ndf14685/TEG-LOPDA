@@ -2,8 +2,14 @@
   "schema_version": "1.0.0",
   "map_name": "map-base-tactical-50-001",
   "mode": 50,
-  "updated_at": "2026-07-25T06:00:00Z",
+  "updated_at": "2026-07-25T06:12:00Z",
   "total_territories": 50,
+  "contract": {
+    "territory_path_selector": "path.territory[id]",
+    "hitbox_path_selector": "path.territory-hitbox[data-territory]",
+    "hitbox_attribute": "data-territory",
+    "badge_selector": "g.badge-group[data-badge-id]"
+  },
   "continents": {
     "continent-south-america": 8,
     "continent-north-america": 9,
@@ -29,7 +35,7 @@
       "id": "layer-3-hitboxes",
       "type": "hitboxes",
       "interactive": true,
-      "description": "Path transparente independiente simplificado por territorio para capturar click/hover/drag"
+      "description": "Path transparente independiente <path class='territory-hitbox' data-territory='<id>'> para capturar click/hover/drag"
     },
     {
       "id": "layer-4-overlays",
