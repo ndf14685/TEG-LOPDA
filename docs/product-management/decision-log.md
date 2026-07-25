@@ -391,3 +391,43 @@ Si solo se corrige el atributo y se ignoran solapes, el mapa puede funcionar tec
 ## Criterio de revisión
 
 Se habilita Frontend cuando el SVG tenga 50 hitboxes con `data-territory`, pase `pnpm e2e`, y las capturas 1920/1366 muestren labels/tropas sin choques graves en Norteamerica, Europa/Asia, Africa y Oceania.
+
+## Decision 2026-07-25-11
+
+## Decisión
+
+Mantener rechazado el mapamundi completo Modo 50 despues de la correccion `data-territory`.
+
+## Problema
+
+El contrato estatico de hitboxes fue corregido, pero el mapa no pasa prueba productiva: en partida real el click via hitbox/territorio no abre el menu radial durante colocacion/refuerzo. Ademas persisten solapes visuales.
+
+## Evidencia
+
+Commit `54f33a0`. Verificacion estatica: 50 territorios visibles, 50 hitboxes con `data-territory`, sin faltantes contra `TERRITORIES_50`. `pnpm test`, `pnpm typecheck` y `pnpm build` pasan. `pnpm e2e` falla en `e2e/south-america-pilot.spec.ts` por timeout esperando `.radial-menu button +1` despues de intentar colocar via hitbox. Capturas revisadas: `world-50-labels-badges-1920x1080.png`, `world-50-1366x768.png`, `world-50-no-labels-1920x1080.png`.
+
+## Opciones consideradas
+
+1. Aprobar por contrato estatico y dejar que Frontend adapte.
+2. Rechazar todo y volver a America del Sur.
+3. Mantener rechazo productivo y pedir diagnostico acotado de interaccion + ajuste visual.
+
+## Decisión elegida
+
+Mantener rechazo productivo. Habilitar solo diagnostico acotado de Frontend sobre el click/hitbox y correccion de Agy sobre solapes/documento.
+
+## Motivo
+
+El criterio P0 exige que el mapa sea jugable, no solo que tenga paths correctos. Si no abre el radial, rompe colocacion/refuerzo.
+
+## Impacto
+
+Frontend puede diagnosticar la causa de interaccion sin integrar globalmente ni redisenar. Agy debe corregir solapes y documento tecnico. Backend no entra.
+
+## Riesgos
+
+Si Frontend parchea el handler para acomodar un SVG defectuoso, puede romper el piloto de America del Sur ya validado. El diagnostico debe identificar causa y mantener contrato `data-territory`.
+
+## Criterio de revisión
+
+Se reconsidera cuando `pnpm e2e` pase completo y las capturas no muestren choques graves en las zonas densas.

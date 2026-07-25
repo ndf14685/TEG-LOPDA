@@ -49,7 +49,10 @@ Aprobacion parcial fuerte del prototipo de direccion UX para turno, combate y Tr
 - Mapamundi Modo 50 no queda aprobado para integracion productiva. El e2e falla porque las hitboxes usan `data-territory-id`, mientras `MapPanel.tsx` y `e2e/south-america-pilot.spec.ts` esperan `data-territory`. Resultado: `path.territory-hitbox[data-territory="territory-south-america-argentina"]` no existe.
 - Mapamundi Modo 50 no pasa el gate visual: hay solapes fuertes de labels/tropas/territorios en America del Norte, Europa/Asia, Africa y enlace Mexico/Colombia/Sudamerica. A 1366x768 la lectura empeora.
 - La version sin etiquetas reconoce continentes generales, pero varios territorios se perciben como piezas superpuestas, no como subdivisiones limpias.
+- Correccion 2026-07-25 `54f33a0`: el contrato estatico de hitboxes queda corregido (`50` hitboxes con `data-territory`, sin faltantes contra los `50` IDs visibles y `TERRITORIES_50`), pero el handoff sigue rechazado porque `pnpm e2e` falla en partida real: durante colocacion/refuerzo el click via hitbox no abre el menu radial.
+- `docs/design/map-world-50-p0.md` sigue desactualizado: describe `data-territory-id` aunque el manifest y SVG ya usan `data-territory`.
+- Persisten solapes visuales relevantes: `P/Mexico`, Alemania/Polonia, Arabia/Etiopia, Sumatra/Borneo y densidad general Europa/Medio Oriente a 1366x768.
 
 ## Proxima accion
 
-Integracion piloto de America del Sur completada por Frontend en modo 50 y aprobada en e2e real. El mapamundi completo de Agy queda rechazado como handoff productivo. Agy debe corregir contrato de hitboxes y reducir solapes antes de volver a pedir integracion Frontend.
+Integracion piloto de America del Sur completada por Frontend en modo 50 y aprobada en e2e real. El mapamundi completo de Agy sigue rechazado como handoff productivo. Siguiente paso: correccion conjunta acotada, pero no integracion global: Frontend debe diagnosticar por que el click sobre hitbox no abre radial con el SVG global, y Agy debe corregir solapes/documento tecnico.

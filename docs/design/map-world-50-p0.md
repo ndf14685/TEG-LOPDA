@@ -1,6 +1,6 @@
 # 🗺️ P0 MAPA: Entregable Mapamundi Completo (Modo 50 — 50 Territorios en 4 Capas)
 > **Director Creativo, Lead Game UI/UX Designer & Director de Arte**  
-> *Versión 3.0.0 — Geometría Realista Encastada Completa del Mundo (6 Continentes, 50 Territorios y 4 Capas)*
+> *Versión 3.1.0 — Geometría Realista Encastada Completa del Mundo (Contrato Técnico `data-territory` y Deslinde Total de Choques)*
 
 ---
 
@@ -36,9 +36,9 @@ Toda la masa terrestre global se compone de **50 territorios encastados** respet
    Océano `#091b30`, retícula táctica submarina sutil y líneas de ruta marítima intercontinentales (`.sea-route`). `pointer-events: none`.
 2. **Capa 2 (Territorios Jugables SVG)**: `<g id="layer-2-playable-territories">`  
    Exactamente **un `<path id="territory-<id>">` por cada uno de los 50 países**. Color de jugador con `fill-opacity: 0.22` + `stroke` brillante por jugador (`stroke-width: 6px`).
-3. **Capa 3 (Hitboxes Invisibles Independientes)**: `<g id="layer-3-hitboxes">`  
-   Trazados independientes `<path class="hitbox-path" data-territory-id="...">` con `fill: transparent` y `stroke: transparent` con `pointer-events: all` para hovers, clicks y drag-and-drop con precisión de píxel.
-4. **Capa 4 (Overlays de Etiquetas, Badges y Flechas)**: `<g id="layer-4-overlays">`  
+3. **Capa 3 (Hitboxes Invisibles Independientes con Contrato Técnico `data-territory`)**: `<g id="layer-3-hitboxes">`  
+   Trazados independientes `<path class="territory-hitbox" data-territory="<territory-id>">` con `fill: transparent` y `stroke: transparent` con `pointer-events: all` para hovers, clicks y drag-and-drop con precisión de píxel. Firma estricta requerida por el contrato del Frontend.
+4. **Capa 4 (Overlays de Etiquetas, Badges y Flechas Deslindados)**: `<g id="layer-4-overlays">`  
    Etiquetas de nombre (`.territory-label`) en tercio superior, insignias circulares con números gigantes de ejércitos (`.badge-group`) en tercio inferior y flechas vectoriales de ataque (`.vector-arrow`).
 
 ---
