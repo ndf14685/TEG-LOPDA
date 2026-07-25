@@ -62,7 +62,7 @@ export function RadialMenu() {
         aria-label={`Mover tropas hacia ${territoryName(fortifyPicker.target)}`}
         onClick={(e) => e.stopPropagation()}
       >
-        <span className="radial-title">🛡️ mover a {territoryName(fortifyPicker.target)}</span>
+        <span className="radial-title">mover a {territoryName(fortifyPicker.target)}</span>
         <button className="radial-btn bg-sky-600" onClick={() => sendFortify(1)}>+1</button>
         {maxMove >= 3 && <button className="radial-btn bg-sky-700" onClick={() => sendFortify(3)}>+3</button>}
         {maxMove > 1 && (
@@ -96,7 +96,7 @@ export function RadialMenu() {
     };
     return (
       <div className="radial-menu" style={{ left: menu.x, top: menu.y }} role="menu" aria-label={`Colocar en ${name}`} onClick={(e) => e.stopPropagation()}>
-        <span className="radial-title">🪖 {name}</span>
+        <span className="radial-title">{name}</span>
         <button className="radial-btn bg-emerald-600" onClick={() => place(1)}>+1</button>
         {placementRemaining >= 3 && <button className="radial-btn bg-emerald-700" onClick={() => place(3)}>+3</button>}
         {placementRemaining > 1 && (
@@ -128,7 +128,7 @@ export function RadialMenu() {
     };
     return (
       <div className="radial-menu" style={{ left: menu.x, top: menu.y }} role="menu" aria-label={`Reforzar ${name}`} onClick={(e) => e.stopPropagation()}>
-        <span className="radial-title">🪖 {name}</span>
+        <span className="radial-title">{name}</span>
         <button className="radial-btn bg-emerald-600" onClick={() => reinforce(1)}>+1</button>
         {available >= 3 && <button className="radial-btn bg-emerald-700" onClick={() => reinforce(3)}>+3</button>}
         {available > 1 && (
@@ -158,7 +158,7 @@ export function RadialMenu() {
             close();
           }}
         >
-          ⚔️ Atacar
+          ATACAR
         </button>
       )}
       {phase === 'fortify' && (
@@ -173,7 +173,7 @@ export function RadialMenu() {
             close();
           }}
         >
-          🛡️ Fortificar
+          FORTIFICAR
         </button>
       )}
       {phase === 'attack' && !canAct && (

@@ -45,7 +45,7 @@ export function TurnPhaseBar() {
               onClick={() => setStudioOpen(true)}
               className="flex items-center gap-1.5 rounded-lg border border-red-500/40 bg-red-950/40 px-3 py-1.5 text-xs font-bold text-red-300 hover:bg-red-900/50 shadow-md"
             >
-              🎙️ Mis audios
+              Mis audios
             </button>
           )}
           {studioOpen && profileToken && (
@@ -58,10 +58,10 @@ export function TurnPhaseBar() {
             className="rounded-lg bg-gold-500/90 px-3 py-1 text-xs font-bold text-war-950 transition hover:bg-gold-400"
           >
             {currentPhase === 'reinforcement'
-              ? 'Pasar a Ataque ⚔️ ➔'
+              ? 'Pasar a Ataque →'
               : currentPhase === 'attack'
-                ? 'Pasar a Reagrupar 🛡️ ➔'
-                : 'Fin de Turno ⌛ ➔'}
+                ? 'Pasar a Reagrupar →'
+                : 'Fin de Turno →'}
           </button>
         )}
       </div>
@@ -78,7 +78,7 @@ export function TurnPhaseBar() {
                 : 'border-war-800 bg-war-950/40 text-stone-500'
           }`}
         >
-          <span className="text-sm">🪖</span>
+          <span className="text-sm font-black text-amber-400" aria-hidden>I</span>
           <div className="truncate">
             <p className="leading-none">1. Refuerzos</p>
             {phaseStep === 1 && myTurn && (
@@ -100,7 +100,7 @@ export function TurnPhaseBar() {
                 : 'border-war-800 bg-war-950/40 text-stone-500'
           }`}
         >
-          <span className="text-sm">⚔️</span>
+          <span className="text-sm font-black text-red-400" aria-hidden>II</span>
           <div className="truncate">
             <p className="leading-none">2. Ataque</p>
             {phaseStep === 2 && myTurn && <p className="mt-0.5 text-[10px] text-red-200">Seleccioná origen y objetivo</p>}
@@ -115,7 +115,7 @@ export function TurnPhaseBar() {
               : 'border-war-800 bg-war-950/40 text-stone-500'
           }`}
         >
-          <span className="text-sm">🛡️</span>
+          <span className="text-sm font-black text-sky-400" aria-hidden>III</span>
           <div className="truncate">
             <p className="leading-none">3. Reagrupar</p>
             {phaseStep === 3 && myTurn && <p className="mt-0.5 text-[10px] text-sky-200">Mover tropas propias</p>}

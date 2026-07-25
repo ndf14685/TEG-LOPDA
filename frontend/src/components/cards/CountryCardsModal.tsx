@@ -62,7 +62,7 @@ export function CountryCardsModal() {
         onClick={() => setIsOpen(true)}
         className="relative flex items-center gap-1.5 rounded-lg border border-gold-500/40 bg-war-900 px-3 py-1.5 text-xs font-bold text-gold-400 hover:bg-war-800 shadow-md"
       >
-        <span>🃏 Tarjetas</span>
+        <span>Tarjetas</span>
         {cards.length > 0 && (
           <span className="flex h-4 w-4 items-center justify-center rounded-full bg-gold-500 text-[10px] text-war-950 font-black">
             {cards.length}

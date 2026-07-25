@@ -11,7 +11,7 @@ export function SecretObjectiveModal() {
         onClick={() => setIsVisible(!isVisible)}
         className="flex items-center gap-1.5 rounded-lg border border-purple-500/40 bg-purple-950/40 px-3 py-1.5 text-xs font-bold text-purple-300 hover:bg-purple-900/50 shadow-md"
       >
-        <span>👁️ {isVisible ? 'Ocultar Objetivo' : 'Ver Objetivo Secreto'}</span>
+        <span>{isVisible ? 'Ocultar objetivo' : 'Objetivo secreto'}</span>
       </button>
 
       {isVisible && (

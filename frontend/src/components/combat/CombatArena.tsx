@@ -103,7 +103,7 @@ export function CombatArena() {
         className="max-h-[92vh] w-[820px] max-w-[96vw] overflow-y-auto rounded-xl border-2 border-gold-600 bg-war-950 p-5 shadow-2xl outline-none"
       >
         <div className="mb-3 flex items-center justify-between border-b border-war-700 pb-2">
-          <h3 className="font-display text-lg font-bold text-gold-400">⚔️ ARENA DE COMBATE</h3>
+          <h3 className="font-display text-lg font-bold text-gold-400">ARENA DE COMBATE</h3>
           <button onClick={stop} className="rounded-lg border border-war-700 px-3 py-1 text-sm hover:border-gold-500" title="Cerrar (Esc)">
             ✕ {iAmAttacker && !battle.conquered ? 'Detener' : 'Cerrar'}
           </button>
@@ -170,10 +170,10 @@ export function CombatArena() {
                   </span>
                   <strong className={attackerWins ? 'text-emerald-400' : 'text-sky-400'}>
                     {attackerWins
-                      ? `⚔️ gana atacante (${c.attacker} > ${c.defender}) → defensor pierde 1`
+                      ? `gana atacante (${c.attacker} > ${c.defender}) → defensor pierde 1`
                       : tie
-                        ? '🛡️ EMPATE: la regla del TEG favorece al defensor → atacante pierde 1'
-                        : `🛡️ gana defensor (${c.defender} > ${c.attacker}) → atacante pierde 1`}
+                        ? 'EMPATE: la regla del TEG favorece al defensor → atacante pierde 1'
+                        : `gana defensor (${c.defender} > ${c.attacker}) → atacante pierde 1`}
                   </strong>
                 </div>
               );
@@ -200,7 +200,7 @@ export function CombatArena() {
 
         {battle.conquered && (
           <div className="mt-3 rounded-lg border border-gold-500 bg-gold-950/40 p-3 text-center" data-testid="conquest-banner">
-            <p className="font-display text-xl font-black text-gold-400">🚩 ¡TERRITORIO CONQUISTADO!</p>
+            <p className="font-display text-xl font-black text-gold-400">¡TERRITORIO CONQUISTADO!</p>
             <p className="text-xs text-stone-300">Las tropas atacantes avanzaron automáticamente a ocuparlo.</p>
           </div>
         )}
@@ -215,7 +215,7 @@ export function CombatArena() {
                 onClick={() => pickSpeed(s)}
                 className={`rounded px-2 py-0.5 text-[11px] ${speed === s ? 'bg-gold-500 font-bold text-war-950' : 'border border-war-700 hover:border-gold-500'}`}
               >
-                {s === 'instant' ? 'Instantáneo ⚡' : s}
+                {s === 'instant' ? 'Instantáneo' : s}
               </button>
             ))}
             {reducedMotion && <span className="ml-1 text-[10px] text-stone-500">(animación reducida activa)</span>}
@@ -229,11 +229,11 @@ export function CombatArena() {
                 title={!canContinue ? 'Necesitás al menos 2 tropas en el origen para seguir' : ''}
                 className="rounded-lg bg-red-600 px-4 py-1.5 text-sm font-bold text-white hover:bg-red-500 disabled:opacity-40"
               >
-                ⚔️ Seguir atacando
+                SEGUIR ATACANDO
               </button>
             )}
             <button onClick={stop} data-testid="stop-attack" className="rounded-lg border border-war-600 px-4 py-1.5 text-sm hover:border-gold-500">
-              {battle.conquered || !iAmAttacker ? 'Cerrar' : '🛑 Detener'}
+              {battle.conquered || !iAmAttacker ? 'Cerrar' : 'DETENER'}
             </button>
           </div>
         </div>

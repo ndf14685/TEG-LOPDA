@@ -468,14 +468,14 @@ export function MapPanel({ mode }: { mode?: GameMode }) {
         <div className="pointer-events-none absolute bottom-3 left-3 z-10 flex flex-wrap items-center gap-2 rounded-lg border border-war-700 bg-war-900/80 px-3 py-1.5 backdrop-blur-md">
           <span className="text-xs font-semibold text-stone-300">
             {turn?.phase === 'reinforcement'
-              ? '🪖 Tocá tus países: el menú radial coloca +1, +3 o el máximo'
+              ? 'Tocá tus países: el menú radial coloca +1, +3 o el máximo'
               : turn?.phase === 'fortify'
                 ? selectedSource
-                  ? '🛡️ Tocá el país resaltado que recibe las tropas'
-                  : '🛡️ Tocá un país tuyo y elegí Fortificar'
+                  ? 'Tocá el país resaltado que recibe las tropas'
+                  : 'Tocá un país tuyo y elegí FORTIFICAR'
                 : selectedSource
-                  ? '🎯 Tocá el país enemigo resaltado: el combate arranca ahí mismo'
-                  : '👉 Tocá un país tuyo (borde dorado) y elegí ⚔️ Atacar'}
+                  ? 'Tocá el país enemigo resaltado: el combate arranca ahí mismo'
+                  : 'Tocá un país tuyo (borde dorado) y elegí ATACAR'}
           </span>
         </div>
       )}

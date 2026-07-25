@@ -52,7 +52,7 @@ export function AICommentatorPanel() {
           aria-label={muted ? 'Activar voz del comentarista' : 'Silenciar voz del comentarista'}
           title={muted ? 'Voz apagada — tocá para escucharlo' : 'Silenciar la voz (el texto sigue)'}
         >
-          {muted ? '🔇 voz' : '🔊 voz'}
+          {muted ? 'voz OFF' : 'voz ON'}
         </button>
       </header>
 

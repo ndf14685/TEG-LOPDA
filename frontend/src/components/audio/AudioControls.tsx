@@ -21,7 +21,7 @@ export function AudioControls() {
       aria-pressed={!soundsMuted}
       className="flex items-center justify-center gap-2 rounded-lg border border-war-700 bg-war-900 px-3 py-1.5 text-xs text-stone-400 hover:border-gold-500 hover:text-stone-200"
     >
-      {soundsMuted ? '🔇 Sonidos: off' : '🔊 Sonidos: on'}
+      {soundsMuted ? 'Sonidos: OFF' : 'Sonidos: ON'}
     </button>
   );
 }

@@ -11,7 +11,7 @@ export function HowToPlayModal() {
         className="flex items-center gap-1.5 rounded-lg border border-amber-500/40 bg-amber-950/40 px-3 py-1.5 text-xs font-bold text-amber-300 shadow-md hover:bg-amber-900/50"
         data-testid="how-to-play"
       >
-        <span>📜 Cómo se juega</span>
+        <span>Cómo se juega</span>
       </button>
 
       {open && (
@@ -25,7 +25,7 @@ export function HowToPlayModal() {
             style={{ backgroundImage: 'radial-gradient(ellipse at top, #fef3c7, #fde68a 70%, #d9b365)' }}
           >
             <div className="mb-3 flex items-start justify-between border-b-2 border-amber-800/40 pb-2">
-              <h2 className="text-xl font-black tracking-wide">📜 Manual de Guerra</h2>
+              <h2 className="text-xl font-black tracking-wide">Manual de Guerra</h2>
               <button
                 onClick={() => setOpen(false)}
                 className="rounded px-2 text-lg font-bold text-amber-900 hover:bg-amber-300"

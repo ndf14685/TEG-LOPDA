@@ -62,7 +62,7 @@ export function GamePage() {
       {pactProposalFrom && (
         <div className="fixed left-1/2 top-16 z-40 flex -translate-x-1/2 items-center gap-3 rounded-xl border border-gold-500/60 bg-war-900/95 px-4 py-2.5 shadow-2xl backdrop-blur-md" data-testid="pact-proposal">
           <span className="text-sm text-stone-200">
-            🤝 <strong style={{ color: colorValue(playerById(pactProposalFrom)?.color) }}>
+            <strong style={{ color: colorValue(playerById(pactProposalFrom)?.color) }}>
               {playerById(pactProposalFrom)?.nickname ?? '???'}
             </strong>{' '}
             te propone un pacto de no agresión
@@ -119,7 +119,7 @@ export function GamePage() {
             className="absolute right-2 top-2 z-20 rounded-lg border border-war-600 bg-war-900/90 px-2.5 py-1 text-xs font-bold text-stone-300 backdrop-blur-sm hover:border-gold-500"
             title={tribuneOpen ? 'Plegar La Tribuna' : 'Abrir La Tribuna'}
           >
-            🏟️ {tribuneOpen ? '▸' : '◂ LA TRIBUNA'}
+            {tribuneOpen ? 'LA TRIBUNA ›' : '‹ LA TRIBUNA'}
           </button>
         </section>
 

@@ -63,9 +63,9 @@ export function ChatPanel({ compact = false }: { compact?: boolean }) {
             target ? 'bg-purple-950/70 text-purple-200' : 'bg-war-800 text-stone-400'
           }`}
         >
-          <option value="">📢 Todos</option>
+          <option value="">Todos</option>
           {recipients.map((p) => (
-            <option key={p.id} value={p.id}>🔒 {p.nickname}</option>
+            <option key={p.id} value={p.id}>privado: {p.nickname}</option>
           ))}
         </select>
         <input

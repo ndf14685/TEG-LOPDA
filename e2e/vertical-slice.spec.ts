@@ -116,9 +116,17 @@ test('slice real: lobby, colocación radial, turno y fases sincronizadas', async
   await expect(active.getByTestId('hud-phase')).toContainText('ATAQUE', { timeout: 10_000 });
   await expect(passive.getByTestId('hud-phase')).toContainText('ATAQUE', { timeout: 10_000 });
 
-  // 12. combate real: radial → Atacar → objetivo resaltado → Arena en AMBOS
+  // 12. capturas LIMPIAS del turno (sin modales) en dos resoluciones
+  await admin.waitForTimeout(3200); // deja pasar el banner de turno
+  await admin.setViewportSize({ width: 1366, height: 768 });
+  await admin.screenshot({ path: 'test-results/product-1366x768-turn.png' });
+  await admin.setViewportSize({ width: 1920, height: 1080 });
+  await admin.screenshot({ path: 'test-results/product-1920x1080-turn.png' });
+  await player.screenshot({ path: 'test-results/product-player-view.png' });
+
+  // 13. combate real: radial → ATACAR → objetivo resaltado → Arena en AMBOS
   await active.locator('path.territory.can-attack').first().click();
-  await active.locator('.radial-menu button', { hasText: 'Atacar' }).click();
+  await active.locator('.radial-menu button', { hasText: 'ATACAR' }).click();
   await active.locator('path.territory.attackable').first().click();
   await expect(active.getByTestId('combat-arena')).toBeVisible({ timeout: 10_000 });
   await expect(active.getByTestId('battle-summary')).toContainText('RESUMEN ACUMULADO');
@@ -127,12 +135,8 @@ test('slice real: lobby, colocación radial, turno y fases sincronizadas', async
   await active.getByTestId('stop-attack').click();
   await expect(active.getByTestId('combat-arena')).toHaveCount(0);
 
-  // 13. capturas de evidencia en dos resoluciones
-  await admin.setViewportSize({ width: 1366, height: 768 });
-  await admin.screenshot({ path: 'test-results/product-1366x768-turn.png' });
-  await admin.setViewportSize({ width: 1920, height: 1080 });
-  await admin.screenshot({ path: 'test-results/product-1920x1080-turn.png' });
-  await player.screenshot({ path: 'test-results/product-player-view.png' });
+  // 14. el mercado de espectadores se declara BLOQUEADO sin controles activos
+  await expect(active.getByTestId('spectator-market')).toContainText('BLOQUEADO');
 
   await adminCtx.close();
   await playerCtx.close();

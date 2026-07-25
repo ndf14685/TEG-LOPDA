@@ -55,15 +55,15 @@ export function TribunePanel() {
     turnTitle = 'SINCRONIZANDO CON EL SERVIDOR…';
     turnSub = 'Recuperando el estado de la partida. Las acciones se desbloquean solas al terminar.';
   } else if (inPlacement) {
-    turnTitle = `🪖 COLOCACIÓN INICIAL ${stage === 'placement_1' ? '(5 tropas)' : '(3 tropas)'}`;
+    turnTitle = `COLOCACIÓN INICIAL ${stage === 'placement_1' ? '(5 tropas)' : '(3 tropas)'}`;
     turnSub = placementRemaining > 0
       ? `Te quedan ${placementRemaining} por colocar — tocá tus países.`
       : `Listo. Esperando al resto (${placementDone.length}/${combatants.length}).`;
   } else if (!running) {
-    turnTitle = game?.status === 'paused' ? '⏸️ PARTIDA PAUSADA' : 'ESPERANDO…';
+    turnTitle = game?.status === 'paused' ? 'PARTIDA PAUSADA' : 'ESPERANDO…';
     turnSub = game?.status === 'paused' ? 'El admin pausó la partida.' : '';
   } else if (myTurn) {
-    turnTitle = `¡ES TU TURNO — ${phase === 'reinforcement' ? 'REFUERZOS 🪖' : phase === 'attack' ? 'ATAQUE ⚔️' : 'REAGRUPE 🛡️'}!`;
+    turnTitle = `¡ES TU TURNO — ${phase === 'reinforcement' ? 'REFUERZOS' : phase === 'attack' ? 'ATAQUE' : 'REAGRUPE'}!`;
     turnSub = targetingMode === 'attack'
       ? 'Elegí el país enemigo resaltado para atacar.'
       : targetingMode === 'fortify'
@@ -71,8 +71,8 @@ export function TribunePanel() {
         : phase === 'reinforcement'
           ? `Tenés ${turn?.reinforcements_available ?? 0} tropas — tocá tus países para el menú radial.`
           : phase === 'attack'
-            ? 'Tocá un país tuyo (borde dorado) y elegí ⚔️ Atacar.'
-            : 'Tocá un país tuyo con tropas de sobra y elegí 🛡️ Fortificar.';
+            ? 'Tocá un país tuyo (borde dorado) y elegí ATACAR.'
+            : 'Tocá un país tuyo con tropas de sobra y elegí FORTIFICAR.';
   } else {
     turnTitle = `TURNO DE ${current?.nickname?.toUpperCase() ?? '…'}`;
     turnSub = phase === 'reinforcement'
@@ -110,7 +110,7 @@ export function TribunePanel() {
                 data-testid="next-phase"
                 className="flex-1 rounded-lg bg-gold-500 px-3 py-1.5 text-xs font-bold text-war-950 hover:bg-gold-400 disabled:opacity-40"
               >
-                {phase === 'reinforcement' ? 'Pasar a Ataque ⚔️' : 'Pasar a Reagrupe 🛡️'}
+                {phase === 'reinforcement' ? 'Pasar a Ataque →' : 'Pasar a Reagrupe →'}
               </button>
             ) : null}
             <button
@@ -118,7 +118,7 @@ export function TribunePanel() {
               data-testid="end-turn"
               className="flex-1 rounded-lg border border-war-600 px-3 py-1.5 text-xs font-bold hover:border-gold-500"
             >
-              Terminar turno ⌛
+              Terminar turno
             </button>
           </div>
         )}
@@ -131,13 +131,13 @@ export function TribunePanel() {
 
       {/* LA TRIBUNA: batalla en vivo + apuesta */}
       <div className="rounded-lg border border-war-700 bg-war-950 p-3" data-testid="tribune-market">
-        <p className="text-[10px] font-bold tracking-widest text-stone-500">🏟️ LA TRIBUNA</p>
+        <p className="text-[10px] font-bold tracking-widest text-stone-500">LA TRIBUNA</p>
 
         {battle && battle.rounds.length > 0 ? (
           <p className="mt-1 text-xs text-stone-200">
-            ⚔️ <strong className="capitalize">{name(battle.sourceId)}</strong> ataca{' '}
+            <strong className="capitalize">{name(battle.sourceId)}</strong> ataca{' '}
             <strong className="capitalize">{name(battle.targetId)}</strong>
-            {battle.conquered ? ' — ¡cayó! 🚩' : ` (${battle.rounds.length} ronda${battle.rounds.length !== 1 ? 's' : ''})`}
+            {battle.conquered ? ' — ¡cayó!' : ` (${battle.rounds.length} ronda${battle.rounds.length !== 1 ? 's' : ''})`}
           </p>
         ) : (
           <p className="mt-1 text-xs text-stone-500">Sin batallas en curso.</p>
@@ -145,7 +145,7 @@ export function TribunePanel() {
 
         {/* apuesta real del turno: refuerzos arriesgados (backend autoritativo) */}
         <div className="mt-2 rounded-md border border-gold-600/40 bg-war-900 p-2">
-          <p className="text-[11px] font-bold text-gold-400">🎰 APUESTA DE REFUERZOS</p>
+          <p className="text-[11px] font-bold text-gold-400">APUESTA DE REFUERZOS</p>
           <p className="text-[10px] text-stone-400">
             Arriesgá refuerzos: si conquistás al menos un país este turno, vuelven al doble el próximo.
           </p>
@@ -175,23 +175,17 @@ export function TribunePanel() {
           )}
         </div>
 
-        {/* mercado de espectadores: honesto sobre su estado */}
-        <div className="mt-2 rounded-md border border-war-700 bg-war-900 p-2 opacity-80">
+        {/* mercado de espectadores: BLOQUEADO hasta el ledger backend */}
+        <div className="mt-2 rounded-md border border-war-700 bg-war-900 p-2" data-testid="spectator-market">
           <div className="flex items-center justify-between">
-            <p className="text-[11px] font-bold text-stone-300">📊 MERCADO DE ESPECTADORES</p>
-            <span className="rounded bg-war-700 px-1.5 py-0.5 text-[9px] text-stone-300">MODO CLÁSICO</span>
+            <p className="text-[11px] font-bold text-stone-300">MERCADO DE ESPECTADORES</p>
+            <span className="rounded bg-red-950 px-1.5 py-0.5 text-[9px] font-bold text-red-300">BLOQUEADO</span>
           </div>
-          <div className="mt-1 flex gap-1.5">
-            <button disabled className="flex-1 cursor-not-allowed rounded border border-war-700 px-2 py-1 text-[11px] text-stone-500">
-              APOSTAR SÍ
-            </button>
-            <button disabled className="flex-1 cursor-not-allowed rounded border border-war-700 px-2 py-1 text-[11px] text-stone-500">
-              APOSTAR NO
-            </button>
-          </div>
-          <p className="mt-1 text-[10px] text-stone-500">
-            No elegible todavía: el ledger de Monedas LOPDA (virtuales, sin valor real) se está
-            integrando en el servidor. Mientras, corre la apuesta de refuerzos de arriba.
+          <p className="mt-1 text-[10px] leading-relaxed text-stone-500">
+            Las apuestas entre espectadores con Monedas LOPDA (virtuales, sin valor real)
+            se habilitan cuando el ledger autoritativo del backend esté desplegado.
+            Hasta entonces no hay nada que apostar acá — la única apuesta activa es la
+            de refuerzos de arriba.
           </p>
         </div>
       </div>
@@ -205,7 +199,7 @@ export function TribunePanel() {
           onClick={() => setDiplomacyOpen((o) => !o)}
           className="flex w-full items-center justify-between text-left"
         >
-          <p className="text-[10px] font-bold tracking-widest text-stone-500">🤝 DIPLOMACIA</p>
+          <p className="text-[10px] font-bold tracking-widest text-stone-500">DIPLOMACIA</p>
           <span className="text-xs text-stone-500">{diplomacyOpen ? '▾' : '▸'}</span>
         </button>
         {diplomacyOpen && session?.role !== 'spectator' && (
@@ -218,20 +212,20 @@ export function TribunePanel() {
               return (
                 <li key={p.id} className="flex items-center gap-2 text-xs">
                   <span className="w-20 truncate font-semibold" style={{ color: colorValue(p.color) }}>{p.nickname}</span>
-                  <span className="text-[10px] text-stone-500">🪖{troops}</span>
+                  <span className="text-[10px] text-stone-500">{troops} tropas</span>
                   {allied ? (
                     <button
                       onClick={() => wsClient.send({ type: 'pact.break', payload: { target_player_id: p.id } })}
                       className="ml-auto rounded border border-red-800 px-1.5 py-0.5 text-[10px] text-red-300 hover:border-red-500"
                     >
-                      🗡️ romper
+                      romper pacto
                     </button>
                   ) : (
                     <button
                       onClick={() => wsClient.send({ type: 'pact.propose', payload: { target_player_id: p.id } })}
                       className="ml-auto rounded border border-war-700 px-1.5 py-0.5 text-[10px] hover:border-gold-500"
                     >
-                      🤝 pacto
+                      proponer pacto
                     </button>
                   )}
                 </li>
@@ -243,7 +237,7 @@ export function TribunePanel() {
 
       {/* bardeo + chat + audio */}
       <div className="rounded-lg border border-war-700 bg-war-950 p-3">
-        <p className="mb-1.5 text-[10px] font-bold tracking-widest text-stone-500">🎙️ BARDEO RÁPIDO</p>
+        <p className="mb-1.5 text-[10px] font-bold tracking-widest text-stone-500">BARDEO RÁPIDO</p>
         <SoundboardBar />
       </div>
       <ChatPanel compact />
