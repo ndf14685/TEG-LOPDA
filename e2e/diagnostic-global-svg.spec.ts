@@ -46,16 +46,35 @@ test('diagnóstico: interceptor de clicks en el SVG global modo 50', async ({ br
     const badgePE = badges
       ? getComputedStyle(svg.querySelector('.badge-circle')!).pointerEvents
       : 'n/a';
+    // enlaces tácticos (adjacency links): NO deben capturar clicks
+    const linkLine = svg.querySelector('.adj-link-line');
+    const linkPE = linkLine ? getComputedStyle(linkLine).pointerEvents : 'n/a';
+    // probar elementFromPoint sobre el punto medio de un enlace: nunca un link
+    let overLink = 'n/a';
+    if (linkLine) {
+      const lb = (linkLine as SVGPathElement).getBoundingClientRect();
+      const el = document.elementFromPoint(lb.x + lb.width / 2, lb.y + lb.height / 2);
+      overLink = el ? `${el.tagName.toLowerCase()}.${el.getAttribute('class') ?? ''}` : 'null';
+    }
     return {
       territorio: mine.id,
       centro_recibe: describe(atCenter),
       borde_recibe: describe(atEdge),
       badges_demo_horneados: badges,
       badge_pointer_events: badgePE,
+      enlaces_tacticos: svg.querySelectorAll('.adj-link').length,
+      enlace_pointer_events: linkPE,
+      sobre_enlace_recibe: overLink,
     };
   });
   console.log('DIAGNÓSTICO:', JSON.stringify(report, null, 2));
   expect(report).toBeTruthy();
+  // los enlaces tácticos existen pero NO roban clicks (pointer-events none)
+  const r = report as Record<string, unknown>;
+  if (r.enlaces_tacticos && (r.enlaces_tacticos as number) > 0) {
+    expect(r.enlace_pointer_events).toBe('none');
+    expect(String(r.sobre_enlace_recibe)).not.toContain('adj-link');
+  }
 
   // VERIFICACIÓN de interacción real sobre el mapa canónico (sin force):
   // los hitboxes son la única capa que recibe clicks. Se prueba en colocación.
