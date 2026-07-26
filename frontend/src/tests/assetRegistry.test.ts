@@ -5,7 +5,7 @@ import { FALLBACK_SOUNDBOARD } from '../config/soundboard.config';
 const ART_MANIFEST = {
   schema_version: '1.0',
   maps: {
-    classic_50: { id: 'map.tactical.50', path: 'maps/base/map-base-tactical-50-001.svg' },
+    classic_50: { id: 'map.tactical.50', path: 'maps/base/map-world-canonical-50-003.svg' },
   },
   ui: { btn_attack: 'ui/buttons/button-action-attack-001.svg' },
 };
@@ -35,8 +35,8 @@ function makeRegistry() {
 describe('AssetRegistry (manifiestos de Dirección de Arte)', () => {
   it('resuelve mapas por modo de juego y por id', () => {
     const r = makeRegistry();
-    expect(r.mapUrl('classic_50')).toBe('/assets/maps/base/map-base-tactical-50-001.svg');
-    expect(r.get('map.tactical.50')?.url).toBe('/assets/maps/base/map-base-tactical-50-001.svg');
+    expect(r.mapUrl('classic_50')).toBe('/assets/maps/base/map-world-canonical-50-003.svg');
+    expect(r.get('map.tactical.50')?.url).toBe('/assets/maps/base/map-world-canonical-50-003.svg');
     expect(r.mapUrl('mega_world_100')).toBeNull(); // no publicado aún
   });
 

@@ -11,7 +11,7 @@ def test_default_mode_is_classic_26(client):
 
 def test_classic_50_mode(client):
     game = create_game(client, config={"game_mode": "classic_50"})
-    assert game["config"]["map_assets"]["base_svg"] == "maps/base/map-base-tactical-50-001.svg"
+    assert game["config"]["map_assets"]["base_svg"] == "maps/base/map-world-canonical-50-003.svg"
 
 
 def test_mega_world_mode(client):

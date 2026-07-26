@@ -25,7 +25,7 @@ GAME_MODES: dict[str, dict] = {
         "min_players": 2,
         "max_players": 10,
         "map_assets": {
-            "base_svg": "maps/base/map-base-tactical-50-001.svg",
+            "base_svg": "maps/base/map-world-canonical-50-003.svg",
             "static_background_webp": None,
         },
     },

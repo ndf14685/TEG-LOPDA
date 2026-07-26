@@ -13,7 +13,7 @@ export function LandingPage() {
   const [gameName, setGameName] = useState('La Guerra de los Giles');
   const [nickname, setNickname] = useState('');
   const [color, setColor] = useState('red');
-  const [gameMode, setGameMode] = useState('classic_26');
+  const [gameMode, setGameMode] = useState('classic_50');
   const [joinUrl, setJoinUrl] = useState('');
   const [error, setError] = useState<string | null>(null);
 
