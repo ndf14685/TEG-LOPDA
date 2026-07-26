@@ -56,5 +56,25 @@ test('diagnóstico: interceptor de clicks en el SVG global modo 50', async ({ br
   });
   console.log('DIAGNÓSTICO:', JSON.stringify(report, null, 2));
   expect(report).toBeTruthy();
+
+  // VERIFICACIÓN de interacción real sobre el mapa canónico (sin force):
+  // los hitboxes son la única capa que recibe clicks. Se prueba en colocación.
+  const isCanonical = await p.evaluate(() =>
+    !!document.querySelector('[data-testid="map-panel"] svg[id*="canonical"]'),
+  );
+  if (isCanonical) {
+    const mineId = await p.locator('path.territory.frontier[data-mine="true"]').first().getAttribute('id');
+    const hb = p.locator(`path.territory-hitbox[data-territory="${mineId}"]`);
+    // hover: el hitbox resalta el territorio visible
+    await hb.hover();
+    await expect(p.locator(`path#${mineId}.hb-hover`)).toBeAttached({ timeout: 5_000 });
+    // click normal (sin force): abre el menú radial en colocación
+    await hb.click();
+    await expect(p.locator('.radial-menu')).toBeVisible({ timeout: 5_000 });
+    // labels toggle apaga los nombres del mapa
+    await p.getByTestId('map-panel').click({ position: { x: 5, y: 5 } }); // cierra radial
+    await p.getByTestId('labels-toggle').click();
+    await expect(p.locator('[data-testid="map-panel"] svg.hide-labels')).toBeAttached();
+  }
   await ctx.close(); await ctx2.close();
 });

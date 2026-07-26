@@ -84,75 +84,75 @@ export function MapPanel({ mode }: { mode?: GameMode }) {
             const style = document.createElementNS('http://www.w3.org/2000/svg', 'style');
             style.textContent = RUNTIME_STYLE;
             svg.appendChild(style);
-            // saneo de exports demo: clases de dueño falsas (p-*) fuera —
-            // la propiedad real la pinta el juego con datos del server
-            svg.querySelectorAll('.territory').forEach((t) => {
-              Array.from(t.classList)
-                .filter((c) => c.startsWith('p-'))
-                .forEach((c) => t.classList.remove(c));
-            });
-            // Base cartográfica V3 no interactiva DEBAJO de la capa jugable.
-            // La URL sale del manifiesto (map.mode.geo_base_<N>) → apunta a la
-            // versión aprobada (-003) sin hardcodear el número de export.
-            // El modo 26 no declara base y queda intacto.
-            const geoDigits = effectiveMode.replace(/\D/g, '');
-            const geoBaseUrl = geoDigits && effectiveMode !== 'classic_26'
-              ? assetRegistry.mapUrl(`geo_base_${geoDigits}` as GameMode)
-              : null;
-            if (geoBaseUrl) {
-              try {
-                const baseRes = await fetch(geoBaseUrl);
-                if (baseRes.ok) {
-                  const baseText = await baseRes.text();
-                  const doc = new DOMParser().parseFromString(baseText, 'image/svg+xml');
-                  const baseRoot = doc.documentElement;
-                  if (baseRoot && baseRoot.tagName.toLowerCase() === 'svg' && !cancelled) {
-                    // la base horneada del export táctico se apaga: la sustituye el mundo real
-                    svg.querySelector('#layer-1-geo-base')?.setAttribute('display', 'none');
-                    const imported: Node[] = [];
-                    Array.from(baseRoot.children).forEach((child) => {
-                      const node = document.importNode(child, true);
-                      if (node instanceof Element && node.id === 'layer-1-geo-base') {
-                        node.setAttribute('id', 'layer-0-geo-world');
-                      }
-                      // toda la base es decorativa: nunca captura clicks
-                      if (node instanceof Element && node.tagName.toLowerCase() !== 'defs') {
-                        node.setAttribute('pointer-events', 'none');
-                      }
-                      imported.push(node);
-                    });
-                    // primeros hijos = se pintan primero = quedan DEBAJO de todo
-                    imported.reverse().forEach((n) => svg.insertBefore(n, svg.firstChild));
-                    svg.setAttribute('data-geo-base', '1');
+
+            // El mapa CANÓNICO trae base + territorios + hitboxes + overlays en
+            // un solo sistema, con su viewBox y capa geográfica ya correctos.
+            // Se integra tal cual: sin inyectar base, sin expandir viewBox y sin
+            // offsets. Solo se marca data-geo-base para el tintado suave que deja
+            // ver las costas (la propiedad se sostiene con el halo del dueño).
+            const isCanonical = (svg.getAttribute('id') ?? '').includes('canonical');
+            if (isCanonical) {
+              svg.setAttribute('data-geo-base', '1');
+            } else {
+              // --- ruta LEGACY (exports fragmentados táctico + geo_base) ---
+              // saneo de clases de dueño demo (p-*): la propiedad la pinta el juego
+              svg.querySelectorAll('.territory').forEach((t) => {
+                Array.from(t.classList)
+                  .filter((c) => c.startsWith('p-'))
+                  .forEach((c) => t.classList.remove(c));
+              });
+              // base geográfica no interactiva debajo de la capa jugable
+              const geoDigits = effectiveMode.replace(/\D/g, '');
+              const geoBaseUrl = geoDigits && effectiveMode !== 'classic_26'
+                ? assetRegistry.mapUrl(`geo_base_${geoDigits}` as GameMode)
+                : null;
+              if (geoBaseUrl) {
+                try {
+                  const baseRes = await fetch(geoBaseUrl);
+                  if (baseRes.ok) {
+                    const baseText = await baseRes.text();
+                    const doc = new DOMParser().parseFromString(baseText, 'image/svg+xml');
+                    const baseRoot = doc.documentElement;
+                    if (baseRoot && baseRoot.tagName.toLowerCase() === 'svg' && !cancelled) {
+                      svg.querySelector('#layer-1-geo-base')?.setAttribute('display', 'none');
+                      const imported: Node[] = [];
+                      Array.from(baseRoot.children).forEach((child) => {
+                        const node = document.importNode(child, true);
+                        if (node instanceof Element && node.id === 'layer-1-geo-base') {
+                          node.setAttribute('id', 'layer-0-geo-world');
+                        }
+                        if (node instanceof Element && node.tagName.toLowerCase() !== 'defs') {
+                          node.setAttribute('pointer-events', 'none');
+                        }
+                        imported.push(node);
+                      });
+                      imported.reverse().forEach((n) => svg.insertBefore(n, svg.firstChild));
+                      svg.setAttribute('data-geo-base', '1');
+                    }
                   }
+                } catch {
+                  // sin base: el mapa táctico funciona igual (fallback aprobado)
+                }
+              }
+              // viewBox ajustado al contenido de exports que exceden su lienzo
+              try {
+                const bb = (svg as unknown as SVGGraphicsElement).getBBox();
+                const vb = (svg.getAttribute('viewBox') ?? '0 0 2560 1440').split(' ').map(Number);
+                const MARGIN = 80;
+                const needW = Math.max(vb[2], bb.x + bb.width + MARGIN / 2);
+                const needH = Math.max(vb[3], bb.y + bb.height + MARGIN);
+                if (needW > vb[2] || needH > vb[3]) {
+                  svg.setAttribute('viewBox', `0 0 ${Math.ceil(needW)} ${Math.ceil(needH)}`);
+                  svg.querySelectorAll<SVGRectElement>('#layer-0-geo-world rect').forEach((r) => {
+                    if (Number(r.getAttribute('width')) >= vb[2] - 1) {
+                      r.setAttribute('width', String(Math.ceil(needW)));
+                      r.setAttribute('height', String(Math.ceil(needH)));
+                    }
+                  });
                 }
               } catch {
-                // sin base: el mapa táctico funciona igual (fallback aprobado)
+                // getBBox falla si el nodo no está montado: se conserva el viewBox
               }
-            }
-            // viewBox ajustado al contenido real (base + territorios): exports
-            // con geometría más alta que el lienzo (p. ej. y=1620 > 1440) no se
-            // recortan, y el océano de la base cubre TODO el lienzo final para
-            // que ningún territorio quede flotando sin costa detrás.
-            try {
-              const bb = (svg as unknown as SVGGraphicsElement).getBBox();
-              const vb = (svg.getAttribute('viewBox') ?? '0 0 2560 1440').split(' ').map(Number);
-              // margen para las insignias dinámicas (desplazadas ~62px bajo el centro)
-              const MARGIN = 80;
-              const needW = Math.max(vb[2], bb.x + bb.width + MARGIN / 2);
-              const needH = Math.max(vb[3], bb.y + bb.height + MARGIN);
-              if (needW > vb[2] || needH > vb[3]) {
-                svg.setAttribute('viewBox', `0 0 ${Math.ceil(needW)} ${Math.ceil(needH)}`);
-                // estirar los fondos de la base (océano/retícula) al lienzo final
-                svg.querySelectorAll<SVGRectElement>('#layer-0-geo-world rect').forEach((r) => {
-                  if (Number(r.getAttribute('width')) >= vb[2] - 1) {
-                    r.setAttribute('width', String(Math.ceil(needW)));
-                    r.setAttribute('height', String(Math.ceil(needH)));
-                  }
-                });
-              }
-            } catch {
-              // getBBox falla si el nodo no está montado: se conserva el viewBox
             }
           }
         }
