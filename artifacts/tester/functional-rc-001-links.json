@@ -1,0 +1,15 @@
+{
+  "release": "functional-rc-001",
+  "public_url": "https://paris-penalty-clan-sellers.trycloudflare.com",
+  "game_id": "46819c9f-16e4-4618-a18e-6704d0559166",
+  "code": "58ae2m4z",
+  "admin_page": "https://paris-penalty-clan-sellers.trycloudflare.com/admin/46819c9f-16e4-4618-a18e-6704d0559166",
+  "links": {
+    "admin_join": "https://paris-penalty-clan-sellers.trycloudflare.com/join/58ae2m4z/O_myH1_fOpEfQK92EZEATRwECD5WUWpu",
+    "player_a": "https://paris-penalty-clan-sellers.trycloudflare.com/join/58ae2m4z/qyt3-HOnbMNgEnTurn8YWJQVterWadGt",
+    "player_b": "https://paris-penalty-clan-sellers.trycloudflare.com/join/58ae2m4z/nLmFGgOa17iA3kRflwOLjjuhVjlC5-TQ",
+    "player_c": "https://paris-penalty-clan-sellers.trycloudflare.com/join/58ae2m4z/kYEyX7GluyYfQOWWtRImd5264i0NqM8j"
+  },
+  "state": "lobby",
+  "mode": "classic_50"
+}
