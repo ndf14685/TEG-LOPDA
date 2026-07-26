@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import secrets
 from dataclasses import dataclass, field
+from datetime import datetime
 
 
 def _bool(name: str, default: bool) -> bool:
@@ -70,6 +71,15 @@ class Settings:
 
     reconnect_grace_seconds: float = 30.0
 
+    playtest_mode: bool = False
+    playtest_until: str = ""
+    playtest_build: str = ""
+    playtest_db_path: str = "data/playtest.db"
+    playtest_attachment_dir: str = "data/playtest-attachments"
+    playtest_export_dir: str = "docs/playtest"
+    playtest_retention_days: int = 14
+    playtest_manual_reports_per_minute: int = 5
+
 
 def load_settings() -> Settings:
     admin_token = os.environ.get("TEG_ADMIN_TOKEN", "")
@@ -106,4 +116,12 @@ def load_settings() -> Settings:
         ai_player_timeout_seconds=_float("TEG_AI_PLAYER_TIMEOUT_SECONDS", 5.0),
         ai_player_think_seconds=_float("TEG_AI_PLAYER_THINK_SECONDS", 1.5),
         reconnect_grace_seconds=_float("TEG_RECONNECT_GRACE_SECONDS", 30.0),
+        playtest_mode=_bool("PLAYTEST_MODE", False),
+        playtest_until=os.environ.get("PLAYTEST_UNTIL", ""),
+        playtest_build=os.environ.get("PLAYTEST_BUILD", ""),
+        playtest_db_path=os.environ.get("PLAYTEST_DB_PATH", "data/playtest.db"),
+        playtest_attachment_dir=os.environ.get("PLAYTEST_ATTACHMENT_DIR", "data/playtest-attachments"),
+        playtest_export_dir=os.environ.get("PLAYTEST_EXPORT_DIR", "docs/playtest"),
+        playtest_retention_days=_int("PLAYTEST_RETENTION_DAYS", 14),
+        playtest_manual_reports_per_minute=_int("PLAYTEST_MANUAL_REPORTS_PER_MINUTE", 5),
     )

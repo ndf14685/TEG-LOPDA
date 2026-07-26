@@ -31,6 +31,7 @@ import { REACTION_SET } from '../../config/reactions';
 import { useGameStore } from '../../state/gameStore';
 import { useConnectionStore } from '../../state/connectionStore';
 import { audioService } from '../audio/AudioService';
+import { playtestClient } from '../playtest/playtestClient';
 
 let bound = false;
 
@@ -44,10 +45,21 @@ export function bindWsToStores(): void {
 
   wsClient.onStatus((status) => {
     conn().setWsStatus(status);
+    playtestClient.track(`websocket.${status}`, {});
     if (status === 'reconnecting' || status === 'connecting') conn().setSyncState('syncing');
   });
 
-  wsClient.on('sync.lost', () => conn().setSyncState('syncing'));
+  wsClient.on('sync.lost', () => {
+    conn().setSyncState('syncing');
+    playtestClient.track('sync.lost', {});
+  });
+
+  wsClient.on('*', (_p, env) => {
+    playtestClient.track(env.event_type, { actor_id: env.actor_id, target_id: env.target_id }, {
+      event_id: env.event_id,
+      sequence_number: env.sequence_number,
+    });
+  });
 
   wsClient.on('game.snapshot', (p) => {
     const snap = p as z.infer<typeof SnapshotPayload> & { territories?: Record<string, any> };
@@ -389,5 +401,14 @@ export function bindWsToStores(): void {
   wsClient.on('error', (p) => {
     const payload = p as z.infer<typeof ErrorPayload>;
     game().setError(payload.code, payload.message);
+    playtestClient.reportTechnical({
+      category: 'action-did-not-work',
+      title: `Backend rechazó acción: ${payload.code}`,
+      message: payload.message,
+      error_type: 'backend-error-event',
+      component: 'wsClient',
+      code: payload.code,
+      phase: game().turn?.phase ?? undefined,
+    });
   });
 }

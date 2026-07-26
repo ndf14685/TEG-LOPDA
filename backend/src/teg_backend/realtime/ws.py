@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import logging
+import uuid
 
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 
@@ -49,12 +50,13 @@ async def ws_endpoint(ws: WebSocket, code: str, token: str = Query(...)) -> None
         return
 
     await ws.accept()
+    request_id = str(uuid.uuid4())
     room = service.manager.room(game["id"])
     room.add(player["id"], ws)
     limiter = WsRateLimiter(settings.ws_messages_per_window, settings.ws_window_seconds)
     log.info(
         "ws conectado",
-        extra={"ctx": {"game": game["id"], "player": player["id"]}},
+        extra={"ctx": {"game": game["id"], "player": player["id"], "request_id": request_id}},
     )
     try:
         # snapshot inicial (efímero, solo para esta conexión)
@@ -88,7 +90,41 @@ async def ws_endpoint(ws: WebSocket, code: str, token: str = Query(...)) -> None
             try:
                 await _dispatch(service, ws, game, player, mtype, payload)
             except ServiceError as exc:
+                pt = getattr(ws.app.state, "playtest", None)
+                if pt and pt.active:
+                    await pt.create_occurrence({
+                        "category": "action-did-not-work",
+                        "title": f"Acción rechazada: {mtype}",
+                        "message": exc.message,
+                        "error_type": "ServiceError",
+                        "component": "backend.ws",
+                        "action": mtype,
+                        "code": exc.code,
+                        "game_id": game["id"],
+                        "player_id": player["id"],
+                        "player_alias": player["nickname"],
+                        "request_id": request_id,
+                        "build_version": ws.app.state.settings.playtest_build,
+                    })
                 await _send_error(ws, game["id"], exc.code, exc.message)
+            except Exception as exc:
+                pt = getattr(ws.app.state, "playtest", None)
+                if pt and pt.active:
+                    await pt.create_occurrence({
+                        "category": "other",
+                        "title": f"Error WebSocket: {mtype}",
+                        "message": str(exc),
+                        "error_type": exc.__class__.__name__,
+                        "component": "backend.ws",
+                        "action": mtype,
+                        "game_id": game["id"],
+                        "player_id": player["id"],
+                        "player_alias": player["nickname"],
+                        "request_id": request_id,
+                        "build_version": ws.app.state.settings.playtest_build,
+                    })
+                log.exception("error ws no controlado", extra={"ctx": {"game": game["id"], "player": player["id"], "action": mtype, "request_id": request_id}})
+                await _send_error(ws, game["id"], ErrorCode.INVALID_ACTION, "error interno")
     except WebSocketDisconnect:
         pass
     finally:

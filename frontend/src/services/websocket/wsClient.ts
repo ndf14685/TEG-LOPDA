@@ -1,5 +1,6 @@
 import { GameEventEnvelope, EVENT_PAYLOAD_SCHEMAS, type KnownEventType, type ClientMessage } from '@teg/contracts';
 import { SeqTracker } from './seqTracker';
+import { playtestClient } from '../playtest/playtestClient';
 
 type Handler = (payload: unknown, envelope: GameEventEnvelope) => void;
 type StatusListener = (status: WsStatus) => void;
@@ -28,6 +29,7 @@ class WsClient {
   private intentionalClose = false;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private pingTimer: ReturnType<typeof setInterval> | null = null;
+  private pendingTimers = new Set<ReturnType<typeof setTimeout>>();
   status: WsStatus = 'idle';
 
   connect(code: string, token: string): void {
@@ -54,6 +56,7 @@ class WsClient {
       this.retries = 0;
       this.seq.reset(null); // el snapshot entrante re-ancla el stream
       this.setStatus('open');
+      playtestClient.track(this.retries > 0 ? 'websocket.reconnected' : 'websocket.connected', { code: this.code });
       this.startPing();
     };
 
@@ -65,6 +68,14 @@ class WsClient {
         this.setStatus('closed');
         return;
       }
+      playtestClient.reportTechnical({
+        category: 'connection-problem',
+        title: `WebSocket cerrado ${event.code || ''}`,
+        message: event.reason || `close:${event.code}`,
+        error_type: 'websocket.close',
+        component: 'wsClient',
+        code: String(event.code),
+      });
       if (FATAL_CLOSE_CODES.has(event.code)) {
         this.setStatus('revoked');
         return;
@@ -87,6 +98,13 @@ class WsClient {
     try {
       data = JSON.parse(raw);
     } catch {
+      playtestClient.reportTechnical({
+        category: 'other',
+        title: 'WebSocket JSON inválido',
+        message: 'No se pudo parsear mensaje WebSocket',
+        error_type: 'websocket-json-parse',
+        component: 'wsClient',
+      });
       return;
     }
     // único mensaje no-envelope del server
@@ -94,14 +112,32 @@ class WsClient {
 
     const parsed = GameEventEnvelope.safeParse(data);
     if (!parsed.success) {
+      playtestClient.reportTechnical({
+        category: 'other',
+        title: 'Envelope WebSocket inválido',
+        message: parsed.error.issues[0]?.message ?? 'envelope inválido',
+        error_type: 'contract-parse-error',
+        component: 'wsClient',
+      });
       if (import.meta.env.DEV) console.warn('[ws] sobre inválido descartado', parsed.error.issues[0]);
       return;
     }
     const envelope = parsed.data;
+    for (const timer of this.pendingTimers) clearTimeout(timer);
+    this.pendingTimers.clear();
 
     const verdict = this.seq.accept(envelope.sequence_number);
     if (verdict === 'stale') return;
     if (verdict === 'gap') {
+      playtestClient.reportTechnical({
+        category: 'desynchronization',
+        title: 'Salto de sequence_number',
+        message: `sequence gap at ${envelope.sequence_number}`,
+        error_type: 'sequence-gap',
+        component: 'wsClient',
+        event_id: envelope.event_id,
+        sequence_number: envelope.sequence_number,
+      });
       this.emit('sync.lost', null, envelope);
       this.resync();
       return;
@@ -112,6 +148,15 @@ class WsClient {
     if (schema) {
       const result = schema.safeParse(envelope.payload);
       if (!result.success) {
+        playtestClient.reportTechnical({
+          category: 'other',
+          title: `Payload inválido: ${envelope.event_type}`,
+          message: result.error.issues[0]?.message ?? 'payload inválido',
+          error_type: 'contract-parse-error',
+          component: 'wsClient',
+          event_id: envelope.event_id,
+          sequence_number: envelope.sequence_number,
+        });
         if (import.meta.env.DEV) console.warn(`[ws] payload inválido para ${envelope.event_type}`, result.error.issues[0]);
         return;
       }
@@ -127,6 +172,19 @@ class WsClient {
   }
 
   send(msg: ClientMessage): void {
+    playtestClient.track(`${msg.type}.requested`, { payload: (msg as any).payload ?? {} });
+    const pending = setTimeout(() => {
+      this.pendingTimers.delete(pending);
+      playtestClient.reportTechnical({
+        category: 'action-did-not-work',
+        title: `Acción pendiente sin resolución: ${msg.type}`,
+        message: `Sin evento de resolución luego de 8s`,
+        error_type: 'pending-action-timeout',
+        component: 'wsClient',
+        action: msg.type,
+      });
+    }, 8000);
+    this.pendingTimers.add(pending);
     if (this.ws?.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify(msg));
   }
 
