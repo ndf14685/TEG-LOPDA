@@ -119,15 +119,6 @@ class PlaytestClient {
     };
     this.trail.push(item);
     this.trail = this.trail.slice(-TRAIL_LIMIT);
-    void this.post('/api/playtest/actions', {
-      session_id: getSessionId(),
-      game_id: context().game_id,
-      player_id: context().player_id,
-      action_type,
-      event_id: event?.event_id,
-      sequence_number: event?.sequence_number,
-      data: item.data,
-    });
   }
 
   reportTechnical(input: Record<string, unknown>): void {

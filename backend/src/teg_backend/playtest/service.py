@@ -5,6 +5,7 @@ import csv
 import hashlib
 import json
 import re
+import sqlite3
 import uuid
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -227,25 +228,34 @@ class PlaytestService:
         game_id = payload.get("game_id")
         build = str(payload.get("build_version") or self.settings.playtest_build or "unknown")[:120]
         if row is None:
-            count = (await self.db.fetchone("SELECT COUNT(*) AS c FROM playtest_incidents"))["c"] + 1
-            incident_id = str(uuid.uuid4())
-            code = f"PLAY-{count:03d}"
-            await self.db.execute(
-                """
-                INSERT INTO playtest_incidents
-                  (id, code, title, category, severity, status, fingerprint, frequency,
-                   players_json, games_json, first_seen_at, last_seen_at, first_build, last_build, evidence_json, steps_json)
-                VALUES (?, ?, ?, ?, ?, 'new', ?, 0, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    incident_id, code, title, category, severity, fp,
-                    json.dumps([player_id] if player_id else []),
-                    json.dumps([game_id] if game_id else []),
-                    now, now, build, build,
-                    json.dumps({}), json.dumps(clean.get("action_trail") or []),
-                ),
-            )
-        else:
+            for _ in range(3):
+                count = (await self.db.fetchone("SELECT COUNT(*) AS c FROM playtest_incidents"))["c"] + 1
+                incident_id = str(uuid.uuid4())
+                code = f"PLAY-{count:03d}"
+                try:
+                    await self.db.execute(
+                        """
+                        INSERT INTO playtest_incidents
+                          (id, code, title, category, severity, status, fingerprint, frequency,
+                           players_json, games_json, first_seen_at, last_seen_at, first_build, last_build, evidence_json, steps_json)
+                        VALUES (?, ?, ?, ?, ?, 'new', ?, 0, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """,
+                        (
+                            incident_id, code, title, category, severity, fp,
+                            json.dumps([player_id] if player_id else []),
+                            json.dumps([game_id] if game_id else []),
+                            now, now, build, build,
+                            json.dumps({}), json.dumps(clean.get("action_trail") or []),
+                        ),
+                    )
+                    break
+                except sqlite3.IntegrityError:
+                    row = await self.db.fetchone("SELECT * FROM playtest_incidents WHERE fingerprint=?", (fp,))
+                    if row is not None:
+                        break
+            else:
+                raise RuntimeError("could not create playtest incident")
+        if row is not None:
             incident_id = row["id"]
             code = row["code"]
             players = set(json.loads(row["players_json"] or "[]"))
