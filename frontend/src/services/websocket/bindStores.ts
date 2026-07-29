@@ -43,8 +43,8 @@ export function bindWsToStores(): void {
   const game = () => useGameStore.getState();
   const conn = () => useConnectionStore.getState();
 
-  wsClient.onStatus((status) => {
-    conn().setWsStatus(status);
+  wsClient.onStatus((status, closeCode) => {
+    conn().setWsStatus(status, closeCode);
     playtestClient.track(`websocket.${status}`, {});
     if (status === 'reconnecting' || status === 'connecting') conn().setSyncState('syncing');
   });

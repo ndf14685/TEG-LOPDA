@@ -3,14 +3,20 @@ import { SeqTracker } from './seqTracker';
 import { playtestClient } from '../playtest/playtestClient';
 
 type Handler = (payload: unknown, envelope: GameEventEnvelope) => void;
-type StatusListener = (status: WsStatus) => void;
+type StatusListener = (status: WsStatus, closeCode?: number) => void;
 export type WsStatus = 'idle' | 'connecting' | 'open' | 'reconnecting' | 'closed' | 'revoked';
 
 const BASE_DELAY_MS = 500;
 const MAX_DELAY_MS = 10_000;
 const PING_INTERVAL_MS = 20_000;
-/** Close codes del backend que NO deben reintentar: auth/kick. */
-const FATAL_CLOSE_CODES = new Set([4401, 4403, 4001]);
+/**
+ * Close codes del backend que NO deben reintentar: auth/kick/desalojo por
+ * tope de conexiones. 4009: el backend admite como máximo 3 conexiones
+ * simultáneas por jugador; al abrir una cuarta, desaloja la más vieja con
+ * este código. Si esa pestaña reintentara, desalojaría a la siguiente y así
+ * un anillo perpetuo (visto con 4 pestañas del mismo jugador).
+ */
+const FATAL_CLOSE_CODES = new Set([4401, 4403, 4001, 4009]);
 
 /**
  * Cliente del WS real: /ws/{code}?token=...
@@ -77,7 +83,7 @@ class WsClient {
         code: String(event.code),
       });
       if (FATAL_CLOSE_CODES.has(event.code)) {
-        this.setStatus('revoked');
+        this.setStatus('revoked', event.code);
         return;
       }
       const delay = Math.min(BASE_DELAY_MS * 2 ** this.retries, MAX_DELAY_MS) * (0.7 + Math.random() * 0.6);
@@ -215,9 +221,9 @@ class WsClient {
     return () => this.statusListeners.delete(listener);
   }
 
-  private setStatus(status: WsStatus): void {
+  private setStatus(status: WsStatus, closeCode?: number): void {
     this.status = status;
-    for (const l of this.statusListeners) l(status);
+    for (const l of this.statusListeners) l(status, closeCode);
   }
 
   private startPing(): void {
