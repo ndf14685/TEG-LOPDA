@@ -32,9 +32,14 @@ from ..security.sanitize import (
 log = logging.getLogger("teg.service")
 
 ACTIVE_STATUSES = {GameStatus.LOBBY, GameStatus.READY, GameStatus.RUNNING, GameStatus.PAUSED}
+# Estados previos al arranque: quien no se une antes queda sin territorios,
+# sin objetivo y fuera del turn.order (ver confirm_join).
+PRE_START_STATUSES = (GameStatus.DRAFT, GameStatus.LOBBY, GameStatus.READY)
 TAUNTABLE_EVENTS = {
     EventType.ATTACK_RESOLVED, EventType.TERRITORY_CONQUERED, EventType.PLAYER_ELIMINATED,
 }
+# Paleta que sabe pintar el frontend (frontend/src/utils/playerColors.ts).
+COLORES_DISPONIBLES = ("red", "blue", "green", "yellow", "purple", "orange", "cyan", "pink")
 
 
 def _first_valid_trio(hand: list) -> list[str] | None:
@@ -413,6 +418,22 @@ class GameService:
             if nickname_editable is not None
             else bool(game["config"].get("nickname_editable_default", True))
         )
+        existentes = await repo.get_players(self.db, game_id)
+        if role in (Role.PLAYER, Role.AI_PLAYER):
+            jugando = [p for p in existentes if p["role"] in PLAYING_ROLES]
+            modo = GAME_MODES[game["config"].get("game_mode", DEFAULT_MODE)]
+            if len(jugando) >= modo["max_players"]:
+                raise ServiceError(
+                    ErrorCode.GAME_STATE_CONFLICT,
+                    f"la partida admite hasta {modo['max_players']} jugadores",
+                )
+        # Color unico: dos jugadores del mismo color son indistinguibles en el mapa
+        # (incidente 27/07: Seba y Gabi tenian los dos "red").
+        usados = {p["color"] for p in existentes if p.get("color")}
+        if not color or color in usados:
+            color = next((c for c in COLORES_DISPONIBLES if c not in usados), None)
+            if color is None:
+                raise ServiceError(ErrorCode.GAME_STATE_CONFLICT, "no quedan colores libres")
         token: str | None = None
         token_hash: str | None = None
         if role != Role.AI_PLAYER:
@@ -732,8 +753,14 @@ class GameService:
     async def confirm_join(self, code: str, token: str, nickname: str | None) -> dict:
         resolved = await self.resolve_join(code, token)
         game, player = resolved["game"], resolved["player"]
-        if game["status"] not in ACTIVE_STATUSES:
-            raise ServiceError(ErrorCode.GAME_STATE_CONFLICT, "la partida no admite ingresos")
+        if game["status"] not in PRE_START_STATUSES:
+            # Antes se aceptaba durante RUNNING/PAUSED: quien no habia entrado
+            # antes del arranque quedaba conectado pero sin territorios, sin
+            # objetivo y fuera del turn.order, sin ningun evento que lo explicara.
+            raise ServiceError(
+                ErrorCode.GAME_STATE_CONFLICT,
+                "la partida ya empezó: pedile al anfitrión que te sume a la próxima",
+            )
         if nickname and player["nickname_editable"]:
             clean = sanitize_nickname(nickname)
             if clean:

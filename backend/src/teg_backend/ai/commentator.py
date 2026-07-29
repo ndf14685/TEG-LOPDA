@@ -202,7 +202,8 @@ class MockCommentator:
         text = template.format(
             actor=actor,
             target=target,
-            n=len([p for p in players if p["role"] in ("player", "ai_player")]),
+            n=len([p for p in players
+                   if p["role"] in ("player", "ai_player") and p.get("joined")]),
             dice=payload.get("dice", ""),
             al=payload.get("attacker_losses", "?"),
             dl=payload.get("defender_losses", "?"),
