@@ -95,6 +95,11 @@ class GameService:
         # marca ANTES de cancelar, asi ningun _vencer() en vuelo puede crear
         # un timer nuevo que quede fuera del snapshot que se está cancelando
         self._timers_detenidos = False
+        # idem para los timers de gracia de reconexión (Room._offline_tasks):
+        # nadie los cancelaba en el apagado, un _grace() que ya paso su sleep
+        # (tan chico como 0.05s en tests) podia escribir PLAYER_DISCONNECTED
+        # (persistido) después de que el lifespan cerrara la base
+        self._gracias_detenidas = False
         self.counters: dict[str, int] = {"games_created": 0, "events_emitted": 0}
 
     # --- helpers -----------------------------------------------------------
@@ -229,6 +234,29 @@ class GameService:
         if timers:
             await asyncio.gather(*timers, return_exceptions=True)
         self._turn_timers.clear()
+
+    async def detener_gracias_de_reconexion(self) -> None:
+        """Cancela los timers de gracia de reconexión pendientes en todas las
+        salas (Room._offline_tasks), mismo patrón que detener_timers con
+        _turn_timers. Se llama en el apagado, ANTES de cerrar la base: un
+        _grace() que ya pasó su `asyncio.sleep(reconnect_grace_seconds)` (tan
+        chico como 0.05s en tests, 30s por default en producción) puede
+        emitir PLAYER_DISCONNECTED (persistido, con su propia escritura a
+        SQLite) después de que el lifespan cierre la conexión, si nadie lo
+        cancela primero. Nadie lo hacía: a diferencia de _turn_timers y los
+        workers de envío, Room._offline_tasks nunca tuvo un `detener_*`
+        correspondiente."""
+        self._gracias_detenidas = True
+        tareas = [
+            t
+            for room in self.manager.rooms.values()
+            for t in room._offline_tasks.values()
+            if not t.done()
+        ]
+        for t in tareas:
+            t.cancel()
+        if tareas:
+            await asyncio.gather(*tareas, return_exceptions=True)
 
     async def _after_emit(self, game_id: str, event: GameEvent) -> None:
         """Efectos secundarios que nunca deben voltear la acción principal."""
@@ -929,6 +957,8 @@ class GameService:
         old = room._offline_tasks.get(player_id)
         if old:
             old.cancel()
+        if self._gracias_detenidas:
+            return  # apagado en curso: no crear tareas nuevas
         room._offline_tasks[player_id] = asyncio.create_task(_grace())
 
     # --- acciones de jugador ------------------------------------------------
