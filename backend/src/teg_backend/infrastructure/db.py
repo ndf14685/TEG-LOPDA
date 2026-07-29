@@ -39,9 +39,14 @@ class Database:
         await self.migrate()
 
     async def close(self) -> None:
-        if self._conn is not None:
-            await self._conn.close()
-            self._conn = None
+        # Bajo el MISMO lock que las consultas: sin esto, una query en vuelo
+        # cuando el lifespan cierra recibe "Cannot operate on a closed
+        # database" (el flake historico de la suite, y un camino real de
+        # produccion cada vez que se reinicia el proceso con gente jugando).
+        async with self._lock:
+            if self._conn is not None:
+                await self._conn.close()
+                self._conn = None
 
     async def migrate(self) -> None:
         await self.conn.execute(

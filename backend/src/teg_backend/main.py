@@ -76,8 +76,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         try:
             yield
         finally:
-            # antes de cerrar las bases: timers, gracias de reconexion y
-            # workers de envio la usan
+            # antes de cerrar las bases: tareas de fondo, timers, gracias de
+            # reconexion y workers de envio la usan. Las tareas de fondo van
+            # primero porque emiten eventos (y con ellos alimentan a los
+            # workers de envio que se apagan mas abajo)
+            await app.state.service.detener_tareas_de_fondo()
             await app.state.service.detener_timers()
             await app.state.service.detener_gracias_de_reconexion()
             await app.state.service.detener_envios()

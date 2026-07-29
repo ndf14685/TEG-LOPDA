@@ -106,6 +106,13 @@ class GameService:
         # (tan chico como 0.05s en tests) podia escribir PLAYER_DISCONNECTED
         # (persistido) después de que el lifespan cerrara la base
         self._gracias_detenidas = False
+        # Todas las tareas sueltas que tocan SQLite (turnos y colocaciones de
+        # bot, fan-out de saludos, rearmado del reloj tras una caida) se
+        # registran acá: sin esto quedaban corriendo contra una base que el
+        # lifespan ya cerró. _schedule_ai_placements era el caso peor, porque
+        # ni siquiera guardaba referencia a su tarea.
+        self._tareas_de_fondo: set[asyncio.Task] = set()
+        self._fondo_detenido = False
         self.counters: dict[str, int] = {"games_created": 0, "events_emitted": 0}
 
     # --- helpers -----------------------------------------------------------
@@ -263,6 +270,35 @@ class GameService:
             t.cancel()
         if tareas:
             await asyncio.gather(*tareas, return_exceptions=True)
+
+    def _crear_tarea_de_fondo(self, coro) -> asyncio.Task | None:
+        """Crea una tarea suelta y la deja registrada para el apagado.
+
+        Devuelve None si el apagado ya empezó (y descarta la corrutina para no
+        dejar un "coroutine was never awaited" colgando).
+        """
+        if self._fondo_detenido:
+            coro.close()
+            return None
+        tarea = asyncio.create_task(coro)
+        self._tareas_de_fondo.add(tarea)
+        tarea.add_done_callback(self._tareas_de_fondo.discard)
+        return tarea
+
+    async def detener_tareas_de_fondo(self) -> None:
+        """Cancela las tareas sueltas y las espera, mismo patrón que
+        detener_envios/detener_timers. Se llama en el apagado ANTES de cerrar
+        las bases: turnos y colocaciones de bot consultan y escriben SQLite,
+        y rehidratar_partidas_activas las CREA al arrancar, así que un
+        proceso que se levanta y se baja enseguida las tenía garantizadas."""
+        self._fondo_detenido = True
+        tareas = [t for t in self._tareas_de_fondo if not t.done()]
+        for tarea in tareas:
+            tarea.cancel()
+        if tareas:
+            await asyncio.gather(*tareas, return_exceptions=True)
+        self._tareas_de_fondo.clear()
+        self._ai_tasks.clear()
 
     async def _after_emit(self, game_id: str, event: GameEvent) -> None:
         """Efectos secundarios que nunca deben voltear la acción principal."""
@@ -1440,7 +1476,7 @@ class GameService:
     # --- jugador IA ---------------------------------------------------------
 
     def _schedule_ai_placements(self, game_id: str) -> None:
-        asyncio.create_task(self._ai_placements(game_id))
+        self._crear_tarea_de_fondo(self._ai_placements(game_id))
 
     async def _ai_placements(self, game_id: str) -> None:
         """Los bots colocan su pool inicial apenas arranca cada ronda."""
@@ -1477,7 +1513,9 @@ class GameService:
                     pass
             await self._ai_turn(game_id, player_id)
 
-        self._ai_tasks[key] = asyncio.create_task(_run())
+        tarea = self._crear_tarea_de_fondo(_run())
+        if tarea is not None:
+            self._ai_tasks[key] = tarea
 
     async def _ai_turn(self, game_id: str, player_id: str) -> None:
         """El bot juega el turno completo: canje, refuerzos, ataques y fortify.
