@@ -73,6 +73,11 @@ class GameService:
         # serializa la asignación de sequence_number por partida (las acciones
         # del juego y el worker del comentarista persisten concurrentemente)
         self._seq_locks: dict[str, asyncio.Lock] = {}
+        # Cola de envio por partida: el broadcast sale del lock de juego pero
+        # conserva el orden. Sin esto, un cliente lento retenia el lock y
+        # frenaba a los otros siete.
+        self._send_queues: dict[str, asyncio.Queue] = {}
+        self._send_workers: dict[str, asyncio.Task] = {}
         self._ai_provider = build_ai_player("random")
         self._ai_tasks: dict[str, asyncio.Task] = {}
         self.counters: dict[str, int] = {"games_created": 0, "events_emitted": 0}
@@ -134,10 +139,31 @@ class GameService:
                 await repo.append_event(self.db, event.model_dump(mode="json"))
         self.counters["events_emitted"] += 1
         roles = await self._roles_map(game_id)
-        await self.manager.broadcast(game_id, event, roles)
+        self._encolar_envio(game_id, event, roles)
         if persisted:
             await self._after_emit(game_id, event)
         return event
+
+    def _encolar_envio(self, game_id: str, event: GameEvent, roles: dict[str, str]) -> None:
+        cola = self._send_queues.setdefault(game_id, asyncio.Queue())
+        cola.put_nowait((event, roles))
+        worker = self._send_workers.get(game_id)
+        if worker is None or worker.done():
+            self._send_workers[game_id] = asyncio.create_task(self._drenar_envios(game_id))
+
+    async def _drenar_envios(self, game_id: str) -> None:
+        cola = self._send_queues[game_id]
+        while True:
+            try:
+                event, roles = await asyncio.wait_for(cola.get(), timeout=30.0)
+            except TimeoutError:
+                return  # partida inactiva: el worker se apaga y se recrea si hace falta
+            try:
+                await self.manager.broadcast(game_id, event, roles)
+            except Exception:
+                log.warning("fallo en broadcast diferido", exc_info=True)
+            finally:
+                cola.task_done()
 
     async def _after_emit(self, game_id: str, event: GameEvent) -> None:
         """Efectos secundarios que nunca deben voltear la acción principal."""

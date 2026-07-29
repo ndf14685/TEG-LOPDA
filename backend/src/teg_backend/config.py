@@ -52,6 +52,9 @@ class Settings:
     ws_max_message_bytes: int = 8192
     ws_messages_per_window: int = 20
     ws_window_seconds: float = 5.0
+    # tope por socket en el fan-out: el que no drena se cierra en vez de
+    # frenar al resto de la mesa
+    ws_send_timeout_seconds: float = 5.0
     rest_requests_per_minute: int = 240
 
     commentator_enabled: bool = True
@@ -105,6 +108,7 @@ def load_settings() -> Settings:
         ws_max_message_bytes=_int("TEG_WS_MAX_MESSAGE_BYTES", 8192),
         ws_messages_per_window=_int("TEG_WS_MESSAGES_PER_WINDOW", 20),
         ws_window_seconds=_float("TEG_WS_WINDOW_SECONDS", 5.0),
+        ws_send_timeout_seconds=_float("TEG_WS_SEND_TIMEOUT_SECONDS", 5.0),
         rest_requests_per_minute=_int("TEG_REST_REQUESTS_PER_MINUTE", 240),
         commentator_enabled=_bool("TEG_COMMENTATOR_ENABLED", True),
         commentator_provider=os.environ.get("TEG_COMMENTATOR_PROVIDER", "chain"),

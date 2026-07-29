@@ -72,6 +72,25 @@ def test_choose_fortify_moves_idle_troops():
     assert e.territories[tgt].owner_player_id == pid
 
 
+def _all_events(client, game_id: str) -> list[dict]:
+    """Lee el log completo paginando.
+
+    El endpoint devuelve las primeras `limit` (500 por defecto) en orden
+    ascendente: una partida de bots larga supera ese tope y el cierre quedaba
+    fuera de la pagina, con game.finished "faltando" de forma intermitente.
+    """
+    events: list[dict] = []
+    after = 0
+    while True:
+        page = client.get(
+            f"/api/admin/games/{game_id}/events?after={after}&limit=1000", headers=ADMIN
+        ).json()["events"]
+        if not page:
+            return events
+        events.extend(page)
+        after = page[-1]["sequence_number"]
+
+
 def test_full_game_between_bots_reaches_victory(client):
     game = create_game(client, config={"commentator_enabled": False})
     for name in ("BotA", "BotB", "BotC"):
@@ -89,8 +108,15 @@ def test_full_game_between_bots_reaches_victory(client):
         time.sleep(0.3)
     assert status == "finished", f"la partida de bots no terminó (estado {status})"
 
-    events = client.get(f"/api/admin/games/{game['id']}/events", headers=ADMIN).json()["events"]
-    types = {e["event_type"] for e in events}
+    # el estado se persiste antes que game.finished y stats.ready: esperar el
+    # cierre real del log en vez de leerlo a mitad de camino
+    types: set[str] = set()
+    tail_deadline = time.time() + 10
+    while time.time() < tail_deadline:
+        types = {e["event_type"] for e in _all_events(client, game["id"])}
+        if {"game.finished", "stats.ready"} <= types:
+            break
+        time.sleep(0.2)
     assert "territory.conquered" in types
     assert "game.finished" in types
     assert "stats.ready" in types

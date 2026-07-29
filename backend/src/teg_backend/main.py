@@ -43,7 +43,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         await db.connect()
         playtest_db = Database(settings.playtest_db_path)
         await playtest_db.connect()
-        manager = ConnectionManager()
+        manager = ConnectionManager(send_timeout_seconds=settings.ws_send_timeout_seconds)
         provider = build_provider(
             settings.commentator_provider,
             ollama_url=settings.ollama_url,
