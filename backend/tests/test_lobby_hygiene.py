@@ -85,6 +85,46 @@ def test_se_puede_invitar_el_reemplazo_de_un_jugador_echado(client):
     )
 
 
+def test_se_puede_echar_y_reemplazar_muchas_veces_seguidas(client):
+    """Un asiento echado tampoco debe retener su COLOR, igual que no retiene
+    su lugar.
+
+    Acotar `usados` solo por rol dejaba el arreglo a medias: cada echado se
+    quedaba con su color para siempre, asi que echar+reemplazar en bucle
+    agotaba la paleta. Con 8 colores en uso y 10 disponibles, el TERCER
+    reemplazo devolvia 409 "no quedan colores libres" -- por eso el bucle
+    tiene que dar mas de dos vueltas para detectarlo. Expandir la paleta solo
+    corria el problema dos lugares mas adelante.
+    """
+    game = create_game(client, config={"game_mode": "classic_26"})
+    ids = []
+    for i in range(8):
+        resp = client.post(f"/api/admin/games/{game['id']}/players",
+                           json={"nickname": f"j{i}"}, headers=ADMIN)
+        assert resp.status_code == 200, resp.text
+        ids.append(resp.json()["player"]["id"])
+
+    for vuelta in range(5):
+        echado = ids.pop(0)
+        resp = client.post(
+            f"/api/admin/games/{game['id']}/players/{echado}/kick", headers=ADMIN
+        )
+        assert resp.status_code == 200, resp.text
+        resp = client.post(f"/api/admin/games/{game['id']}/players",
+                           json={"nickname": f"reemplazo{vuelta}"}, headers=ADMIN)
+        assert resp.status_code == 200, (
+            f"el reemplazo numero {vuelta + 1} fue rechazado: {resp.text}"
+        )
+        ids.append(resp.json()["player"]["id"])
+
+    # y los 8 asientos vivos siguen teniendo colores distintos entre si
+    jugadores = client.get(f"/api/admin/games/{game['id']}", headers=ADMIN).json()["players"]
+    vivos = [p for p in jugadores if not p["token_revoked"]]
+    assert len(vivos) == 8
+    colores = [p["color"] for p in vivos]
+    assert len(set(colores)) == 8, f"colores repetidos entre asientos vivos: {colores}"
+
+
 def test_un_espectador_con_color_no_bloquea_ese_color_para_los_jugadores(client):
     """El set `usados` no estaba acotado por rol: alcanzaba con que un
     espectador tuviera color para que ese color desapareciera de la paleta.

@@ -551,12 +551,17 @@ class GameService:
         # roles que se sientan a jugar: un espectador o admin sin color no debe
         # consumir la paleta (regresion: antes quedaban con color=None).
         if role in (Role.PLAYER, Role.AI_PLAYER):
-            # `usados` tambien se acota por rol: acotar solo la ASIGNACION no
-            # alcanzaba, porque un espectador con color igual figuraba como
-            # color tomado y le comia un lugar a la paleta al octavo jugador.
+            # `usados` se acota por rol Y por token_revoked, exactamente igual
+            # que el conteo de asientos de arriba. Acotar solo por rol dejaba
+            # A1 a medias: cada echado seguia reteniendo su color para siempre,
+            # asi que echar+reemplazar en bucle agotaba la paleta igual (al
+            # tercer reemplazo, 409 "no quedan colores libres"). Expandir la
+            # paleta a 10 solo compraba dos reemplazos; la causa es esta.
             usados = {
                 p["color"] for p in existentes
-                if p.get("color") and p["role"] in PLAYING_ROLES
+                if p.get("color")
+                and p["role"] in PLAYING_ROLES
+                and not p["token_revoked"]
             }
             if not color or color in usados:
                 color = next((c for c in COLORES_DISPONIBLES if c not in usados), None)
