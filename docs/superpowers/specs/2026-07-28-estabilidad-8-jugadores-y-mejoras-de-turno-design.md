@@ -197,6 +197,11 @@ Verificado el 2026-07-28 sobre la máquina de despliegue:
   checkpoint desde el 27/07.
 - **Disco al 98 %** (5,7 GB libres), **swap al 79 %**, 1,4 GB de RAM libre.
 - **Contenedores sin límites** de memoria, CPU ni pids (`docker-compose.yml:8-29`).
+- **La GPU está caída y nadie lo notó.** El módulo del kernel cargado es `580.159.03`
+  y las librerías instaladas son `580.173.02`: un `apt upgrade` del driver sin
+  reiniciar. Consecuencia medida: **Ollama corre 100 % en CPU** (`size_vram: 0` para
+  `llama3.2:3b` y `qwen2.5:7b`). Afecta al proveedor `ollama` del relator, aunque en
+  producción `.env` usa `mock`. Se arregla reiniciando; queda a cargo del dueño.
 - **`frontend/nginx.conf:31-36`** —el nginx que realmente está en producción— hace el
   upgrade de WebSocket pero **no define `proxy_read_timeout`** ⇒ default 60 s. Solo
   el ping de 20 s lo mantiene vivo; con 3 pings de margen, cualquier bloqueo del
@@ -222,14 +227,25 @@ persistiendo (el replay no se toca) pero se emiten por el cable con
 `sequence_number = 0`, que es el valor que `SeqTracker` ya trata como efímero
 (`seqTracker.ts:11`).
 
-Concretamente, en `emit()`: se persiste siempre igual, pero el contador global
-`next_sequence_number` avanza **solo** para `Visibility.PUBLIC`. Los eventos privados
-y de admin se guardan en la tabla `events` con `sequence_number = NULL` y se envían
-por el cable con `sequence_number = 0`.
+**Corrección sobre la primera redacción de este spec:** la idea inicial era dejar el
+`sequence_number` en `NULL` para los eventos no públicos. Es inviable y además
+dañino: la columna es `INTEGER NOT NULL` con `UNIQUE (game_id, sequence_number)`
+(`backend/migrations/0001-initial.sql:38,46`), y `repo.get_events` filtra con
+`sequence_number > ?` (`repository.py:274-277`), de modo que cualquier fila en NULL
+desaparecería del replay en silencio.
 
-Consecuencia sobre el replay, explícita: el orden del replay pasa a apoyarse en el
-`id` autoincremental de la fila, no en `sequence_number`, que deja de ser denso.
-`repo.get_events` y el endpoint de admin deben ordenar por `id`.
+El enfoque correcto es **dos contadores**:
+
+- `sequence_number` — se mantiene tal cual: denso sobre **todos** los eventos
+  persistidos, `NOT NULL`. Es el orden de almacenamiento y de replay. **No se toca
+  nada de lo que ya existe.**
+- `public_sequence` — columna nueva, denso sobre los eventos **públicos**
+  únicamente, `NULL` para privados y de admin.
+
+Lo que viaja al cliente en el campo `sequence_number` del envelope pasa a ser el
+`public_sequence` cuando el evento es público, y `0` cuando no lo es. Así el stream
+que ve cada cliente es denso y sin huecos, `SeqTracker` deja de disparar `gap`, y el
+replay y el historial de admin siguen funcionando exactamente igual que hoy.
 
 El objetivo secreto no se pierde con esto: además del evento privado, viaja en el
 snapshot como `your_objective` (`game_service.py:628-674`), que es de donde lo toma
@@ -304,7 +320,23 @@ disco, no se toca `.env`** — eso queda para el dueño.
   suficiente para un cierre limpio de SQLite.
 - `PRAGMA synchronous=NORMAL` en `db.py` (seguro bajo WAL, elimina un fsync por commit).
 
-### F0.8 La prueba que hoy no existe
+### F0.8 Rehidratar los turnos de bot al arrancar
+
+`GameService._ai_tasks` (`game_service.py:77`) vive solo en memoria y el `lifespan`
+(`main.py:38-75`) no recorre las partidas activas al arrancar. Si el proceso se
+reinicia mientras un bot está pensando, **nadie vuelve a agendar ese turno** y la
+partida queda trabada para siempre: el estado se recupera de SQLite, pero la tarea
+que debía moverlo no.
+
+Esto importa especialmente por el flujo de trabajo real: el túnel de Cloudflare es
+efímero y los links se regeneran en cada sesión de juego, lo que implica reiniciar el
+backend. Al arrancar la sesión es inofensivo; **a mitad de sesión deja partidas
+muertas**.
+
+Al levantar, el backend recorre las partidas en `RUNNING` y, si el jugador de turno
+es un `ai_player`, reagenda su turno.
+
+### F0.9 La prueba que hoy no existe
 
 Test de carga con **8 conexiones WebSocket simultáneas** que juegue una partida
 completa y verifique: cero `sequence gap`, cero reconexiones no provocadas, y
