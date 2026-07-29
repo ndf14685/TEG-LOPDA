@@ -18,6 +18,7 @@ import {
   type InvitePlayerRequest,
   type CommentatorConfigRequest,
 } from '@teg/contracts';
+import { playtestClient } from '../playtest/playtestClient';
 
 export class ApiRequestError extends Error {
   constructor(public readonly code: string, message: string, public readonly status: number) {
@@ -26,17 +27,43 @@ export class ApiRequestError extends Error {
 }
 
 async function request<S extends z.ZodTypeAny>(schema: S, path: string, init?: RequestInit): Promise<z.output<S>> {
+  const requestId = crypto.randomUUID();
   const res = await fetch(path, {
     ...init,
-    headers: { 'content-type': 'application/json', ...(init?.headers ?? {}) },
+    headers: { 'content-type': 'application/json', 'x-request-id': requestId, ...(init?.headers ?? {}) },
   });
   const body = await res.json().catch(() => null);
   if (!res.ok) {
     const parsed = ApiErrorResponse.safeParse(body);
-    if (parsed.success) throw new ApiRequestError(parsed.data.detail.code, parsed.data.detail.message, res.status);
+    const code = parsed.success ? parsed.data.detail.code : 'INTERNAL_ERROR';
+    const message = parsed.success ? parsed.data.detail.message : `Error HTTP ${res.status}`;
+    playtestClient.reportTechnical({
+      category: res.status >= 500 ? 'other' : 'action-did-not-work',
+      title: `HTTP ${res.status}: ${path}`,
+      message,
+      error_type: 'http-error',
+      component: 'apiClient',
+      endpoint: path,
+      code,
+      request_id: requestId,
+    });
+    if (parsed.success) throw new ApiRequestError(code, message, res.status);
     throw new ApiRequestError('INTERNAL_ERROR', `Error HTTP ${res.status}`, res.status);
   }
-  return schema.parse(body);
+  const parsedBody = schema.safeParse(body);
+  if (!parsedBody.success) {
+    playtestClient.reportTechnical({
+      category: 'other',
+      title: `Contrato REST inválido: ${path}`,
+      message: parsedBody.error.issues[0]?.message ?? 'parse error',
+      error_type: 'contract-parse-error',
+      component: 'apiClient',
+      endpoint: path,
+      request_id: requestId,
+    });
+    throw parsedBody.error;
+  }
+  return parsedBody.data;
 }
 
 const adminHeaders = (adminToken: string) => ({ 'x-admin-token': adminToken });

@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import secrets
 from dataclasses import dataclass, field
+from datetime import datetime
 
 
 def _bool(name: str, default: bool) -> bool:
@@ -51,6 +52,9 @@ class Settings:
     ws_max_message_bytes: int = 8192
     ws_messages_per_window: int = 20
     ws_window_seconds: float = 5.0
+    # tope por socket en el fan-out: el que no drena se cierra en vez de
+    # frenar al resto de la mesa
+    ws_send_timeout_seconds: float = 5.0
     rest_requests_per_minute: int = 240
 
     commentator_enabled: bool = True
@@ -69,6 +73,17 @@ class Settings:
     ai_player_think_seconds: float = 1.5
 
     reconnect_grace_seconds: float = 30.0
+    turn_timeout_seconds: float = 180.0
+
+    playtest_mode: bool = False
+    playtest_until: str = ""
+    playtest_build: str = ""
+    playtest_db_path: str = "data/playtest.db"
+    playtest_attachment_dir: str = "data/playtest-attachments"
+    playtest_export_dir: str = "docs/playtest"
+    playtest_retention_days: int = 14
+    playtest_manual_reports_per_minute: int = 5
+    playtest_incidents_per_minute: int = 12
 
 
 def load_settings() -> Settings:
@@ -94,6 +109,7 @@ def load_settings() -> Settings:
         ws_max_message_bytes=_int("TEG_WS_MAX_MESSAGE_BYTES", 8192),
         ws_messages_per_window=_int("TEG_WS_MESSAGES_PER_WINDOW", 20),
         ws_window_seconds=_float("TEG_WS_WINDOW_SECONDS", 5.0),
+        ws_send_timeout_seconds=_float("TEG_WS_SEND_TIMEOUT_SECONDS", 5.0),
         rest_requests_per_minute=_int("TEG_REST_REQUESTS_PER_MINUTE", 240),
         commentator_enabled=_bool("TEG_COMMENTATOR_ENABLED", True),
         commentator_provider=os.environ.get("TEG_COMMENTATOR_PROVIDER", "chain"),
@@ -106,4 +122,14 @@ def load_settings() -> Settings:
         ai_player_timeout_seconds=_float("TEG_AI_PLAYER_TIMEOUT_SECONDS", 5.0),
         ai_player_think_seconds=_float("TEG_AI_PLAYER_THINK_SECONDS", 1.5),
         reconnect_grace_seconds=_float("TEG_RECONNECT_GRACE_SECONDS", 30.0),
+        turn_timeout_seconds=_float("TEG_TURN_TIMEOUT_SECONDS", 180.0),
+        playtest_mode=_bool("PLAYTEST_MODE", False),
+        playtest_until=os.environ.get("PLAYTEST_UNTIL", ""),
+        playtest_build=os.environ.get("PLAYTEST_BUILD", ""),
+        playtest_db_path=os.environ.get("PLAYTEST_DB_PATH", "data/playtest.db"),
+        playtest_attachment_dir=os.environ.get("PLAYTEST_ATTACHMENT_DIR", "data/playtest-attachments"),
+        playtest_export_dir=os.environ.get("PLAYTEST_EXPORT_DIR", "docs/playtest"),
+        playtest_retention_days=_int("PLAYTEST_RETENTION_DAYS", 14),
+        playtest_manual_reports_per_minute=_int("PLAYTEST_MANUAL_REPORTS_PER_MINUTE", 5),
+        playtest_incidents_per_minute=_int("PLAYTEST_INCIDENTS_PER_MINUTE", 12),
     )

@@ -24,6 +24,9 @@ class GameEvent(BaseModel):
     target_id: str | None = None
     timestamp: str = Field(default_factory=utcnow_iso)
     sequence_number: int = 0
+    # Secuencia densa sobre eventos publicos. None para privados/admin.
+    # Es lo que viaja al cliente; ver seqTracker.ts.
+    public_sequence: int | None = None
     payload: dict[str, Any] = Field(default_factory=dict)
     visibility: Visibility = Visibility.PUBLIC
     schema_version: str = SCHEMA_VERSION
@@ -31,4 +34,9 @@ class GameEvent(BaseModel):
     persisted: bool = True
 
     def wire(self) -> dict[str, Any]:
-        return self.model_dump(mode="json")
+        data = self.model_dump(mode="json")
+        # El cliente solo debe ver una secuencia sin huecos: la publica.
+        # Los no publicos viajan con 0 y el SeqTracker los ignora.
+        data["sequence_number"] = self.public_sequence or 0
+        data.pop("public_sequence", None)
+        return data

@@ -252,6 +252,8 @@ class GameEngine:
         terr = self.territories[territory_id]
         if terr.owner_player_id != player_id:
             raise EngineError("el territorio no te pertenece")
+        if count < 1:
+            raise EngineError("count debe ser al menos 1")
         if count > self.turn.reinforcements_available:
             raise EngineError("no tenés suficientes refuerzos disponibles")
 

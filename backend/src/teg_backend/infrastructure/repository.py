@@ -110,6 +110,11 @@ async def list_games(db: Database) -> list[dict]:
     return [_row_to_game(r) for r in rows]
 
 
+async def list_games_by_status(db: Database, status: str) -> list[dict]:
+    rows = await db.fetchall("SELECT * FROM games WHERE status = ?", (status,))
+    return [_row_to_game(r) for r in rows]
+
+
 async def update_game_status(db: Database, game_id: str, status: str) -> None:
     await db.execute(
         "UPDATE games SET status = ?, updated_at = datetime('now') WHERE id = ?",
@@ -251,13 +256,22 @@ async def next_sequence_number(db: Database, game_id: str) -> int:
     return int(row["seq"]) + 1 if row else 1
 
 
+async def next_public_sequence(db: Database, game_id: str) -> int:
+    row = await db.fetchone(
+        "SELECT COALESCE(MAX(public_sequence), 0) AS seq FROM events WHERE game_id = ?",
+        (game_id,),
+    )
+    return int(row["seq"]) + 1 if row else 1
+
+
 async def append_event(db: Database, event: dict[str, Any]) -> None:
     await db.execute(
-        "INSERT INTO events (id, game_id, sequence_number, event_type, actor_id,"
-        " target_id, visibility, schema_version, payload_json, created_at)"
-        " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO events (id, game_id, sequence_number, public_sequence, event_type,"
+        " actor_id, target_id, visibility, schema_version, payload_json, created_at)"
+        " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (
             event["event_id"], event["game_id"], event["sequence_number"],
+            event.get("public_sequence"),
             event["event_type"], event["actor_id"], event["target_id"],
             event["visibility"], event["schema_version"],
             json.dumps(event["payload"]), event["timestamp"],

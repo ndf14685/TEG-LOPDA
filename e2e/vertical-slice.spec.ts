@@ -1,13 +1,25 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Locator, type Page } from '@playwright/test';
 
 const ADMIN_TOKEN = 'dev-admin';
+
+async function clickTerritoryThroughHitbox(page: Page, locator: Locator) {
+  const territory = locator.first();
+  const id = await territory.getAttribute('id');
+  if (id && await page.locator(`path.territory-hitbox[data-territory="${id}"]`).count()) {
+    await page.locator(`path.territory-hitbox[data-territory="${id}"]`).first().click();
+  } else {
+    await territory.click();
+  }
+}
 
 /** Colocación con el menú radial: prioriza una FRONTERA propia (la UI las
  * marca), garantizando que después exista un origen de ataque real. */
 async function placeAllViaRadial(page: Page) {
   const frontier = page.locator('path.territory.frontier[data-mine="true"]');
-  if (await frontier.count()) await frontier.first().click();
-  else await page.locator('path.territory[data-mine="true"]').first().click();
+  const territory = await frontier.count()
+    ? frontier.first()
+    : page.locator('path.territory[data-mine="true"]').first();
+  await clickTerritoryThroughHitbox(page, territory);
   const max = page.locator('.radial-menu button', { hasText: 'MÁX' });
   const plusOne = page.locator('.radial-menu button', { hasText: '+1' });
   if (await max.count()) await max.first().click();
@@ -148,9 +160,9 @@ test('slice real: lobby, colocación radial, turno y fases sincronizadas', async
   await expect(active.getByTestId('hud-phase')).toContainText('ATAQUE', { timeout: 10_000 });
 
   // 14. combate real: radial → ATACAR → objetivo resaltado → Arena en TODOS
-  await active.locator('path.territory.can-attack').first().click();
+  await clickTerritoryThroughHitbox(active, active.locator('path.territory.can-attack'));
   await active.locator('.radial-menu button', { hasText: 'ATACAR' }).click();
-  await active.locator('path.territory.attackable').first().click();
+  await clickTerritoryThroughHitbox(active, active.locator('path.territory.attackable'));
   await expect(active.getByTestId('combat-arena')).toBeVisible({ timeout: 10_000 });
   await expect(active.getByTestId('battle-summary')).toContainText('RESUMEN ACUMULADO');
   await active.screenshot({ path: 'test-results/product-combat-arena.png' });

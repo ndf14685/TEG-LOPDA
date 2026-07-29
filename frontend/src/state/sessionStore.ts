@@ -26,23 +26,25 @@ interface SessionState {
 
 const keyFor = (code: string) => `teg.session.${code}`;
 const ADMIN_KEY = 'teg.adminToken';
+const canUseSessionStorage = () => typeof sessionStorage !== 'undefined';
 
 export const useSessionStore = create<SessionState>((set) => ({
   session: null,
-  adminToken: sessionStorage.getItem(ADMIN_KEY),
+  adminToken: canUseSessionStorage() ? sessionStorage.getItem(ADMIN_KEY) : null,
 
   setSession: (session) => {
-    sessionStorage.setItem(keyFor(session.code), JSON.stringify(session));
+    if (canUseSessionStorage()) sessionStorage.setItem(keyFor(session.code), JSON.stringify(session));
     set({ session });
   },
 
   setAdminToken: (token) => {
-    sessionStorage.setItem(ADMIN_KEY, token);
+    if (canUseSessionStorage()) sessionStorage.setItem(ADMIN_KEY, token);
     set({ adminToken: token });
   },
 
   restore: (code) => {
     try {
+      if (!canUseSessionStorage()) return false;
       const raw = sessionStorage.getItem(keyFor(code));
       if (!raw) return false;
       set({ session: JSON.parse(raw) as PlayerSession });

@@ -1,4 +1,5 @@
 import { ArtAssetsManifest, AudioManifest, TauntsManifest, BrandPalette, type GameMode, type SoundboardButton } from '@teg/contracts';
+import { playtestClient } from '../playtest/playtestClient';
 
 const ASSETS_BASE = '/assets/';
 const MANIFESTS = {
@@ -49,7 +50,18 @@ export class AssetRegistry {
   private async fetchJson(fetchFn: typeof fetch, path: string): Promise<unknown | null> {
     try {
       const res = await fetchFn(path);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) {
+        playtestClient.reportTechnical({
+          category: 'visual-problem',
+          title: `Asset HTTP ${res.status}`,
+          message: path,
+          error_type: 'asset-http-error',
+          component: 'AssetRegistry',
+          endpoint: path,
+          code: String(res.status),
+        });
+        throw new Error(`HTTP ${res.status}`);
+      }
       return await res.json();
     } catch (err) {
       if (typeof import.meta !== 'undefined' && import.meta.env?.DEV) {
@@ -125,12 +137,27 @@ export class AssetRegistry {
     if (typeof import.meta !== 'undefined' && import.meta.env?.DEV) {
       console.warn(`[assets] asset faltante: ${id}`);
     }
+    playtestClient.reportTechnical({
+      category: 'visual-problem',
+      title: `Asset faltante: ${id}`,
+      message: id,
+      error_type: 'asset-missing',
+      component: 'AssetRegistry',
+    });
   }
 
   private reportInvalid(path: string): void {
     if (typeof import.meta !== 'undefined' && import.meta.env?.DEV) {
       console.error(`[assets] manifest inválido: ${path}`);
     }
+    playtestClient.reportTechnical({
+      category: 'visual-problem',
+      title: `Manifest inválido: ${path}`,
+      message: path,
+      error_type: 'asset-manifest-invalid',
+      component: 'AssetRegistry',
+      endpoint: path,
+    });
   }
 }
 

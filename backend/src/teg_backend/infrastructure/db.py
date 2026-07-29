@@ -31,14 +31,22 @@ class Database:
         self._conn = await aiosqlite.connect(self.path)
         self._conn.row_factory = aiosqlite.Row
         await self._conn.execute("PRAGMA journal_mode=WAL")
+        # NORMAL es seguro bajo WAL y saca un fsync de cada commit: con 8
+        # jugadores son ~320-400 commits por ronda sobre un disco compartido
+        await self._conn.execute("PRAGMA synchronous=NORMAL")
         await self._conn.execute("PRAGMA foreign_keys=ON")
         await self._conn.execute("PRAGMA busy_timeout=5000")
         await self.migrate()
 
     async def close(self) -> None:
-        if self._conn is not None:
-            await self._conn.close()
-            self._conn = None
+        # Bajo el MISMO lock que las consultas: sin esto, una query en vuelo
+        # cuando el lifespan cierra recibe "Cannot operate on a closed
+        # database" (el flake historico de la suite, y un camino real de
+        # produccion cada vez que se reinicia el proceso con gente jugando).
+        async with self._lock:
+            if self._conn is not None:
+                await self._conn.close()
+                self._conn = None
 
     async def migrate(self) -> None:
         await self.conn.execute(

@@ -15,7 +15,7 @@ from ..ai.ai_player import MoveRequest, build_ai_player, request_move
 from ..ai.commentator import Comment, CommentatorService
 from ..config import Settings
 from ..domain import engine as eng
-from ..domain.engine import EngineError, GameEngine
+from ..domain.engine import EngineError, GameEngine, TurnState
 from ..domain.enums import (
     PLAYING_ROLES, ErrorCode, EventType, GameStatus, Role, Visibility,
 )
@@ -32,9 +32,20 @@ from ..security.sanitize import (
 log = logging.getLogger("teg.service")
 
 ACTIVE_STATUSES = {GameStatus.LOBBY, GameStatus.READY, GameStatus.RUNNING, GameStatus.PAUSED}
+# Estados previos al arranque: quien no se une antes queda sin territorios,
+# sin objetivo y fuera del turn.order (ver confirm_join).
+PRE_START_STATUSES = (GameStatus.DRAFT, GameStatus.LOBBY, GameStatus.READY)
 TAUNTABLE_EVENTS = {
     EventType.ATTACK_RESOLVED, EventType.TERRITORY_CONQUERED, EventType.PLAYER_ELIMINATED,
 }
+# Paleta que sabe pintar el frontend (frontend/src/utils/playerColors.ts).
+# Son 10 y no 8 a proposito: con exactamente max_players colores, un solo
+# asiento revocado (alguien que no llego y fue reemplazado) ya dejaba al
+# ultimo jugador sin color libre.
+COLORES_DISPONIBLES = (
+    "red", "blue", "green", "yellow", "purple", "orange", "cyan", "pink",
+    "lime", "white",
+)
 
 
 def _first_valid_trio(hand: list) -> list[str] | None:
@@ -73,8 +84,35 @@ class GameService:
         # serializa la asignación de sequence_number por partida (las acciones
         # del juego y el worker del comentarista persisten concurrentemente)
         self._seq_locks: dict[str, asyncio.Lock] = {}
+        # Cola de envio por partida: el broadcast sale del lock de juego pero
+        # conserva el orden. Sin esto, un cliente lento retenia el lock y
+        # frenaba a los otros siete.
+        self._send_queues: dict[str, asyncio.Queue] = {}
+        self._send_workers: dict[str, asyncio.Task] = {}
+        # una vez apagado el servicio no se reviven workers: si no, un emit
+        # tardio recrearia una tarea justo cuando estamos cerrando la base
+        self._envios_detenidos = False
         self._ai_provider = build_ai_player("random")
         self._ai_tasks: dict[str, asyncio.Task] = {}
+        # timeout de turno: uno por partida, arrancado al empezar cada turno
+        # humano; se cancela apenas el turno avanza por cualquier via.
+        self._turn_timers: dict[str, asyncio.Task] = {}
+        # bandera propia (no reusar _envios_detenidos): detener_timers() la
+        # marca ANTES de cancelar, asi ningun _vencer() en vuelo puede crear
+        # un timer nuevo que quede fuera del snapshot que se está cancelando
+        self._timers_detenidos = False
+        # idem para los timers de gracia de reconexión (Room._offline_tasks):
+        # nadie los cancelaba en el apagado, un _grace() que ya paso su sleep
+        # (tan chico como 0.05s en tests) podia escribir PLAYER_DISCONNECTED
+        # (persistido) después de que el lifespan cerrara la base
+        self._gracias_detenidas = False
+        # Todas las tareas sueltas que tocan SQLite (turnos y colocaciones de
+        # bot, fan-out de saludos, rearmado del reloj tras una caida) se
+        # registran acá: sin esto quedaban corriendo contra una base que el
+        # lifespan ya cerró. _schedule_ai_placements era el caso peor, porque
+        # ni siquiera guardaba referencia a su tarea.
+        self._tareas_de_fondo: set[asyncio.Task] = set()
+        self._fondo_detenido = False
         self.counters: dict[str, int] = {"games_created": 0, "events_emitted": 0}
 
     # --- helpers -----------------------------------------------------------
@@ -129,13 +167,138 @@ class GameService:
             seq_lock = self._seq_locks.setdefault(game_id, asyncio.Lock())
             async with seq_lock:
                 event.sequence_number = await repo.next_sequence_number(self.db, game_id)
+                if visibility == Visibility.PUBLIC:
+                    event.public_sequence = await repo.next_public_sequence(self.db, game_id)
                 await repo.append_event(self.db, event.model_dump(mode="json"))
+                # Encolar adentro del lock de secuencia: asi el orden de envio
+                # es por construccion el mismo que el de sequence_number. Si se
+                # encola afuera, dos emit concurrentes pueden interleavarse en
+                # cualquier await intermedio y salir al reves de como se
+                # numeraron.
+                self._encolar_envio(game_id, event)
+        else:
+            self._encolar_envio(game_id, event)
         self.counters["events_emitted"] += 1
-        roles = await self._roles_map(game_id)
-        await self.manager.broadcast(game_id, event, roles)
         if persisted:
             await self._after_emit(game_id, event)
         return event
+
+    def _encolar_envio(self, game_id: str, event: GameEvent) -> None:
+        if self._envios_detenidos:
+            return
+        cola = self._send_queues.setdefault(game_id, asyncio.Queue())
+        cola.put_nowait(event)
+        worker = self._send_workers.get(game_id)
+        if worker is None or worker.done():
+            self._send_workers[game_id] = asyncio.create_task(self._drenar_envios(game_id))
+
+    async def _drenar_envios(self, game_id: str) -> None:
+        """Un worker por partida, vivo mientras viva el proceso.
+
+        No se apaga por inactividad a proposito: cuando lo hacia, entre que la
+        tarea recibia la cancelacion del timeout y quedaba en done() pasaban
+        ticks del loop en los que un emit veia "worker vivo", no creaba uno
+        nuevo, y el evento quedaba encolado sin nadie que lo consumiera.
+        """
+        cola = self._send_queues[game_id]
+        while True:
+            event = await cola.get()
+            try:
+                # los roles se resuelven aca y no en emit: saca una consulta del
+                # camino caliente y evita un await entre numerar y encolar
+                roles = await self._roles_map(game_id)
+                await self.manager.broadcast(game_id, event, roles)
+            except Exception:
+                # CancelledError es BaseException: no cae aca, se propaga y
+                # apaga el worker (solo la manda detener_envios)
+                log.warning("fallo en broadcast diferido", exc_info=True)
+            finally:
+                cola.task_done()
+
+    async def detener_envios(self) -> None:
+        """Cancela los workers de envio y los espera.
+
+        Se llama en el apagado ANTES de cerrar las bases: los workers consultan
+        la DB para resolver roles, y dejarlos sueltos compitiendo contra el
+        cierre de SQLite es como se ensucian los WAL.
+        """
+        self._envios_detenidos = True
+        workers = [w for w in self._send_workers.values() if not w.done()]
+        for worker in workers:
+            worker.cancel()
+        if workers:
+            await asyncio.gather(*workers, return_exceptions=True)
+        self._send_workers.clear()
+        self._send_queues.clear()
+
+    async def detener_timers(self) -> None:
+        """Cancela los timeouts de turno pendientes, igual que detener_envios
+        con los workers de envio. Se llama en el apagado del proceso: un timer
+        huerfano que dispare despues de cerrar la base rompe todo.
+
+        La bandera se marca ANTES de armar la lista a cancelar: si no, un
+        _vencer() que este a mitad de camino puede colarse y crear un timer
+        nuevo (via _armar_timeout_de_turno) que no esta en ese snapshot y
+        sobrevive al apagado."""
+        self._timers_detenidos = True
+        timers = [t for t in self._turn_timers.values() if not t.done()]
+        for timer in timers:
+            timer.cancel()
+        if timers:
+            await asyncio.gather(*timers, return_exceptions=True)
+        self._turn_timers.clear()
+
+    async def detener_gracias_de_reconexion(self) -> None:
+        """Cancela los timers de gracia de reconexión pendientes en todas las
+        salas (Room._offline_tasks), mismo patrón que detener_timers con
+        _turn_timers. Se llama en el apagado, ANTES de cerrar la base: un
+        _grace() que ya pasó su `asyncio.sleep(reconnect_grace_seconds)` (tan
+        chico como 0.05s en tests, 30s por default en producción) puede
+        emitir PLAYER_DISCONNECTED (persistido, con su propia escritura a
+        SQLite) después de que el lifespan cierre la conexión, si nadie lo
+        cancela primero. Nadie lo hacía: a diferencia de _turn_timers y los
+        workers de envío, Room._offline_tasks nunca tuvo un `detener_*`
+        correspondiente."""
+        self._gracias_detenidas = True
+        tareas = [
+            t
+            for room in self.manager.rooms.values()
+            for t in room._offline_tasks.values()
+            if not t.done()
+        ]
+        for t in tareas:
+            t.cancel()
+        if tareas:
+            await asyncio.gather(*tareas, return_exceptions=True)
+
+    def _crear_tarea_de_fondo(self, coro) -> asyncio.Task | None:
+        """Crea una tarea suelta y la deja registrada para el apagado.
+
+        Devuelve None si el apagado ya empezó (y descarta la corrutina para no
+        dejar un "coroutine was never awaited" colgando).
+        """
+        if self._fondo_detenido:
+            coro.close()
+            return None
+        tarea = asyncio.create_task(coro)
+        self._tareas_de_fondo.add(tarea)
+        tarea.add_done_callback(self._tareas_de_fondo.discard)
+        return tarea
+
+    async def detener_tareas_de_fondo(self) -> None:
+        """Cancela las tareas sueltas y las espera, mismo patrón que
+        detener_envios/detener_timers. Se llama en el apagado ANTES de cerrar
+        las bases: turnos y colocaciones de bot consultan y escriben SQLite,
+        y rehidratar_partidas_activas las CREA al arrancar, así que un
+        proceso que se levanta y se baja enseguida las tenía garantizadas."""
+        self._fondo_detenido = True
+        tareas = [t for t in self._tareas_de_fondo if not t.done()]
+        for tarea in tareas:
+            tarea.cancel()
+        if tareas:
+            await asyncio.gather(*tareas, return_exceptions=True)
+        self._tareas_de_fondo.clear()
+        self._ai_tasks.clear()
 
     async def _after_emit(self, game_id: str, event: GameEvent) -> None:
         """Efectos secundarios que nunca deben voltear la acción principal."""
@@ -164,18 +327,47 @@ class GameService:
                     event.event_type, event.event_id,
                 )
             if event.event_type == EventType.GAME_STARTED:
-                # saludos grabados: cada par jugador→rival con audio de inicio
-                seated = [p for p in players if p["role"] in PLAYING_ROLES and p.get("profile_id")]
-                for owner in seated:
-                    for target in seated:
-                        if owner["id"] == target["id"]:
-                            continue
-                        await self._fire_taunt(
-                            game_id, players, owner["id"], target["id"],
-                            EventType.GAME_STARTED, event.event_id,
-                        )
+                # En tarea aparte: _after_emit se awaitea dentro de emit(), y el
+                # emit de GAME_STARTED corre dentro del `async with
+                # self.lock(game_id)` de start_game. Bajar de 56 a 8 saludos no
+                # alcanzaba: esas 8 emisiones, con su INSERT y su fan-out cada
+                # una, seguian reteniendo el lock de la partida justo cuando los
+                # ocho clientes estan renderizando el mapa.
+                self._crear_tarea_de_fondo(
+                    self._saludos_de_bienvenida(game_id, players, event.event_id)
+                )
         except Exception:
             log.warning("fallo en efectos post-evento", exc_info=True)
+
+    async def _saludos_de_bienvenida(
+        self, game_id: str, players: list[dict], source_event_id: str
+    ) -> None:
+        """Un saludo por jugador, no uno por PAR: el doble bucle original daba
+        56 emisiones con 8 jugadores (O(n^2)).
+
+        Cada uno saluda a un rival DISTINTO: la version anterior elegia
+        siempre "el primer jugador sentado", asi que con 8 jugadores seis de
+        ocho nunca disparaban su saludo real contra su rival y la grabacion
+        quedaba muda. Con el corrimiento circular cada asiento saluda al
+        siguiente y ningun par se repite.
+        """
+        try:
+            seated = [
+                p for p in players
+                if p["role"] in PLAYING_ROLES and p.get("profile_id")
+            ]
+            if len(seated) < 2:
+                return
+            for i, owner in enumerate(seated):
+                rival = seated[(i + 1) % len(seated)]
+                await self._fire_taunt(
+                    game_id, players, owner["id"], rival["id"],
+                    EventType.GAME_STARTED, source_event_id,
+                )
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            log.warning("fallo el fan-out de saludos", exc_info=True)
 
     async def _fire_taunt(
         self,
@@ -324,7 +516,11 @@ class GameService:
             nickname = nickname or profile["nickname"]
             if not nickname.strip():
                 nickname = profile["nickname"]
-            color = color or profile["color"]
+            if role in (Role.PLAYER, Role.AI_PLAYER):
+                # solo quien se sienta a jugar hereda el color del perfil:
+                # invitar a un amigo como espectador desde su perfil (el flujo
+                # normal) le daba color y ese color salia de la paleta
+                color = color or profile["color"]
         nickname = sanitize_nickname(nickname)
         if not nickname:
             raise ServiceError(ErrorCode.INVALID_PAYLOAD, "apodo vacío")
@@ -333,6 +529,44 @@ class GameService:
             if nickname_editable is not None
             else bool(game["config"].get("nickname_editable_default", True))
         )
+        existentes = await repo.get_players(self.db, game_id)
+        if role in (Role.PLAYER, Role.AI_PLAYER):
+            # Mismo criterio que start_game: un asiento revocado (kick_player
+            # solo marca token_revoked, la fila sobrevive) NO ocupa lugar. Sin
+            # esto, echar a alguien que no llego y querer invitar su reemplazo
+            # daba 409 "la partida admite hasta N jugadores" -- justo el caso
+            # que motivo esta fase.
+            jugando = [
+                p for p in existentes
+                if p["role"] in PLAYING_ROLES and not p["token_revoked"]
+            ]
+            modo = GAME_MODES[game["config"].get("game_mode", DEFAULT_MODE)]
+            if len(jugando) >= modo["max_players"]:
+                raise ServiceError(
+                    ErrorCode.GAME_STATE_CONFLICT,
+                    f"la partida admite hasta {modo['max_players']} jugadores",
+                )
+        # Color unico: dos jugadores del mismo color son indistinguibles en el mapa
+        # (incidente 27/07: Seba y Gabi tenian los dos "red"). Solo aplica a
+        # roles que se sientan a jugar: un espectador o admin sin color no debe
+        # consumir la paleta (regresion: antes quedaban con color=None).
+        if role in (Role.PLAYER, Role.AI_PLAYER):
+            # `usados` se acota por rol Y por token_revoked, exactamente igual
+            # que el conteo de asientos de arriba. Acotar solo por rol dejaba
+            # A1 a medias: cada echado seguia reteniendo su color para siempre,
+            # asi que echar+reemplazar en bucle agotaba la paleta igual (al
+            # tercer reemplazo, 409 "no quedan colores libres"). Expandir la
+            # paleta a 10 solo compraba dos reemplazos; la causa es esta.
+            usados = {
+                p["color"] for p in existentes
+                if p.get("color")
+                and p["role"] in PLAYING_ROLES
+                and not p["token_revoked"]
+            }
+            if not color or color in usados:
+                color = next((c for c in COLORES_DISPONIBLES if c not in usados), None)
+                if color is None:
+                    raise ServiceError(ErrorCode.GAME_STATE_CONFLICT, "no quedan colores libres")
         token: str | None = None
         token_hash: str | None = None
         if role != Role.AI_PLAYER:
@@ -488,8 +722,90 @@ class GameService:
             self._schedule_ai_placements(game_id)
             return {"status": GameStatus.RUNNING, "turn_order": turn.order}
 
+    def _cancelar_timeout_de_turno(self, game_id: str) -> None:
+        viejo = self._turn_timers.pop(game_id, None)
+        if viejo:
+            viejo.cancel()
+
+    def _armar_timeout_de_turno(self, game_id: str, player_id: str, turn_number: int) -> None:
+        """Arranca el reloj del turno actual. Cancela cualquier timer previo
+        de esta partida: siempre hay a lo sumo uno vivo por partida."""
+        self._cancelar_timeout_de_turno(game_id)
+        if self._timers_detenidos:
+            return  # apagado en curso: no crear tareas nuevas
+
+        async def _vencer() -> None:
+            try:
+                await asyncio.sleep(self.settings.turn_timeout_seconds)
+                turn: TurnState | None = None
+                async with self.lock(game_id):
+                    # Todo bajo el mismo lock y sin soltarlo en el medio.
+                    game = await self.get_game_or_404(game_id)
+                    if game["status"] != GameStatus.RUNNING:
+                        return  # se pausó/terminó/canceló mientras dormíamos
+                    engine = await self._engine(game)
+                    if (
+                        engine.stage != "turns"
+                        or engine.turn.turn_number != turn_number
+                        or engine.turn.current_player_id != player_id
+                    ):
+                        return  # el turno ya avanzó (o cambió de dueño) por su cuenta
+                    room = self.manager.room(game_id)
+                    if room.sockets.get(player_id):
+                        return  # reconectó: nunca se lo saltea
+                    # A partir de acá, mutación SINCRÓNICA del estado, sin
+                    # ningún await en el medio: registrar una reconexión no
+                    # necesita este lock (room.add() es sincrónico, en el
+                    # endpoint WS), así que cualquier await entre el chequeo
+                    # de sockets y la mutación real es ventana suficiente
+                    # para que el jugador reconecte y pierda el turno igual
+                    # pese a estar presente (así se coló el hallazgo crítico
+                    # de la ronda anterior: el emit incondicional de
+                    # TURN_ENDED, con su round-trip a SQLite, quedaba en el
+                    # medio). Se duplica a propósito la secuencia de
+                    # _cerrar_y_avanzar_turno en vez de reusarla: ese helper
+                    # intercala los emits ENTRE las mutaciones para el
+                    # camino normal de end_turn, que ya funciona y no hay
+                    # que tocar.
+                    wager_result = engine.resolve_wager(player_id)
+                    card = engine.award_card_if_due(player_id)
+                    turn = engine.advance_turn()
+                    # Desde acá el turno YA avanzó: los awaits que siguen son
+                    # solo persistencia/notificación, no pueden "deshacer"
+                    # el salteo aunque el jugador reconecte mientras corren.
+                    await self._save_engine(game_id)
+                    if wager_result is not None:
+                        await self.emit(
+                            game_id, EventType.WAGER_RESOLVED, actor_id=player_id,
+                            payload=wager_result,
+                        )
+                    if card is not None:
+                        await self.emit(
+                            game_id, EventType.CARD_AWARDED, actor_id=player_id,
+                            payload={"player_id": player_id},
+                        )
+                        await self._emit_hand(game_id, engine, player_id)
+                    await self.emit(
+                        game_id, EventType.TURN_ENDED, actor_id=player_id, payload={},
+                    )
+                # El evento se emite DESPUÉS de confirmar que el turno avanzó
+                # de verdad: si algo arriba hubiera fallado o vuelto antes,
+                # no queda un turn.skipped mintiendo en el historial.
+                await self.emit(
+                    game_id, EventType.TURN_SKIPPED, actor_id=player_id,
+                    payload={"player_id": player_id, "reason": "offline"},
+                )
+                await self._start_turn(game_id, turn.current_player_id, turn.turn_number)
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                log.warning("fallo el timeout de turno", exc_info=True)
+
+        self._turn_timers[game_id] = asyncio.create_task(_vencer())
+
     async def _start_turn(self, game_id: str, player_id: str | None, turn_number: int) -> None:
         if player_id is None:
+            self._cancelar_timeout_de_turno(game_id)
             return
         game = await repo.get_game(self.db, game_id)
         engine = await self._engine(game) if game else None
@@ -513,12 +829,20 @@ class GameService:
             )
         player = await repo.get_player(self.db, player_id)
         if player and player["role"] == Role.AI_PLAYER:
+            # los bots ya tienen su propio agendado; no armar el timeout
+            self._cancelar_timeout_de_turno(game_id)
             self._schedule_ai_turn(game_id, player_id)
+        elif player:
+            self._armar_timeout_de_turno(game_id, player_id, turn_number)
+        else:
+            self._cancelar_timeout_de_turno(game_id)
 
     async def pause_game(self, game_id: str) -> None:
         game = await self.get_game_or_404(game_id)
         if game["status"] != GameStatus.RUNNING:
             raise ServiceError(ErrorCode.GAME_STATE_CONFLICT, "solo se pausa una partida en curso")
+        # nadie esta "en el reloj" mientras la partida esta pausada
+        self._cancelar_timeout_de_turno(game_id)
         await self._set_status(game_id, GameStatus.PAUSED)
         await self.emit(game_id, EventType.GAME_PAUSED)
 
@@ -528,6 +852,13 @@ class GameService:
             raise ServiceError(ErrorCode.GAME_STATE_CONFLICT, "la partida no está pausada")
         await self._set_status(game_id, GameStatus.RUNNING)
         await self.emit(game_id, EventType.GAME_RESUMED)
+        # el turno sigue donde estaba: reactivar su reloj si es de un humano
+        engine = await self._engine(game)
+        current_id = engine.turn.current_player_id
+        if current_id:
+            player = await repo.get_player(self.db, current_id)
+            if player and player["role"] != Role.AI_PLAYER:
+                self._armar_timeout_de_turno(game_id, current_id, engine.turn.turn_number)
 
     async def finish_game(
         self,
@@ -546,6 +877,7 @@ class GameService:
             "total_events": events_count,
             "objective": winning_objective,
         }
+        self._cancelar_timeout_de_turno(game_id)
         await self._set_status(game_id, GameStatus.FINISHED)
         await self.emit(game_id, EventType.GAME_FINISHED, target_id=winner_player_id, payload=summary)
         await self._publish_stats(game_id)
@@ -577,6 +909,7 @@ class GameService:
         game = await self.get_game_or_404(game_id)
         if game["status"] in (GameStatus.FINISHED, GameStatus.CANCELLED):
             raise ServiceError(ErrorCode.GAME_STATE_CONFLICT, "la partida ya terminó")
+        self._cancelar_timeout_de_turno(game_id)
         await self._set_status(game_id, GameStatus.CANCELLED)
         await self.emit(game_id, EventType.GAME_CANCELLED)
 
@@ -595,8 +928,34 @@ class GameService:
     async def confirm_join(self, code: str, token: str, nickname: str | None) -> dict:
         resolved = await self.resolve_join(code, token)
         game, player = resolved["game"], resolved["player"]
-        if game["status"] not in ACTIVE_STATUSES:
-            raise ServiceError(ErrorCode.GAME_STATE_CONFLICT, "la partida no admite ingresos")
+        # Recuperar un asiento convertido a IA tiene que poder pasar con la
+        # partida YA en curso: es exactamente para eso que existe la
+        # conversion (convert_seat_to_ai promete que "su link sigue siendo
+        # valido y al volver a entrar recupera el asiento"). Con la
+        # restauracion despues del guard de PRE_START_STATUSES era codigo
+        # inalcanzable: el jugador igual se conectaba por WebSocket y miraba
+        # a un bot jugar su asiento, sin error y sin explicacion.
+        # Se exige joined_at: quien nunca se unio no tiene asiento que
+        # recuperar (no esta en turn.order ni tiene territorios) y sigue
+        # cayendo en el guard, que es el caso original que hay que sostener.
+        # Y se acota a RUNNING/PAUSED: en una partida FINISHED o CANCELLED no
+        # hay ningun asiento que recuperar, y sin esto el join devolvia 200,
+        # restauraba el rol y dejaba un PLAYER_JOINED en el log de una partida
+        # cerrada, contradiciendo el mensaje que el jugador deberia ver.
+        recupera_asiento_ia = bool(
+            player["role"] == Role.AI_PLAYER
+            and player["token_hash"]
+            and player["joined_at"]
+            and game["status"] in (GameStatus.RUNNING, GameStatus.PAUSED)
+        )
+        if game["status"] not in PRE_START_STATUSES and not recupera_asiento_ia:
+            # Antes se aceptaba durante RUNNING/PAUSED: quien no habia entrado
+            # antes del arranque quedaba conectado pero sin territorios, sin
+            # objetivo y fuera del turn.order, sin ningun evento que lo explicara.
+            raise ServiceError(
+                ErrorCode.GAME_STATE_CONFLICT,
+                "la partida ya empezó: pedile al anfitrión que te sume a la próxima",
+            )
         if nickname and player["nickname_editable"]:
             clean = sanitize_nickname(nickname)
             if clean:
@@ -604,12 +963,7 @@ class GameService:
                 player["nickname"] = clean
         if player["role"] == Role.AI_PLAYER and player["token_hash"]:
             # el humano vuelve: recupera el asiento que jugaba la IA
-            await repo.update_player(self.db, player["id"], role=Role.PLAYER)
-            player["role"] = Role.PLAYER
-            await self.emit(
-                game["id"], EventType.PLAYER_JOINED, actor_id=player["id"],
-                payload={"player": repo.public_player(player)},
-            )
+            await self._restaurar_asiento_humano(game, player)
         first_join = player["joined_at"] is None
         if first_join:
             from ..domain.events import utcnow_iso
@@ -691,6 +1045,15 @@ class GameService:
             game_id, EventType.PRESENCE_CHANGED, actor_id=player_id,
             payload={"presence": "reconnecting"}, persisted=False,
         )
+        # En tarea aparte, no en linea: el `finally` del endpoint WS puede
+        # correr dentro de un cancel scope YA cancelado (TestClient al cerrar
+        # el socket, uvicorn al apagarse), y ahi cualquier `await` levanta
+        # CancelledError antes de llegar a la base. Verificado con
+        # instrumentacion: en linea, la lectura de la partida nunca completaba.
+        # Ademas saca I/O de SQLite del camino de la baja de una conexion.
+        self._crear_tarea_de_fondo(
+            self._rearmar_reloj_si_es_su_turno(game_id, player_id)
+        )
 
         async def _grace() -> None:
             try:
@@ -710,7 +1073,47 @@ class GameService:
         old = room._offline_tasks.get(player_id)
         if old:
             old.cancel()
+        if self._gracias_detenidas:
+            return  # apagado en curso: no crear tareas nuevas
         room._offline_tasks[player_id] = asyncio.create_task(_grace())
+
+    async def _rearmar_reloj_si_es_su_turno(self, game_id: str, player_id: str) -> None:
+        """El timeout de turno era de un solo disparo: _vencer() retorna sin
+        rearmar nada si el jugador estaba online al cumplirse el plazo, y
+        nadie lo volvia a armar. Con 8 personas los turnos superan los 180 s
+        de forma rutinaria, asi que el jugador que estaba presente a los 180 s
+        y se caia a los 181 s no tenia ningun reloj que lo salteara: la mesa
+        quedaba esperandolo para siempre. Este es el camino COMUN, no un borde.
+
+        No crea timers duplicados: _armar_timeout_de_turno cancela el timer
+        previo de la partida antes de crear el nuevo (hay a lo sumo uno vivo
+        por partida, por construccion). Ese mismo hecho es el que obliga al
+        re-chequeo final de mas abajo.
+        """
+        try:
+            game = await repo.get_game(self.db, game_id)
+            if game is None or game["status"] != GameStatus.RUNNING:
+                return
+            engine = await self._engine(game)
+            if engine.stage != "turns" or engine.turn.current_player_id != player_id:
+                return
+            player = await repo.get_player(self.db, player_id)
+            if player is None or player["role"] == Role.AI_PLAYER:
+                return
+            # Re-chequeo pegado al armado, sin NINGUN await en el medio: esta
+            # tarea corre fuera del lock de la partida y _engine() devuelve el
+            # objeto vivo cacheado, asi que durante el await de get_player el
+            # turno pudo avanzar a otro jugador (y ese otro ya tener SU reloj
+            # armado). Armar igual cancelaria el reloj del nuevo jugador de
+            # turno para instalar uno inutil del que se fue: el turno del
+            # siguiente quedaria sin vigilancia, que es justo el agujero que
+            # este rearmado vino a tapar.
+            if engine.stage != "turns" or engine.turn.current_player_id != player_id:
+                return
+            self._armar_timeout_de_turno(game_id, player_id, engine.turn.turn_number)
+        except Exception:
+            # nunca debe voltear la baja de una conexion
+            log.warning("no se pudo rearmar el reloj de turno", exc_info=True)
 
     # --- acciones de jugador ------------------------------------------------
 
@@ -1129,20 +1532,35 @@ class GameService:
                 )
             return turn.to_dict()
 
+    async def _cerrar_y_avanzar_turno(
+        self, game_id: str, engine: GameEngine, player_id: str
+    ) -> TurnState:
+        """Núcleo compartido de fin de turno.
+
+        Asume que el lock de la partida YA está tomado por quien llama. Está
+        factorizado así para que el timeout de ausencia pueda revalidar
+        presencia y turn_number bajo el MISMO lock que hace el avance de
+        turno, sin soltarlo en el medio: si no, queda una ventana entre
+        "está ausente" y "le sacamos el turno" en la que puede reconectar y
+        perder el turno igual.
+        """
+        await self._resolve_wager_on_turn_close(game_id, engine, player_id)
+        await self._award_card_on_turn_close(game_id, engine, player_id)
+        await self.emit(game_id, EventType.TURN_ENDED, actor_id=player_id, payload={})
+        turn = engine.advance_turn()
+        await self._save_engine(game_id)
+        return turn
+
     async def end_turn(self, game_id: str, player_id: str) -> None:
         async with self.lock(game_id):
             engine = await self._require_running_turn(game_id, player_id)
-            await self._resolve_wager_on_turn_close(game_id, engine, player_id)
-            await self._award_card_on_turn_close(game_id, engine, player_id)
-            await self.emit(game_id, EventType.TURN_ENDED, actor_id=player_id, payload={})
-            turn = engine.advance_turn()
-            await self._save_engine(game_id)
+            turn = await self._cerrar_y_avanzar_turno(game_id, engine, player_id)
         await self._start_turn(game_id, turn.current_player_id, turn.turn_number)
 
     # --- jugador IA ---------------------------------------------------------
 
     def _schedule_ai_placements(self, game_id: str) -> None:
-        asyncio.create_task(self._ai_placements(game_id))
+        self._crear_tarea_de_fondo(self._ai_placements(game_id))
 
     async def _ai_placements(self, game_id: str) -> None:
         """Los bots colocan su pool inicial apenas arranca cada ronda."""
@@ -1179,7 +1597,9 @@ class GameService:
                     pass
             await self._ai_turn(game_id, player_id)
 
-        self._ai_tasks[key] = asyncio.create_task(_run())
+        tarea = self._crear_tarea_de_fondo(_run())
+        if tarea is not None:
+            self._ai_tasks[key] = tarea
 
     async def _ai_turn(self, game_id: str, player_id: str) -> None:
         """El bot juega el turno completo: canje, refuerzos, ataques y fortify.
@@ -1270,6 +1690,30 @@ class GameService:
         except Exception:
             log.warning("la IA no pudo cerrar su turno", exc_info=True)
 
+    def _cancelar_tarea_ia(self, game_id: str, player_id: str) -> None:
+        tarea = self._ai_tasks.pop(f"{game_id}:{player_id}", None)
+        if tarea and not tarea.done():
+            tarea.cancel()
+
+    async def _restaurar_asiento_humano(self, game: dict, player: dict) -> None:
+        """Inversa exacta de convert_seat_to_ai: el humano vuelve y recupera
+        su asiento. Si la partida esta en curso y el turno es de ese asiento,
+        hay que desagendar al bot y devolverle el reloj al humano; si no, el
+        bot sigue jugando el turno de alguien que ya volvio."""
+        game_id = game["id"]
+        await repo.update_player(self.db, player["id"], role=Role.PLAYER)
+        player["role"] = Role.PLAYER
+        await self.emit(
+            game_id, EventType.PLAYER_JOINED, actor_id=player["id"],
+            payload={"player": repo.public_player(player)},
+        )
+        if game["status"] != GameStatus.RUNNING:
+            return
+        engine = await self._engine(game)
+        if engine.stage == "turns" and engine.turn.current_player_id == player["id"]:
+            self._cancelar_tarea_ia(game_id, player["id"])
+            self._armar_timeout_de_turno(game_id, player["id"], engine.turn.turn_number)
+
     async def convert_seat_to_ai(self, game_id: str, player_id: str) -> None:
         """El admin convierte el asiento de un ausente en bot; su link sigue
         siendo válido y al volver a entrar recupera el asiento."""
@@ -1287,7 +1731,65 @@ class GameService:
         )
         engine = await self._engine(game)
         if game["status"] == GameStatus.RUNNING and engine.turn.current_player_id == player_id:
+            # el asiento ya no es humano: el timeout de ausencia no aplica,
+            # el bot tiene su propio agendado
+            self._cancelar_timeout_de_turno(game_id)
             self._schedule_ai_turn(game_id, player_id)
+
+    async def rehidratar_partidas_activas(self) -> int:
+        """Reagenda los turnos de bot y los relojes de turno humanos al
+        levantar el proceso.
+
+        _ai_tasks y _turn_timers son memoria pura y el lifespan no recorria
+        nada al arrancar: un reinicio durante el turno de un bot dejaba la
+        partida trabada para siempre, y un reinicio durante el turno de un
+        humano dejaba apagada la proteccion contra ausencias
+        (_armar_timeout_de_turno solo se llama desde _start_turn y
+        resume_game, y ninguno corre al levantar el proceso). Reiniciar es el
+        flujo NORMAL de este proyecto -- el tunel es efimero y hay que
+        regenerar los links en cada sesion -- asi que era el escenario mas
+        comun, no un borde.
+
+        Solo aplica a la fase de turnos ("stage" == "turns"); la colocación
+        inicial ya se reintenta sola vía otros mecanismos y no es un "turno"
+        en este sentido.
+
+        Nunca debe impedir que el backend arranque: cualquier partida
+        corrupta se loguea y se salta; si falla el listado entero, se loguea
+        y se devuelve 0.
+        """
+        reagendados = 0
+        relojes = 0
+        try:
+            partidas = await repo.list_games_by_status(self.db, GameStatus.RUNNING)
+        except Exception:
+            log.warning("no se pudieron listar las partidas activas", exc_info=True)
+            return 0
+        for game in partidas:
+            try:
+                engine = await self._engine(game)
+                if engine.stage != "turns":
+                    continue
+                actual = engine.turn.current_player_id
+                if actual is None:
+                    continue
+                player = await repo.get_player(self.db, actual)
+                if player and player["role"] == Role.AI_PLAYER:
+                    self._schedule_ai_turn(game["id"], actual)
+                    reagendados += 1
+                elif player:
+                    self._armar_timeout_de_turno(
+                        game["id"], actual, engine.turn.turn_number
+                    )
+                    relojes += 1
+            except Exception:
+                log.warning(
+                    "fallo rehidratando una partida", exc_info=True,
+                    extra={"ctx": {"game_id": game.get("id")}},
+                )
+        self.counters["ai_turns_rehydrated"] = reagendados
+        self.counters["turn_timers_rehydrated"] = relojes
+        return reagendados
 
     # --- métricas -----------------------------------------------------------
 

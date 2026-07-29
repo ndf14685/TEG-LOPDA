@@ -63,6 +63,7 @@ class EventType(StrEnum):
 
     TURN_STARTED = "turn.started"
     TURN_ENDED = "turn.ended"
+    TURN_SKIPPED = "turn.skipped"  # se salteo el turno de un jugador ausente
     WAGER_PLACED = "wager.placed"        # el activo arriesga refuerzos
     WAGER_RESOLVED = "wager.resolved"    # resultado al cerrar el turno
     DICE_ROLLED = "dice.rolled"

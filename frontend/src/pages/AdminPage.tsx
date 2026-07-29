@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import type { AdminGameDetailResponse, PlayerRole, Profile } from '@teg/contracts';
 import { api, toFrontendUrl } from '../services/api/apiClient';
+import { playtestClient } from '../services/playtest/playtestClient';
 import { useSessionStore } from '../state/sessionStore';
 import { ALL_COLORS, PLAYER_COLOR_LABEL, colorValue } from '../utils/playerColors';
 import { PlayerAvatar } from '../components/players/PlayerAvatar';
@@ -180,6 +181,11 @@ export function AdminPage() {
           <p className="text-sm text-stone-400">
             {detail.game.name} · sala <code className="text-xs">{code}</code> · estado {detail.game.status}
           </p>
+          {playtestClient.status && (
+            <p className="mt-1 text-[11px] text-stone-500">
+              versión 0.1.0 · build {playtestClient.status.build} · deploy {playtestClient.status.server_time_utc} · {playtestClient.status.env} · playtest {playtestClient.status.active ? 'activo' : 'inactivo'}
+            </p>
+          )}
         </div>
         <Link to={`/lobby/${code}`} data-testid="go-lobby" className="rounded-lg bg-gold-500 px-4 py-2 font-bold text-war-950 hover:bg-gold-400">
           Ir al lobby →

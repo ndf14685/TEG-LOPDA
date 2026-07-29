@@ -22,4 +22,6 @@ EXPOSE 8123
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD ["uv", "run", "--no-sync", "python", "-c", "import urllib.request,os,sys; sys.exit(0 if urllib.request.urlopen(f'http://127.0.0.1:{os.environ[\"TEG_PORT\"]}/health', timeout=3).status == 200 else 1)"]
 
-CMD ["sh", "-c", "uv run --no-sync uvicorn teg_backend.main:app --host $TEG_HOST --port $TEG_PORT"]
+# IMPORTANTE: nunca agregar --workers. El estado del juego (engines, salas,
+# locks) vive en memoria del proceso; mas de un worker rompe el juego.
+CMD ["sh", "-c", "uv run --no-sync uvicorn teg_backend.main:app --host $TEG_HOST --port $TEG_PORT --no-access-log --proxy-headers --forwarded-allow-ips '*'"]
