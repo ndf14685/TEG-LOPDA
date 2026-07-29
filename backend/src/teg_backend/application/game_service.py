@@ -15,7 +15,7 @@ from ..ai.ai_player import MoveRequest, build_ai_player, request_move
 from ..ai.commentator import Comment, CommentatorService
 from ..config import Settings
 from ..domain import engine as eng
-from ..domain.engine import EngineError, GameEngine
+from ..domain.engine import EngineError, GameEngine, TurnState
 from ..domain.enums import (
     PLAYING_ROLES, ErrorCode, EventType, GameStatus, Role, Visibility,
 )
@@ -91,6 +91,10 @@ class GameService:
         # timeout de turno: uno por partida, arrancado al empezar cada turno
         # humano; se cancela apenas el turno avanza por cualquier via.
         self._turn_timers: dict[str, asyncio.Task] = {}
+        # bandera propia (no reusar _envios_detenidos): detener_timers() la
+        # marca ANTES de cancelar, asi ningun _vencer() en vuelo puede crear
+        # un timer nuevo que quede fuera del snapshot que se está cancelando
+        self._timers_detenidos = False
         self.counters: dict[str, int] = {"games_created": 0, "events_emitted": 0}
 
     # --- helpers -----------------------------------------------------------
@@ -212,7 +216,13 @@ class GameService:
     async def detener_timers(self) -> None:
         """Cancela los timeouts de turno pendientes, igual que detener_envios
         con los workers de envio. Se llama en el apagado del proceso: un timer
-        huerfano que dispare despues de cerrar la base rompe todo."""
+        huerfano que dispare despues de cerrar la base rompe todo.
+
+        La bandera se marca ANTES de armar la lista a cancelar: si no, un
+        _vencer() que este a mitad de camino puede colarse y crear un timer
+        nuevo (via _armar_timeout_de_turno) que no esta en ese snapshot y
+        sobrevive al apagado."""
+        self._timers_detenidos = True
         timers = [t for t in self._turn_timers.values() if not t.done()]
         for timer in timers:
             timer.cancel()
@@ -598,29 +608,43 @@ class GameService:
         """Arranca el reloj del turno actual. Cancela cualquier timer previo
         de esta partida: siempre hay a lo sumo uno vivo por partida."""
         self._cancelar_timeout_de_turno(game_id)
-        if self._envios_detenidos:
+        if self._timers_detenidos:
             return  # apagado en curso: no crear tareas nuevas
 
         async def _vencer() -> None:
             try:
                 await asyncio.sleep(self.settings.turn_timeout_seconds)
-                room = self.manager.room(game_id)
-                # Solo se saltea a quien NO esta conectado. Un jugador presente
-                # que se toma su tiempo para pensar nunca pierde el turno.
-                if room.sockets.get(player_id):
-                    return
+                turn: TurnState | None = None
                 async with self.lock(game_id):
+                    # Todo bajo el mismo lock y sin soltarlo en el medio. El
+                    # chequeo de sockets va DELIBERADAMENTE al final, recién
+                    # antes de actuar: registrar una reconexión no necesita
+                    # este lock (room.add() es sincrónico, en el endpoint WS),
+                    # así que si se revalida la presencia primero y el resto
+                    # de las lecturas (game, engine) queda después, esas
+                    # lecturas son ventana suficiente para que el jugador
+                    # reconecte y pierda el turno igual pese a estar presente.
                     game = await self.get_game_or_404(game_id)
                     if game["status"] != GameStatus.RUNNING:
-                        return  # se pauso/termino/cancelo mientras dormiamos
+                        return  # se pausó/terminó/canceló mientras dormíamos
                     engine = await self._engine(game)
-                    if engine.turn.turn_number != turn_number:
-                        return  # el turno ya avanzo por su cuenta
+                    if (
+                        engine.turn.turn_number != turn_number
+                        or engine.turn.current_player_id != player_id
+                    ):
+                        return  # el turno ya avanzó (o cambió de dueño) por su cuenta
+                    room = self.manager.room(game_id)
+                    if room.sockets.get(player_id):
+                        return  # reconectó: nunca se lo saltea
+                    turn = await self._cerrar_y_avanzar_turno(game_id, engine, player_id)
+                # El evento se emite DESPUÉS de confirmar que el turno avanzó
+                # de verdad: si algo arriba hubiera fallado o vuelto antes,
+                # no queda un turn.skipped mintiendo en el historial.
                 await self.emit(
                     game_id, EventType.TURN_SKIPPED, actor_id=player_id,
                     payload={"player_id": player_id, "reason": "offline"},
                 )
-                await self.end_turn(game_id, player_id)
+                await self._start_turn(game_id, turn.current_player_id, turn.turn_number)
             except asyncio.CancelledError:
                 raise
             except Exception:
@@ -1293,14 +1317,29 @@ class GameService:
                 )
             return turn.to_dict()
 
+    async def _cerrar_y_avanzar_turno(
+        self, game_id: str, engine: GameEngine, player_id: str
+    ) -> TurnState:
+        """Núcleo compartido de fin de turno.
+
+        Asume que el lock de la partida YA está tomado por quien llama. Está
+        factorizado así para que el timeout de ausencia pueda revalidar
+        presencia y turn_number bajo el MISMO lock que hace el avance de
+        turno, sin soltarlo en el medio: si no, queda una ventana entre
+        "está ausente" y "le sacamos el turno" en la que puede reconectar y
+        perder el turno igual.
+        """
+        await self._resolve_wager_on_turn_close(game_id, engine, player_id)
+        await self._award_card_on_turn_close(game_id, engine, player_id)
+        await self.emit(game_id, EventType.TURN_ENDED, actor_id=player_id, payload={})
+        turn = engine.advance_turn()
+        await self._save_engine(game_id)
+        return turn
+
     async def end_turn(self, game_id: str, player_id: str) -> None:
         async with self.lock(game_id):
             engine = await self._require_running_turn(game_id, player_id)
-            await self._resolve_wager_on_turn_close(game_id, engine, player_id)
-            await self._award_card_on_turn_close(game_id, engine, player_id)
-            await self.emit(game_id, EventType.TURN_ENDED, actor_id=player_id, payload={})
-            turn = engine.advance_turn()
-            await self._save_engine(game_id)
+            turn = await self._cerrar_y_avanzar_turno(game_id, engine, player_id)
         await self._start_turn(game_id, turn.current_player_id, turn.turn_number)
 
     # --- jugador IA ---------------------------------------------------------
