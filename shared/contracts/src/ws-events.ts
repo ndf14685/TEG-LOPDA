@@ -47,6 +47,10 @@ export const TurnStartedPayload = z.object({
   reinforcements_available: z.number().int().optional(),
 });
 export const TurnEndedPayload = z.object({ turn_number: z.number().int() }).partial();
+export const TurnSkippedPayload = z.object({
+  player_id: z.string(),
+  reason: z.literal('offline'),
+});
 export const DiceRolledPayload = z.object({ dice: z.array(z.number().int()), count: z.number().int() });
 export const AttackResolvedPayload = z.object({
   attacker_dice: z.array(z.number().int()),
@@ -185,6 +189,7 @@ export const EVENT_PAYLOAD_SCHEMAS = {
   'game.started': GameStartedPayload,
   'turn.started': TurnStartedPayload,
   'turn.ended': TurnEndedPayload,
+  'turn.skipped': TurnSkippedPayload,
   'wager.placed': WagerPlacedPayload,
   'wager.resolved': WagerResolvedPayload,
   'dice.rolled': DiceRolledPayload,

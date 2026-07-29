@@ -70,7 +70,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         try:
             yield
         finally:
-            # antes de cerrar las bases: los workers de envio las usan
+            # antes de cerrar las bases: timers y workers de envio las usan
+            await app.state.service.detener_timers()
             await app.state.service.detener_envios()
             await commentator.stop()
             await playtest_db.close()

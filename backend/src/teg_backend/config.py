@@ -73,6 +73,7 @@ class Settings:
     ai_player_think_seconds: float = 1.5
 
     reconnect_grace_seconds: float = 30.0
+    turn_timeout_seconds: float = 180.0
 
     playtest_mode: bool = False
     playtest_until: str = ""
@@ -121,6 +122,7 @@ def load_settings() -> Settings:
         ai_player_timeout_seconds=_float("TEG_AI_PLAYER_TIMEOUT_SECONDS", 5.0),
         ai_player_think_seconds=_float("TEG_AI_PLAYER_THINK_SECONDS", 1.5),
         reconnect_grace_seconds=_float("TEG_RECONNECT_GRACE_SECONDS", 30.0),
+        turn_timeout_seconds=_float("TEG_TURN_TIMEOUT_SECONDS", 180.0),
         playtest_mode=_bool("PLAYTEST_MODE", False),
         playtest_until=os.environ.get("PLAYTEST_UNTIL", ""),
         playtest_build=os.environ.get("PLAYTEST_BUILD", ""),

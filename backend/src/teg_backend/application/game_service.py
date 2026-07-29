@@ -83,6 +83,9 @@ class GameService:
         self._envios_detenidos = False
         self._ai_provider = build_ai_player("random")
         self._ai_tasks: dict[str, asyncio.Task] = {}
+        # timeout de turno: uno por partida, arrancado al empezar cada turno
+        # humano; se cancela apenas el turno avanza por cualquier via.
+        self._turn_timers: dict[str, asyncio.Task] = {}
         self.counters: dict[str, int] = {"games_created": 0, "events_emitted": 0}
 
     # --- helpers -----------------------------------------------------------
@@ -200,6 +203,17 @@ class GameService:
             await asyncio.gather(*workers, return_exceptions=True)
         self._send_workers.clear()
         self._send_queues.clear()
+
+    async def detener_timers(self) -> None:
+        """Cancela los timeouts de turno pendientes, igual que detener_envios
+        con los workers de envio. Se llama en el apagado del proceso: un timer
+        huerfano que dispare despues de cerrar la base rompe todo."""
+        timers = [t for t in self._turn_timers.values() if not t.done()]
+        for timer in timers:
+            timer.cancel()
+        if timers:
+            await asyncio.gather(*timers, return_exceptions=True)
+        self._turn_timers.clear()
 
     async def _after_emit(self, game_id: str, event: GameEvent) -> None:
         """Efectos secundarios que nunca deben voltear la acción principal."""
@@ -554,8 +568,48 @@ class GameService:
             self._schedule_ai_placements(game_id)
             return {"status": GameStatus.RUNNING, "turn_order": turn.order}
 
+    def _cancelar_timeout_de_turno(self, game_id: str) -> None:
+        viejo = self._turn_timers.pop(game_id, None)
+        if viejo:
+            viejo.cancel()
+
+    def _armar_timeout_de_turno(self, game_id: str, player_id: str, turn_number: int) -> None:
+        """Arranca el reloj del turno actual. Cancela cualquier timer previo
+        de esta partida: siempre hay a lo sumo uno vivo por partida."""
+        self._cancelar_timeout_de_turno(game_id)
+        if self._envios_detenidos:
+            return  # apagado en curso: no crear tareas nuevas
+
+        async def _vencer() -> None:
+            try:
+                await asyncio.sleep(self.settings.turn_timeout_seconds)
+                room = self.manager.room(game_id)
+                # Solo se saltea a quien NO esta conectado. Un jugador presente
+                # que se toma su tiempo para pensar nunca pierde el turno.
+                if room.sockets.get(player_id):
+                    return
+                async with self.lock(game_id):
+                    game = await self.get_game_or_404(game_id)
+                    if game["status"] != GameStatus.RUNNING:
+                        return  # se pauso/termino/cancelo mientras dormiamos
+                    engine = await self._engine(game)
+                    if engine.turn.turn_number != turn_number:
+                        return  # el turno ya avanzo por su cuenta
+                await self.emit(
+                    game_id, EventType.TURN_SKIPPED, actor_id=player_id,
+                    payload={"player_id": player_id, "reason": "offline"},
+                )
+                await self.end_turn(game_id, player_id)
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                log.warning("fallo el timeout de turno", exc_info=True)
+
+        self._turn_timers[game_id] = asyncio.create_task(_vencer())
+
     async def _start_turn(self, game_id: str, player_id: str | None, turn_number: int) -> None:
         if player_id is None:
+            self._cancelar_timeout_de_turno(game_id)
             return
         game = await repo.get_game(self.db, game_id)
         engine = await self._engine(game) if game else None
@@ -579,12 +633,20 @@ class GameService:
             )
         player = await repo.get_player(self.db, player_id)
         if player and player["role"] == Role.AI_PLAYER:
+            # los bots ya tienen su propio agendado; no armar el timeout
+            self._cancelar_timeout_de_turno(game_id)
             self._schedule_ai_turn(game_id, player_id)
+        elif player:
+            self._armar_timeout_de_turno(game_id, player_id, turn_number)
+        else:
+            self._cancelar_timeout_de_turno(game_id)
 
     async def pause_game(self, game_id: str) -> None:
         game = await self.get_game_or_404(game_id)
         if game["status"] != GameStatus.RUNNING:
             raise ServiceError(ErrorCode.GAME_STATE_CONFLICT, "solo se pausa una partida en curso")
+        # nadie esta "en el reloj" mientras la partida esta pausada
+        self._cancelar_timeout_de_turno(game_id)
         await self._set_status(game_id, GameStatus.PAUSED)
         await self.emit(game_id, EventType.GAME_PAUSED)
 
@@ -594,6 +656,13 @@ class GameService:
             raise ServiceError(ErrorCode.GAME_STATE_CONFLICT, "la partida no está pausada")
         await self._set_status(game_id, GameStatus.RUNNING)
         await self.emit(game_id, EventType.GAME_RESUMED)
+        # el turno sigue donde estaba: reactivar su reloj si es de un humano
+        engine = await self._engine(game)
+        current_id = engine.turn.current_player_id
+        if current_id:
+            player = await repo.get_player(self.db, current_id)
+            if player and player["role"] != Role.AI_PLAYER:
+                self._armar_timeout_de_turno(game_id, current_id, engine.turn.turn_number)
 
     async def finish_game(
         self,
@@ -612,6 +681,7 @@ class GameService:
             "total_events": events_count,
             "objective": winning_objective,
         }
+        self._cancelar_timeout_de_turno(game_id)
         await self._set_status(game_id, GameStatus.FINISHED)
         await self.emit(game_id, EventType.GAME_FINISHED, target_id=winner_player_id, payload=summary)
         await self._publish_stats(game_id)
@@ -643,6 +713,7 @@ class GameService:
         game = await self.get_game_or_404(game_id)
         if game["status"] in (GameStatus.FINISHED, GameStatus.CANCELLED):
             raise ServiceError(ErrorCode.GAME_STATE_CONFLICT, "la partida ya terminó")
+        self._cancelar_timeout_de_turno(game_id)
         await self._set_status(game_id, GameStatus.CANCELLED)
         await self.emit(game_id, EventType.GAME_CANCELLED)
 
@@ -1353,6 +1424,9 @@ class GameService:
         )
         engine = await self._engine(game)
         if game["status"] == GameStatus.RUNNING and engine.turn.current_player_id == player_id:
+            # el asiento ya no es humano: el timeout de ausencia no aplica,
+            # el bot tiene su propio agendado
+            self._cancelar_timeout_de_turno(game_id)
             self._schedule_ai_turn(game_id, player_id)
 
     # --- métricas -----------------------------------------------------------
