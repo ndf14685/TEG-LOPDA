@@ -129,9 +129,21 @@ class PlaytestClient {
       action_trail: this.trail,
       recent_errors: this.errors,
     };
-    this.errors.push(redactForPlaytest(payload) as Record<string, unknown>);
+    // Solo un resumen plano: guardar el payload entero hacia que cada incidente
+    // contuviera a todos los anteriores, y el POST crecia exponencialmente
+    // (6.9 KB -> 882 KB duplicandose cada 20 s).
+    this.errors.push({
+      title: String(input.title ?? ''),
+      error_type: String(input.error_type ?? ''),
+      component: String(input.component ?? ''),
+      at: new Date().toISOString(),
+    });
     this.errors = this.errors.slice(-ERROR_LIMIT);
-    void this.post('/api/playtest/incidents', payload);
+    void this.post('/api/playtest/incidents', payload).catch(() => {
+      // el instrumento nunca debe romper la app ni reportarse a si mismo:
+      // el 500 propagado generaba un unhandledrejection que disparaba
+      // otro reportTechnical, en cascada (PLAY-006).
+    });
   }
 
   async reportManual(input: {
