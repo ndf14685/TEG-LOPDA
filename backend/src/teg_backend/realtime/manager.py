@@ -14,28 +14,41 @@ from ..domain.events import GameEvent
 
 log = logging.getLogger("teg.realtime")
 
+# Sin tope, un jugador con varias pestañas multiplicaba el fan-out de cada
+# evento por la cantidad de pestañas.
+MAX_SOCKETS_POR_JUGADOR = 3
+
 
 class Room:
     def __init__(self, game_id: str) -> None:
         self.game_id = game_id
-        # player_id -> conexiones abiertas (puede haber más de una pestaña)
-        self.sockets: dict[str, set[WebSocket]] = {}
+        # player_id -> conexiones abiertas, en orden de llegada (puede haber
+        # más de una pestaña, hasta MAX_SOCKETS_POR_JUGADOR)
+        self.sockets: dict[str, list[WebSocket]] = {}
         # player_id -> online | reconnecting | offline
         self.presence: dict[str, str] = {}
         self._offline_tasks: dict[str, asyncio.Task] = {}
 
-    def add(self, player_id: str, ws: WebSocket) -> None:
-        self.sockets.setdefault(player_id, set()).add(ws)
+    def add(self, player_id: str, ws: WebSocket) -> list[WebSocket]:
+        conns = self.sockets.setdefault(player_id, [])
+        conns.append(ws)
         self.presence[player_id] = "online"
         task = self._offline_tasks.pop(player_id, None)
         if task:
             task.cancel()
+        desalojados: list[WebSocket] = []
+        # Se desaloja la conexión más vieja en lugar de rechazar la nueva:
+        # reconectar desde otro dispositivo nunca debe fallar.
+        while len(conns) > MAX_SOCKETS_POR_JUGADOR:
+            desalojados.append(conns.pop(0))
+        return desalojados
 
     def remove(self, player_id: str, ws: WebSocket) -> bool:
         """Devuelve True si el jugador quedó sin conexiones."""
         conns = self.sockets.get(player_id)
         if conns:
-            conns.discard(ws)
+            with contextlib.suppress(ValueError):
+                conns.remove(ws)
             if not conns:
                 del self.sockets[player_id]
         return player_id not in self.sockets

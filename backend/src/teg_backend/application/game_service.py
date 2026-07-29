@@ -228,16 +228,18 @@ class GameService:
                     event.event_type, event.event_id,
                 )
             if event.event_type == EventType.GAME_STARTED:
-                # saludos grabados: cada par jugador→rival con audio de inicio
+                # Un saludo por jugador, no uno por PAR: el doble bucle daba 56
+                # emisiones con 8 jugadores (O(n^2)), cada una con su INSERT y su
+                # fan-out, y todo dentro del lock de start_game.
                 seated = [p for p in players if p["role"] in PLAYING_ROLES and p.get("profile_id")]
                 for owner in seated:
-                    for target in seated:
-                        if owner["id"] == target["id"]:
-                            continue
-                        await self._fire_taunt(
-                            game_id, players, owner["id"], target["id"],
-                            EventType.GAME_STARTED, event.event_id,
-                        )
+                    rival = next((p for p in seated if p["id"] != owner["id"]), None)
+                    if rival is None:
+                        continue
+                    await self._fire_taunt(
+                        game_id, players, owner["id"], rival["id"],
+                        EventType.GAME_STARTED, event.event_id,
+                    )
         except Exception:
             log.warning("fallo en efectos post-evento", exc_info=True)
 

@@ -9,6 +9,7 @@ Servidor→cliente: siempre el envelope de GameEvent (ver shared/contracts).
 
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 import uuid
@@ -52,7 +53,10 @@ async def ws_endpoint(ws: WebSocket, code: str, token: str = Query(...)) -> None
     await ws.accept()
     request_id = str(uuid.uuid4())
     room = service.manager.room(game["id"])
-    room.add(player["id"], ws)
+    for viejo in room.add(player["id"], ws):
+        # desalojado por exceso de pestañas: puede estar ya muerto, no importa
+        with contextlib.suppress(Exception):
+            await viejo.close(code=4009)
     limiter = WsRateLimiter(settings.ws_messages_per_window, settings.ws_window_seconds)
     log.info(
         "ws conectado",
