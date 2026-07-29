@@ -129,6 +129,8 @@ class GameService:
             seq_lock = self._seq_locks.setdefault(game_id, asyncio.Lock())
             async with seq_lock:
                 event.sequence_number = await repo.next_sequence_number(self.db, game_id)
+                if visibility == Visibility.PUBLIC:
+                    event.public_sequence = await repo.next_public_sequence(self.db, game_id)
                 await repo.append_event(self.db, event.model_dump(mode="json"))
         self.counters["events_emitted"] += 1
         roles = await self._roles_map(game_id)
