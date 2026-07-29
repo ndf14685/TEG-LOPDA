@@ -121,3 +121,31 @@ def test_al_volver_el_humano_se_desagenda_el_bot_de_su_asiento(client):
     assert game["id"] in service._turn_timers, (
         "el humano recupero el asiento pero se quedo sin reloj de turno"
     )
+
+
+def test_no_se_recupera_un_asiento_en_una_partida_cerrada(client):
+    """El bypass del guard se acota a RUNNING/PAUSED: en una partida
+    FINISHED o CANCELLED no hay asiento que recuperar. Sin acotarlo, el join
+    devolvia 200, restauraba el rol y dejaba un PLAYER_JOINED en el log de una
+    partida cerrada, contradiciendo el mensaje que el jugador deberia ver."""
+    game, _uno, dos = _arrancar_partida_de_dos(client)
+    pid = dos["player"]["id"]
+
+    assert client.post(
+        f"/api/admin/games/{game['id']}/players/{pid}/convert-to-ai", headers=ADMIN
+    ).status_code == 200
+    assert client.post(
+        f"/api/admin/games/{game['id']}/cancel", headers=ADMIN
+    ).status_code == 200
+
+    resp = client.post(f"/api/join/{game['code']}/{dos['token']}", json={})
+    assert resp.status_code >= 400, (
+        f"se acepto un join en una partida cancelada: {resp.text}"
+    )
+
+    jugadores = client.get(
+        f"/api/admin/games/{game['id']}", headers=ADMIN
+    ).json()["players"]
+    assert next(p for p in jugadores if p["id"] == pid)["role"] == "ai_player", (
+        "el rol se restauro igual en una partida cerrada"
+    )

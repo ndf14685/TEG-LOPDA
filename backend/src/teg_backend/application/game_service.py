@@ -938,10 +938,15 @@ class GameService:
         # Se exige joined_at: quien nunca se unio no tiene asiento que
         # recuperar (no esta en turn.order ni tiene territorios) y sigue
         # cayendo en el guard, que es el caso original que hay que sostener.
+        # Y se acota a RUNNING/PAUSED: en una partida FINISHED o CANCELLED no
+        # hay ningun asiento que recuperar, y sin esto el join devolvia 200,
+        # restauraba el rol y dejaba un PLAYER_JOINED en el log de una partida
+        # cerrada, contradiciendo el mensaje que el jugador deberia ver.
         recupera_asiento_ia = bool(
             player["role"] == Role.AI_PLAYER
             and player["token_hash"]
             and player["joined_at"]
+            and game["status"] in (GameStatus.RUNNING, GameStatus.PAUSED)
         )
         if game["status"] not in PRE_START_STATUSES and not recupera_asiento_ia:
             # Antes se aceptaba durante RUNNING/PAUSED: quien no habia entrado
@@ -1082,7 +1087,8 @@ class GameService:
 
         No crea timers duplicados: _armar_timeout_de_turno cancela el timer
         previo de la partida antes de crear el nuevo (hay a lo sumo uno vivo
-        por partida, por construccion).
+        por partida, por construccion). Ese mismo hecho es el que obliga al
+        re-chequeo final de mas abajo.
         """
         try:
             game = await repo.get_game(self.db, game_id)
@@ -1093,6 +1099,16 @@ class GameService:
                 return
             player = await repo.get_player(self.db, player_id)
             if player is None or player["role"] == Role.AI_PLAYER:
+                return
+            # Re-chequeo pegado al armado, sin NINGUN await en el medio: esta
+            # tarea corre fuera del lock de la partida y _engine() devuelve el
+            # objeto vivo cacheado, asi que durante el await de get_player el
+            # turno pudo avanzar a otro jugador (y ese otro ya tener SU reloj
+            # armado). Armar igual cancelaria el reloj del nuevo jugador de
+            # turno para instalar uno inutil del que se fue: el turno del
+            # siguiente quedaria sin vigilancia, que es justo el agujero que
+            # este rearmado vino a tapar.
+            if engine.stage != "turns" or engine.turn.current_player_id != player_id:
                 return
             self._armar_timeout_de_turno(game_id, player_id, engine.turn.turn_number)
         except Exception:

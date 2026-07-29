@@ -31,6 +31,28 @@ def client_turno_corto(tmp_path):
         yield c
 
 
+@pytest.fixture()
+def client_turno_largo(tmp_path):
+    """Igual al fixture client pero con el timeout de turno bien alto.
+
+    Sirve para probar la LOGICA de armado del reloj sin que ningun timer
+    llegue a dispararse y ensucie lo que se esta observando.
+    """
+    settings = Settings(
+        env="dev",
+        db_path=str(tmp_path / "test.db"),
+        admin_token="test-admin",
+        commentator_provider="mock",
+        commentator_cooldown_seconds=0.0,
+        reconnect_grace_seconds=0.05,
+        ai_player_think_seconds=0.01,
+        turn_timeout_seconds=30.0,
+        public_base_url="http://testserver",
+    )
+    with TestClient(create_app(settings)) as c:
+        yield c
+
+
 def _arrancar(client):
     game = create_game(client, config={"commentator_enabled": False})
     inv1 = invite(client, game["id"], "Uno")
@@ -506,3 +528,89 @@ def test_la_mutacion_del_turno_ocurre_antes_de_cualquier_await_posterior_al_cheq
             "la mutacion del turno ocurrio DESPUES de que la reconexion ya "
             f"estaba registrada -- ventana critica reabierta: {orden}"
         )
+
+
+def test_el_rearmado_no_pisa_el_reloj_del_turno_siguiente(client_turno_largo, monkeypatch):
+    """El rearmado de on_disconnect corre en una tarea de fondo, FUERA del
+    lock de la partida, y `_engine()` devuelve el objeto vivo cacheado.
+
+    Secuencia peligrosa: la tarea lee `current_player_id == A`, hace
+    `await repo.get_player(...)`, y en ese await el turno avanza a B (que ya
+    recibe SU reloj); al volver, la tarea arma el reloj de A, y como
+    _armar_timeout_de_turno cancela el timer previo de la partida, B se queda
+    sin vigilancia. Se auto-cura al turno siguiente salvo que B tambien este
+    offline -- que es justo el escenario que este rearmado vino a arreglar.
+
+    La carrera se fuerza de forma deterministica desde adentro del propio
+    await: `repo.get_player` avanza el turno y arma el reloj de B antes de
+    responder. Se observa sobre las llamadas a _armar_timeout_de_turno, que
+    es donde se manifiesta el pisotón.
+    """
+    from teg_backend.application import game_service as gs_mod
+    from teg_backend.domain import engine as engine_mod
+
+    monkeypatch.setattr(engine_mod._rng, "shuffle", lambda seq: None)
+    client = client_turno_largo
+    game, inv1, inv2 = _arrancar(client)
+    p1, p2 = inv1["player"]["id"], inv2["player"]["id"]
+    service = client.app.state.service
+
+    armados: list[str] = []
+    original_armar = service._armar_timeout_de_turno
+
+    def armar_espia(game_id, player_id, turn_number):
+        armados.append(player_id)
+        return original_armar(game_id, player_id, turn_number)
+
+    monkeypatch.setattr(service, "_armar_timeout_de_turno", armar_espia)
+
+    original_get_player = gs_mod.repo.get_player
+    carrera = {"activa": False, "hecha": False}
+
+    async def get_player_con_carrera(db, player_id):
+        if carrera["activa"] and player_id == p1 and not carrera["hecha"]:
+            carrera["hecha"] = True
+            # el turno avanza a "Dos" justo durante este await, y "Dos" ya
+            # recibe su propio reloj
+            engine = service._engines[game["id"]]
+            engine.advance_turn()
+            service._armar_timeout_de_turno(game["id"], p2, engine.turn.turn_number)
+        return await original_get_player(db, player_id)
+
+    monkeypatch.setattr(gs_mod.repo, "get_player", get_player_con_carrera)
+
+    with client.websocket_connect(f"/ws/{game['code']}?token={inv2['token']}") as ws2:
+        recv_until(ws2, "game.snapshot")
+        ws2.send_json({"type": "ready.set", "payload": {"ready": True}})
+        recv_until(ws2, "player.ready")
+        with client.websocket_connect(f"/ws/{game['code']}?token={inv1['token']}") as ws1:
+            recv_until(ws1, "game.snapshot")
+            ws1.send_json({"type": "ready.set", "payload": {"ready": True}})
+            recv_until(ws1, "player.ready")
+            recv_until(ws2, "player.ready")
+            client.post(f"/api/admin/games/{game['id']}/start", headers=ADMIN)
+            started = recv_until(ws1, "game.started")["payload"]
+            recv_until(ws2, "game.started")
+            complete_placement({p1: ws1, p2: ws2}, started)
+            vistos1 = _barrera(ws1)
+            vistos2 = _barrera(ws2)
+            turn_ev = next(
+                m for m in vistos1 + vistos2 if m.get("event_type") == "turn.started"
+            )
+            assert turn_ev["actor_id"] == p1, "el shuffle no quedo neutralizado"
+            armados.clear()
+            carrera["activa"] = True
+        # ws1 cerrado: arranca el rearmado de "Uno", que se topa con la carrera
+
+        _esperar_desconexion(ws2, p1)
+        limite = time.monotonic() + 5.0
+        while not carrera["hecha"] and time.monotonic() < limite:
+            time.sleep(0.02)
+        assert carrera["hecha"], "la carrera nunca se disparo"
+        time.sleep(0.5)  # margen para que la tarea de rearmado termine
+
+    assert armados, "no se armo ningun reloj durante la ventana observada"
+    assert armados[-1] == p2, (
+        f"el ultimo reloj armado es el del jugador que se fue, no el del que "
+        f"tiene el turno: {armados}"
+    )
