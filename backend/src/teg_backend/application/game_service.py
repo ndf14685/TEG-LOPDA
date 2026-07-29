@@ -1498,6 +1498,45 @@ class GameService:
             self._cancelar_timeout_de_turno(game_id)
             self._schedule_ai_turn(game_id, player_id)
 
+    async def rehidratar_partidas_activas(self) -> int:
+        """Reagenda los turnos de bot al levantar el proceso.
+
+        _ai_tasks es memoria pura y el lifespan no recorria nada al arrancar:
+        un reinicio durante el turno de un bot dejaba la partida trabada para
+        siempre. Solo aplica a la fase de turnos ("stage" == "turns"); la
+        colocación inicial ya se reintenta sola vía otros mecanismos y no es
+        un "turno" en este sentido.
+
+        Nunca debe impedir que el backend arranque: cualquier partida
+        corrupta se loguea y se salta; si falla el listado entero, se loguea
+        y se devuelve 0.
+        """
+        reagendados = 0
+        try:
+            partidas = await repo.list_games_by_status(self.db, GameStatus.RUNNING)
+        except Exception:
+            log.warning("no se pudieron listar las partidas activas", exc_info=True)
+            return 0
+        for game in partidas:
+            try:
+                engine = await self._engine(game)
+                if engine.stage != "turns":
+                    continue
+                actual = engine.turn.current_player_id
+                if actual is None:
+                    continue
+                player = await repo.get_player(self.db, actual)
+                if player and player["role"] == Role.AI_PLAYER:
+                    self._schedule_ai_turn(game["id"], actual)
+                    reagendados += 1
+            except Exception:
+                log.warning(
+                    "fallo rehidratando una partida", exc_info=True,
+                    extra={"ctx": {"game_id": game.get("id")}},
+                )
+        self.counters["ai_turns_rehydrated"] = reagendados
+        return reagendados
+
     # --- métricas -----------------------------------------------------------
 
     def metrics(self) -> dict:

@@ -60,6 +60,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         app.state.playtest = PlaytestService(playtest_db, settings)
         await app.state.playtest.init()
         commentator.start()
+        reagendados = await app.state.service.rehidratar_partidas_activas()
+        if reagendados:
+            log.info(
+                "turnos de bot reagendados tras reinicio",
+                extra={"ctx": {"turnos": reagendados}},
+            )
         log.info(
             "backend iniciado",
             extra={"ctx": {"env": settings.env, "db": settings.db_path,

@@ -110,6 +110,11 @@ async def list_games(db: Database) -> list[dict]:
     return [_row_to_game(r) for r in rows]
 
 
+async def list_games_by_status(db: Database, status: str) -> list[dict]:
+    rows = await db.fetchall("SELECT * FROM games WHERE status = ?", (status,))
+    return [_row_to_game(r) for r in rows]
+
+
 async def update_game_status(db: Database, game_id: str, status: str) -> None:
     await db.execute(
         "UPDATE games SET status = ?, updated_at = datetime('now') WHERE id = ?",
