@@ -94,6 +94,15 @@ class WsClient {
   }
 
   private handleMessage(raw: string): void {
+    // cualquier byte que llegue del server prueba que la conexión está viva:
+    // eso es exactamente lo que el temporizador de acción pendiente quiere
+    // detectar, así que se cancela acá antes de intentar parsear nada. Si
+    // esto corriera después de un `return` temprano (JSON inválido, envelope
+    // inválido), un mensaje real pero descartado dejaría vivo el timer y
+    // dispararía el mismo incidente falso pending-action-timeout que esta
+    // tarea vino a eliminar.
+    this.clearPendingTimers();
+
     let data: unknown;
     try {
       data = JSON.parse(raw);
@@ -123,8 +132,6 @@ class WsClient {
       return;
     }
     const envelope = parsed.data;
-    for (const timer of this.pendingTimers) clearTimeout(timer);
-    this.pendingTimers.clear();
 
     const verdict = this.seq.accept(envelope.sequence_number);
     if (verdict === 'stale') return;
@@ -166,6 +173,11 @@ class WsClient {
     this.emit(envelope.event_type, payload, envelope);
   }
 
+  private clearPendingTimers(): void {
+    for (const timer of this.pendingTimers) clearTimeout(timer);
+    this.pendingTimers.clear();
+  }
+
   private emit(type: string, payload: unknown, envelope: GameEventEnvelope): void {
     for (const handler of this.handlers.get(type) ?? []) handler(payload, envelope);
     for (const handler of this.handlers.get('*') ?? []) handler(payload, envelope);
@@ -173,6 +185,9 @@ class WsClient {
 
   send(msg: ClientMessage): void {
     playtestClient.track(`${msg.type}.requested`, { payload: (msg as any).payload ?? {} });
+    // si el socket no está abierto el mensaje se descarta: no tiene sentido
+    // esperar una resolución que nunca pedimos
+    if (this.ws?.readyState !== WebSocket.OPEN) return;
     const pending = setTimeout(() => {
       this.pendingTimers.delete(pending);
       playtestClient.reportTechnical({
@@ -185,7 +200,7 @@ class WsClient {
       });
     }, 8000);
     this.pendingTimers.add(pending);
-    if (this.ws?.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify(msg));
+    this.ws.send(JSON.stringify(msg));
   }
 
   on(type: KnownEventType | 'sync.lost' | '*' | (string & {}), handler: Handler): () => void {
