@@ -860,7 +860,22 @@ class GameService:
     async def confirm_join(self, code: str, token: str, nickname: str | None) -> dict:
         resolved = await self.resolve_join(code, token)
         game, player = resolved["game"], resolved["player"]
-        if game["status"] not in PRE_START_STATUSES:
+        # Recuperar un asiento convertido a IA tiene que poder pasar con la
+        # partida YA en curso: es exactamente para eso que existe la
+        # conversion (convert_seat_to_ai promete que "su link sigue siendo
+        # valido y al volver a entrar recupera el asiento"). Con la
+        # restauracion despues del guard de PRE_START_STATUSES era codigo
+        # inalcanzable: el jugador igual se conectaba por WebSocket y miraba
+        # a un bot jugar su asiento, sin error y sin explicacion.
+        # Se exige joined_at: quien nunca se unio no tiene asiento que
+        # recuperar (no esta en turn.order ni tiene territorios) y sigue
+        # cayendo en el guard, que es el caso original que hay que sostener.
+        recupera_asiento_ia = bool(
+            player["role"] == Role.AI_PLAYER
+            and player["token_hash"]
+            and player["joined_at"]
+        )
+        if game["status"] not in PRE_START_STATUSES and not recupera_asiento_ia:
             # Antes se aceptaba durante RUNNING/PAUSED: quien no habia entrado
             # antes del arranque quedaba conectado pero sin territorios, sin
             # objetivo y fuera del turn.order, sin ningun evento que lo explicara.
@@ -875,12 +890,7 @@ class GameService:
                 player["nickname"] = clean
         if player["role"] == Role.AI_PLAYER and player["token_hash"]:
             # el humano vuelve: recupera el asiento que jugaba la IA
-            await repo.update_player(self.db, player["id"], role=Role.PLAYER)
-            player["role"] = Role.PLAYER
-            await self.emit(
-                game["id"], EventType.PLAYER_JOINED, actor_id=player["id"],
-                payload={"player": repo.public_player(player)},
-            )
+            await self._restaurar_asiento_humano(game, player)
         first_join = player["joined_at"] is None
         if first_join:
             from ..domain.events import utcnow_iso
@@ -1557,6 +1567,30 @@ class GameService:
                 await self.end_turn(game_id, player_id)
         except Exception:
             log.warning("la IA no pudo cerrar su turno", exc_info=True)
+
+    def _cancelar_tarea_ia(self, game_id: str, player_id: str) -> None:
+        tarea = self._ai_tasks.pop(f"{game_id}:{player_id}", None)
+        if tarea and not tarea.done():
+            tarea.cancel()
+
+    async def _restaurar_asiento_humano(self, game: dict, player: dict) -> None:
+        """Inversa exacta de convert_seat_to_ai: el humano vuelve y recupera
+        su asiento. Si la partida esta en curso y el turno es de ese asiento,
+        hay que desagendar al bot y devolverle el reloj al humano; si no, el
+        bot sigue jugando el turno de alguien que ya volvio."""
+        game_id = game["id"]
+        await repo.update_player(self.db, player["id"], role=Role.PLAYER)
+        player["role"] = Role.PLAYER
+        await self.emit(
+            game_id, EventType.PLAYER_JOINED, actor_id=player["id"],
+            payload={"player": repo.public_player(player)},
+        )
+        if game["status"] != GameStatus.RUNNING:
+            return
+        engine = await self._engine(game)
+        if engine.stage == "turns" and engine.turn.current_player_id == player["id"]:
+            self._cancelar_tarea_ia(game_id, player["id"])
+            self._armar_timeout_de_turno(game_id, player["id"], engine.turn.turn_number)
 
     async def convert_seat_to_ai(self, game_id: str, player_id: str) -> None:
         """El admin convierte el asiento de un ausente en bot; su link sigue
