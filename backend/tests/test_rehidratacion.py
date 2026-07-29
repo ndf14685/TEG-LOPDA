@@ -1,8 +1,10 @@
-"""Rehidratacion de turnos de bot al levantar el proceso.
+"""Rehidratacion de turnos de bot y relojes de turno al levantar el proceso.
 
-_ai_tasks vive solo en memoria y el lifespan no recorria nada al arrancar: un
-reinicio durante el turno de un bot dejaba la partida trabada para siempre.
-Importa porque el tunel es efimero y cada sesion de juego implica reiniciar.
+_ai_tasks y _turn_timers viven solo en memoria y el lifespan no recorria nada
+al arrancar: un reinicio durante el turno de un bot dejaba la partida trabada
+para siempre, y un reinicio durante el turno de un humano dejaba apagada la
+proteccion contra ausencias. Importa porque el tunel es efimero y cada sesion
+de juego implica reiniciar.
 """
 
 from __future__ import annotations
@@ -10,7 +12,9 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
-from conftest import ADMIN, confirm_join, create_game, invite, recv_until
+from conftest import (
+    ADMIN, complete_placement, confirm_join, create_game, invite, recv_until,
+)
 from teg_backend.config import Settings
 from teg_backend.domain import engine as engine_mod
 from teg_backend.main import create_app
@@ -112,3 +116,51 @@ def test_reagenda_el_turno_del_bot_tras_reiniciar(tmp_path, monkeypatch):
         service = app2.state.service
         assert service.counters.get("ai_turns_rehydrated") == 1
         assert f"{game['id']}:{bot_id}" in service._ai_tasks
+
+
+def test_reagenda_el_reloj_de_turno_humano_tras_reiniciar(tmp_path):
+    """Tras un reinicio, el timeout de turno quedaba apagado para los humanos.
+
+    rehidratar_partidas_activas solo reagendaba turnos de bot, y
+    _armar_timeout_de_turno solo se llama desde _start_turn y resume_game --
+    ninguno corre al levantar el proceso. Como reiniciar es el flujo NORMAL de
+    este proyecto (el tunel es efimero y hay que regenerar los links en cada
+    sesion), esto dejaba apagada la proteccion contra ausencias justo en el
+    escenario mas comun: _turn_timers quedaba vacio.
+    """
+    settings = _settings(tmp_path, think_seconds=0.01)
+
+    # 1) primera vida: dos humanos llegan a la fase de turnos
+    with TestClient(create_app(settings)) as c:
+        game = create_game(c, config={"commentator_enabled": False})
+        uno = invite(c, game["id"], "Uno")
+        dos = invite(c, game["id"], "Dos")
+        p1, p2 = uno["player"]["id"], dos["player"]["id"]
+        confirm_join(c, game["code"], uno["token"])
+        confirm_join(c, game["code"], dos["token"])
+        with c.websocket_connect(f"/ws/{game['code']}?token={uno['token']}") as w1, \
+             c.websocket_connect(f"/ws/{game['code']}?token={dos['token']}") as w2:
+            recv_until(w1, "game.snapshot")
+            recv_until(w2, "game.snapshot")
+            for w in (w1, w2):
+                w.send_json({"type": "ready.set", "payload": {"ready": True}})
+            recv_until(w1, "player.ready")
+            recv_until(w1, "player.ready")
+            assert c.post(
+                f"/api/admin/games/{game['id']}/start", headers=ADMIN
+            ).status_code == 200
+            started = recv_until(w1, "game.started")["payload"]
+            recv_until(w2, "game.started")
+            complete_placement({p1: w1, p2: w2}, started)
+            recv_until(w1, "turn.started")
+            recv_until(w2, "turn.started")
+
+    # 2) el proceso "se reinicia": app nueva sobre la misma base
+    app2 = create_app(settings)
+    with TestClient(app2):
+        service = app2.state.service
+        assert service.counters.get("turn_timers_rehydrated") == 1
+        assert game["id"] in service._turn_timers, (
+            "tras el reinicio nadie vigila el turno del humano: la mesa se "
+            "traba si esa persona no vuelve"
+        )

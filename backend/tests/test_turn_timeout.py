@@ -146,6 +146,63 @@ def test_se_saltea_el_turno_de_un_jugador_desconectado(client_turno_corto):
         assert evento["payload"]["reason"] == "offline"
 
 
+def test_el_reloj_se_rearma_si_se_cae_despues_de_haber_estado_presente(
+    client_turno_corto, monkeypatch,
+):
+    """CRITICO: el timeout era de un solo disparo.
+
+    _vencer() hace `if room.sockets.get(player_id): return` y nadie rearmaba
+    el timer. Un jugador que esta online cuando se cumple el plazo hace que el
+    timer retorne, y si se cae un segundo despues ya no queda nada que lo
+    saltee: la mesa lo espera para siempre. Con 8 personas los turnos superan
+    los 180 s de forma rutinaria, asi que este es el camino COMUN.
+
+    Se neutraliza el shuffle para que el turno inicial sea deterministicamente
+    del primer invitado ("Uno"): asi se sabe de antemano que socket cerrar y
+    cual dejar escuchando.
+    """
+    from teg_backend.domain import engine as engine_mod
+
+    monkeypatch.setattr(engine_mod._rng, "shuffle", lambda seq: None)
+    client = client_turno_corto
+    game, inv1, inv2 = _arrancar(client)
+    p1, p2 = inv1["player"]["id"], inv2["player"]["id"]
+
+    with client.websocket_connect(f"/ws/{game['code']}?token={inv2['token']}") as ws2:
+        recv_until(ws2, "game.snapshot")
+        ws2.send_json({"type": "ready.set", "payload": {"ready": True}})
+        recv_until(ws2, "player.ready")
+        with client.websocket_connect(f"/ws/{game['code']}?token={inv1['token']}") as ws1:
+            recv_until(ws1, "game.snapshot")
+            ws1.send_json({"type": "ready.set", "payload": {"ready": True}})
+            recv_until(ws1, "player.ready")
+            recv_until(ws2, "player.ready")
+            client.post(f"/api/admin/games/{game['id']}/start", headers=ADMIN)
+            started = recv_until(ws1, "game.started")["payload"]
+            recv_until(ws2, "game.started")
+            complete_placement({p1: ws1, p2: ws2}, started)
+            vistos1 = _barrera(ws1)
+            vistos2 = _barrera(ws2)
+            turn_ev = next(
+                m for m in vistos1 + vistos2 if m.get("event_type") == "turn.started"
+            )
+            assert turn_ev["actor_id"] == p1, "el shuffle no quedo neutralizado"
+
+            # "Uno" sigue CONECTADO cuando se cumple el primer plazo (1 s): el
+            # timer se despierta, lo ve presente y retorna sin rearmar nada
+            time.sleep(1.5)
+        # recien ahora "Uno" se cae, con su turno todavia abierto
+
+        _esperar_desconexion(ws2, p1)
+        # mas del doble del timeout desde la caida
+        time.sleep(2.5)
+        vistos = _ping_y_drenar(ws2)
+        assert "turn.skipped" in vistos, (
+            "el turno no se salteo: el reloj no se rearmo al caerse el jugador "
+            "de turno tras haber estado presente en el primer plazo"
+        )
+
+
 def test_no_se_saltea_a_un_jugador_conectado_que_piensa(client_turno_corto):
     """El objetivo es destrabar ausencias, no apurar a nadie."""
     client = client_turno_corto

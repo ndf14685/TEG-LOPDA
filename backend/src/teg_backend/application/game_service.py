@@ -1008,6 +1008,15 @@ class GameService:
             game_id, EventType.PRESENCE_CHANGED, actor_id=player_id,
             payload={"presence": "reconnecting"}, persisted=False,
         )
+        # En tarea aparte, no en linea: el `finally` del endpoint WS puede
+        # correr dentro de un cancel scope YA cancelado (TestClient al cerrar
+        # el socket, uvicorn al apagarse), y ahi cualquier `await` levanta
+        # CancelledError antes de llegar a la base. Verificado con
+        # instrumentacion: en linea, la lectura de la partida nunca completaba.
+        # Ademas saca I/O de SQLite del camino de la baja de una conexion.
+        self._crear_tarea_de_fondo(
+            self._rearmar_reloj_si_es_su_turno(game_id, player_id)
+        )
 
         async def _grace() -> None:
             try:
@@ -1030,6 +1039,33 @@ class GameService:
         if self._gracias_detenidas:
             return  # apagado en curso: no crear tareas nuevas
         room._offline_tasks[player_id] = asyncio.create_task(_grace())
+
+    async def _rearmar_reloj_si_es_su_turno(self, game_id: str, player_id: str) -> None:
+        """El timeout de turno era de un solo disparo: _vencer() retorna sin
+        rearmar nada si el jugador estaba online al cumplirse el plazo, y
+        nadie lo volvia a armar. Con 8 personas los turnos superan los 180 s
+        de forma rutinaria, asi que el jugador que estaba presente a los 180 s
+        y se caia a los 181 s no tenia ningun reloj que lo salteara: la mesa
+        quedaba esperandolo para siempre. Este es el camino COMUN, no un borde.
+
+        No crea timers duplicados: _armar_timeout_de_turno cancela el timer
+        previo de la partida antes de crear el nuevo (hay a lo sumo uno vivo
+        por partida, por construccion).
+        """
+        try:
+            game = await repo.get_game(self.db, game_id)
+            if game is None or game["status"] != GameStatus.RUNNING:
+                return
+            engine = await self._engine(game)
+            if engine.stage != "turns" or engine.turn.current_player_id != player_id:
+                return
+            player = await repo.get_player(self.db, player_id)
+            if player is None or player["role"] == Role.AI_PLAYER:
+                return
+            self._armar_timeout_de_turno(game_id, player_id, engine.turn.turn_number)
+        except Exception:
+            # nunca debe voltear la baja de una conexion
+            log.warning("no se pudo rearmar el reloj de turno", exc_info=True)
 
     # --- acciones de jugador ------------------------------------------------
 
@@ -1653,19 +1689,29 @@ class GameService:
             self._schedule_ai_turn(game_id, player_id)
 
     async def rehidratar_partidas_activas(self) -> int:
-        """Reagenda los turnos de bot al levantar el proceso.
+        """Reagenda los turnos de bot y los relojes de turno humanos al
+        levantar el proceso.
 
-        _ai_tasks es memoria pura y el lifespan no recorria nada al arrancar:
-        un reinicio durante el turno de un bot dejaba la partida trabada para
-        siempre. Solo aplica a la fase de turnos ("stage" == "turns"); la
-        colocación inicial ya se reintenta sola vía otros mecanismos y no es
-        un "turno" en este sentido.
+        _ai_tasks y _turn_timers son memoria pura y el lifespan no recorria
+        nada al arrancar: un reinicio durante el turno de un bot dejaba la
+        partida trabada para siempre, y un reinicio durante el turno de un
+        humano dejaba apagada la proteccion contra ausencias
+        (_armar_timeout_de_turno solo se llama desde _start_turn y
+        resume_game, y ninguno corre al levantar el proceso). Reiniciar es el
+        flujo NORMAL de este proyecto -- el tunel es efimero y hay que
+        regenerar los links en cada sesion -- asi que era el escenario mas
+        comun, no un borde.
+
+        Solo aplica a la fase de turnos ("stage" == "turns"); la colocación
+        inicial ya se reintenta sola vía otros mecanismos y no es un "turno"
+        en este sentido.
 
         Nunca debe impedir que el backend arranque: cualquier partida
         corrupta se loguea y se salta; si falla el listado entero, se loguea
         y se devuelve 0.
         """
         reagendados = 0
+        relojes = 0
         try:
             partidas = await repo.list_games_by_status(self.db, GameStatus.RUNNING)
         except Exception:
@@ -1683,12 +1729,18 @@ class GameService:
                 if player and player["role"] == Role.AI_PLAYER:
                     self._schedule_ai_turn(game["id"], actual)
                     reagendados += 1
+                elif player:
+                    self._armar_timeout_de_turno(
+                        game["id"], actual, engine.turn.turn_number
+                    )
+                    relojes += 1
             except Exception:
                 log.warning(
                     "fallo rehidratando una partida", exc_info=True,
                     extra={"ctx": {"game_id": game.get("id")}},
                 )
         self.counters["ai_turns_rehydrated"] = reagendados
+        self.counters["turn_timers_rehydrated"] = relojes
         return reagendados
 
     # --- métricas -----------------------------------------------------------
