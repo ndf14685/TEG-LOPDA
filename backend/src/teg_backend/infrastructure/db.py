@@ -31,6 +31,9 @@ class Database:
         self._conn = await aiosqlite.connect(self.path)
         self._conn.row_factory = aiosqlite.Row
         await self._conn.execute("PRAGMA journal_mode=WAL")
+        # NORMAL es seguro bajo WAL y saca un fsync de cada commit: con 8
+        # jugadores son ~320-400 commits por ronda sobre un disco compartido
+        await self._conn.execute("PRAGMA synchronous=NORMAL")
         await self._conn.execute("PRAGMA foreign_keys=ON")
         await self._conn.execute("PRAGMA busy_timeout=5000")
         await self.migrate()
