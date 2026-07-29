@@ -438,12 +438,15 @@ class GameService:
                     f"la partida admite hasta {modo['max_players']} jugadores",
                 )
         # Color unico: dos jugadores del mismo color son indistinguibles en el mapa
-        # (incidente 27/07: Seba y Gabi tenian los dos "red").
-        usados = {p["color"] for p in existentes if p.get("color")}
-        if not color or color in usados:
-            color = next((c for c in COLORES_DISPONIBLES if c not in usados), None)
-            if color is None:
-                raise ServiceError(ErrorCode.GAME_STATE_CONFLICT, "no quedan colores libres")
+        # (incidente 27/07: Seba y Gabi tenian los dos "red"). Solo aplica a
+        # roles que se sientan a jugar: un espectador o admin sin color no debe
+        # consumir la paleta (regresion: antes quedaban con color=None).
+        if role in (Role.PLAYER, Role.AI_PLAYER):
+            usados = {p["color"] for p in existentes if p.get("color")}
+            if not color or color in usados:
+                color = next((c for c in COLORES_DISPONIBLES if c not in usados), None)
+                if color is None:
+                    raise ServiceError(ErrorCode.GAME_STATE_CONFLICT, "no quedan colores libres")
         token: str | None = None
         token_hash: str | None = None
         if role != Role.AI_PLAYER:

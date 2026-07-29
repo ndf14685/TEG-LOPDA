@@ -32,6 +32,28 @@ def test_no_se_puede_invitar_por_encima_del_maximo(client):
     assert resp.status_code >= 400, "deberia rechazar al noveno jugador"
 
 
+def test_espectadores_y_admins_no_consumen_la_paleta_de_colores(client):
+    """El chequeo de color unico es solo para roles que se sientan a jugar.
+
+    Antes del fix, un espectador/admin invitado sin color se comia igual un
+    color de la paleta (8 valores == max_players de classic_26): el primero
+    en pedir "red" por defecto dejaba al octavo jugador sin colores libres.
+    """
+    game = create_game(client, config={"game_mode": "classic_26"})
+    miron = invite(client, game["id"], "Miron", role="spectator")
+    admin_invitado = invite(client, game["id"], "ElAnfitrion", role="admin")
+    assert miron["player"]["color"] is None
+    assert admin_invitado["player"]["color"] is None
+
+    colores = []
+    for i in range(8):
+        resp = client.post(f"/api/admin/games/{game['id']}/players",
+                            json={"nickname": f"j{i}"}, headers=ADMIN)
+        assert resp.status_code == 200, resp.text
+        colores.append(resp.json()["player"]["color"])
+    assert len(set(colores)) == 8, "los 8 jugadores deben poder sentarse con colores unicos"
+
+
 def test_no_se_puede_joinear_una_partida_ya_empezada(client):
     """Caso Gabi: joined_at NULL, la partida arranca sin el, y despues podia
     entrar y quedar sin territorios, sin objetivo y fuera del turn.order."""
