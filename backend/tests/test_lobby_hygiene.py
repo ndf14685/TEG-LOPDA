@@ -54,6 +54,89 @@ def test_espectadores_y_admins_no_consumen_la_paleta_de_colores(client):
     assert len(set(colores)) == 8, "los 8 jugadores deben poder sentarse con colores unicos"
 
 
+def test_se_puede_invitar_el_reemplazo_de_un_jugador_echado(client):
+    """El caso que origino la fase: alguien no llega y hay que reemplazarlo.
+
+    kick_player solo marca token_revoked; la fila del jugador sobrevive. El
+    tope al invitar contaba esas filas (start_game si las excluye), asi que
+    invitar al reemplazo daba 409 "la partida admite hasta 8 jugadores" y el
+    anfitrion se quedaba sin salida.
+
+    Los 8 usan colores fuera de la paleta para que el unico motivo posible de
+    rechazo del reemplazo sea el tope.
+    """
+    game = create_game(client, config={"game_mode": "classic_26"})
+    ids = []
+    for i in range(8):
+        resp = client.post(f"/api/admin/games/{game['id']}/players",
+                           json={"nickname": f"j{i}", "color": f"c{i}"}, headers=ADMIN)
+        assert resp.status_code == 200, resp.text
+        ids.append(resp.json()["player"]["id"])
+
+    echado = client.post(
+        f"/api/admin/games/{game['id']}/players/{ids[3]}/kick", headers=ADMIN
+    )
+    assert echado.status_code == 200, echado.text
+
+    reemplazo = client.post(f"/api/admin/games/{game['id']}/players",
+                            json={"nickname": "Reemplazo"}, headers=ADMIN)
+    assert reemplazo.status_code == 200, (
+        f"no se pudo invitar al reemplazo de un echado: {reemplazo.text}"
+    )
+
+
+def test_un_espectador_con_color_no_bloquea_ese_color_para_los_jugadores(client):
+    """El set `usados` no estaba acotado por rol: alcanzaba con que un
+    espectador tuviera color para que ese color desapareciera de la paleta.
+    Se afirma sobre el color concreto, no sobre el tamano de la paleta."""
+    game = create_game(client, config={"game_mode": "classic_26"})
+    miron = client.post(f"/api/admin/games/{game['id']}/players",
+                        json={"nickname": "Miron", "role": "spectator", "color": "red"},
+                        headers=ADMIN)
+    assert miron.status_code == 200, miron.text
+
+    colores = []
+    for i in range(8):
+        resp = client.post(f"/api/admin/games/{game['id']}/players",
+                           json={"nickname": f"j{i}"}, headers=ADMIN)
+        assert resp.status_code == 200, resp.text
+        colores.append(resp.json()["player"]["color"])
+    assert "red" in colores, (
+        f"el espectador se quedo con 'red' y ningun jugador pudo usarlo: {colores}"
+    )
+    assert len(set(colores)) == 8
+
+
+def test_un_espectador_invitado_desde_un_perfil_no_hereda_color(client):
+    """Flujo normal: se invita a un amigo como espectador desde su perfil.
+    `color = color or profile["color"]` corria para todos los roles, asi que
+    el miron se quedaba con un color de la paleta sin sentarse a jugar."""
+    game = create_game(client, config={"game_mode": "classic_26"})
+    perfil = client.post("/api/admin/profiles",
+                         json={"nickname": "Miron", "color": "red"},
+                         headers=ADMIN).json()["profile"]
+    resp = client.post(f"/api/admin/games/{game['id']}/players",
+                       json={"role": "spectator", "profile_id": perfil["id"]},
+                       headers=ADMIN)
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["player"]["color"] is None
+
+
+def test_ocho_jugadores_entran_con_un_espectador_de_perfil_presente(client):
+    """Regresion end-to-end del incidente reproducido: espectador 'red' + 8
+    jugadores -> el octavo recibia 409 'no quedan colores libres'."""
+    game = create_game(client, config={"game_mode": "classic_26"})
+    perfil = client.post("/api/admin/profiles",
+                         json={"nickname": "Miron", "color": "red"},
+                         headers=ADMIN).json()["profile"]
+    client.post(f"/api/admin/games/{game['id']}/players",
+                json={"role": "spectator", "profile_id": perfil["id"]}, headers=ADMIN)
+    for i in range(8):
+        resp = client.post(f"/api/admin/games/{game['id']}/players",
+                           json={"nickname": f"j{i}"}, headers=ADMIN)
+        assert resp.status_code == 200, f"jugador {i}: {resp.text}"
+
+
 def test_no_se_puede_joinear_una_partida_ya_empezada(client):
     """Caso Gabi: joined_at NULL, la partida arranca sin el, y despues podia
     entrar y quedar sin territorios, sin objetivo y fuera del turn.order."""

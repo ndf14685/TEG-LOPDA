@@ -39,7 +39,13 @@ TAUNTABLE_EVENTS = {
     EventType.ATTACK_RESOLVED, EventType.TERRITORY_CONQUERED, EventType.PLAYER_ELIMINATED,
 }
 # Paleta que sabe pintar el frontend (frontend/src/utils/playerColors.ts).
-COLORES_DISPONIBLES = ("red", "blue", "green", "yellow", "purple", "orange", "cyan", "pink")
+# Son 10 y no 8 a proposito: con exactamente max_players colores, un solo
+# asiento revocado (alguien que no llego y fue reemplazado) ya dejaba al
+# ultimo jugador sin color libre.
+COLORES_DISPONIBLES = (
+    "red", "blue", "green", "yellow", "purple", "orange", "cyan", "pink",
+    "lime", "white",
+)
 
 
 def _first_valid_trio(hand: list) -> list[str] | None:
@@ -447,7 +453,11 @@ class GameService:
             nickname = nickname or profile["nickname"]
             if not nickname.strip():
                 nickname = profile["nickname"]
-            color = color or profile["color"]
+            if role in (Role.PLAYER, Role.AI_PLAYER):
+                # solo quien se sienta a jugar hereda el color del perfil:
+                # invitar a un amigo como espectador desde su perfil (el flujo
+                # normal) le daba color y ese color salia de la paleta
+                color = color or profile["color"]
         nickname = sanitize_nickname(nickname)
         if not nickname:
             raise ServiceError(ErrorCode.INVALID_PAYLOAD, "apodo vacío")
@@ -458,7 +468,15 @@ class GameService:
         )
         existentes = await repo.get_players(self.db, game_id)
         if role in (Role.PLAYER, Role.AI_PLAYER):
-            jugando = [p for p in existentes if p["role"] in PLAYING_ROLES]
+            # Mismo criterio que start_game: un asiento revocado (kick_player
+            # solo marca token_revoked, la fila sobrevive) NO ocupa lugar. Sin
+            # esto, echar a alguien que no llego y querer invitar su reemplazo
+            # daba 409 "la partida admite hasta N jugadores" -- justo el caso
+            # que motivo esta fase.
+            jugando = [
+                p for p in existentes
+                if p["role"] in PLAYING_ROLES and not p["token_revoked"]
+            ]
             modo = GAME_MODES[game["config"].get("game_mode", DEFAULT_MODE)]
             if len(jugando) >= modo["max_players"]:
                 raise ServiceError(
@@ -470,7 +488,13 @@ class GameService:
         # roles que se sientan a jugar: un espectador o admin sin color no debe
         # consumir la paleta (regresion: antes quedaban con color=None).
         if role in (Role.PLAYER, Role.AI_PLAYER):
-            usados = {p["color"] for p in existentes if p.get("color")}
+            # `usados` tambien se acota por rol: acotar solo la ASIGNACION no
+            # alcanzaba, porque un espectador con color igual figuraba como
+            # color tomado y le comia un lugar a la paleta al octavo jugador.
+            usados = {
+                p["color"] for p in existentes
+                if p.get("color") and p["role"] in PLAYING_ROLES
+            }
             if not color or color in usados:
                 color = next((c for c in COLORES_DISPONIBLES if c not in usados), None)
                 if color is None:
