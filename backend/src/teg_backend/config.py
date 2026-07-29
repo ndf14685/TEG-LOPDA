@@ -79,6 +79,7 @@ class Settings:
     playtest_export_dir: str = "docs/playtest"
     playtest_retention_days: int = 14
     playtest_manual_reports_per_minute: int = 5
+    playtest_incidents_per_minute: int = 12
 
 
 def load_settings() -> Settings:
@@ -124,4 +125,5 @@ def load_settings() -> Settings:
         playtest_export_dir=os.environ.get("PLAYTEST_EXPORT_DIR", "docs/playtest"),
         playtest_retention_days=_int("PLAYTEST_RETENTION_DAYS", 14),
         playtest_manual_reports_per_minute=_int("PLAYTEST_MANUAL_REPORTS_PER_MINUTE", 5),
+        playtest_incidents_per_minute=_int("PLAYTEST_INCIDENTS_PER_MINUTE", 12),
     )

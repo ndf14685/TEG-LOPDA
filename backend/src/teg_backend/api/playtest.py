@@ -53,8 +53,8 @@ class IncidentBody(BaseModel):
     viewport: dict = Field(default_factory=dict)
     browser: str | None = Field(default=None, max_length=500)
     context: dict = Field(default_factory=dict)
-    action_trail: list[dict] = Field(default_factory=list)
-    recent_errors: list[dict] = Field(default_factory=list)
+    action_trail: list[dict] = Field(default_factory=list, max_length=60)
+    recent_errors: list[dict] = Field(default_factory=list, max_length=30)
     screenshot_data_url: str | None = Field(default=None, max_length=3_000_000)
 
 

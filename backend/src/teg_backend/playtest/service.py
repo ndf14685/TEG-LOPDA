@@ -209,14 +209,36 @@ class PlaytestService:
     async def create_occurrence(self, payload: dict[str, Any]) -> dict[str, Any]:
         if not self.active:
             return {"ok": True, "active": False}
-        if payload.get("error_type") == "manual-report":
-            sid = str(payload.get("session_id") or "")
-            recent = await self.db.fetchone(
-                "SELECT COUNT(*) AS c FROM playtest_occurrences WHERE session_id=? AND timestamp_utc > ? AND json_extract(payload_json, '$.error_type')='manual-report'",
-                (sid, (datetime.now(UTC) - timedelta(minutes=1)).isoformat()),
-            )
-            if recent and recent["c"] >= self.settings.playtest_manual_reports_per_minute:
-                raise ValueError("manual report rate limited")
+        # Throttle por sesion (o, a falta de session_id, por partida o un
+        # bucket compartido "sin-sesion" para que no haya un camino sin
+        # freno) para CUALQUIER tipo. Antes solo miraba manual-report, y
+        # los automaticos (pending-action-timeout, sequence-gap) entraban
+        # sin freno: 41 ocurrencias en una partida. Contadores
+        # independientes: manual-report no debe competir por cupo con los
+        # automaticos ni viceversa.
+        sid = str(payload.get("session_id") or "").strip()
+        game_id_raw = str(payload.get("game_id") or "").strip()
+        bucket = sid or game_id_raw or "sin-sesion"
+        es_manual = payload.get("error_type") == "manual-report"
+        tope = (
+            self.settings.playtest_manual_reports_per_minute
+            if es_manual
+            else self.settings.playtest_incidents_per_minute
+        )
+        tipo_filter = (
+            "json_extract(payload_json, '$.error_type')='manual-report'"
+            if es_manual
+            else "(json_extract(payload_json, '$.error_type') IS NULL"
+            " OR json_extract(payload_json, '$.error_type')!='manual-report')"
+        )
+        recent = await self.db.fetchone(
+            "SELECT COUNT(*) AS c FROM playtest_occurrences"
+            " WHERE COALESCE(NULLIF(session_id,''), game_id, 'sin-sesion')=?"
+            f" AND timestamp_utc > ? AND {tipo_filter}",
+            (bucket, (datetime.now(UTC) - timedelta(minutes=1)).isoformat()),
+        )
+        if recent and recent["c"] >= tope:
+            raise ValueError("incident rate limited")
         clean = redact(payload)
         fp = str(payload.get("fingerprint") or fingerprint_for(clean))
         now = utc_now()
