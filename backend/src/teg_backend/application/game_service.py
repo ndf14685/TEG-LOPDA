@@ -619,27 +619,55 @@ class GameService:
                 await asyncio.sleep(self.settings.turn_timeout_seconds)
                 turn: TurnState | None = None
                 async with self.lock(game_id):
-                    # Todo bajo el mismo lock y sin soltarlo en el medio. El
-                    # chequeo de sockets va DELIBERADAMENTE al final, recién
-                    # antes de actuar: registrar una reconexión no necesita
-                    # este lock (room.add() es sincrónico, en el endpoint WS),
-                    # así que si se revalida la presencia primero y el resto
-                    # de las lecturas (game, engine) queda después, esas
-                    # lecturas son ventana suficiente para que el jugador
-                    # reconecte y pierda el turno igual pese a estar presente.
+                    # Todo bajo el mismo lock y sin soltarlo en el medio.
                     game = await self.get_game_or_404(game_id)
                     if game["status"] != GameStatus.RUNNING:
                         return  # se pausó/terminó/canceló mientras dormíamos
                     engine = await self._engine(game)
                     if (
-                        engine.turn.turn_number != turn_number
+                        engine.stage != "turns"
+                        or engine.turn.turn_number != turn_number
                         or engine.turn.current_player_id != player_id
                     ):
                         return  # el turno ya avanzó (o cambió de dueño) por su cuenta
                     room = self.manager.room(game_id)
                     if room.sockets.get(player_id):
                         return  # reconectó: nunca se lo saltea
-                    turn = await self._cerrar_y_avanzar_turno(game_id, engine, player_id)
+                    # A partir de acá, mutación SINCRÓNICA del estado, sin
+                    # ningún await en el medio: registrar una reconexión no
+                    # necesita este lock (room.add() es sincrónico, en el
+                    # endpoint WS), así que cualquier await entre el chequeo
+                    # de sockets y la mutación real es ventana suficiente
+                    # para que el jugador reconecte y pierda el turno igual
+                    # pese a estar presente (así se coló el hallazgo crítico
+                    # de la ronda anterior: el emit incondicional de
+                    # TURN_ENDED, con su round-trip a SQLite, quedaba en el
+                    # medio). Se duplica a propósito la secuencia de
+                    # _cerrar_y_avanzar_turno en vez de reusarla: ese helper
+                    # intercala los emits ENTRE las mutaciones para el
+                    # camino normal de end_turn, que ya funciona y no hay
+                    # que tocar.
+                    wager_result = engine.resolve_wager(player_id)
+                    card = engine.award_card_if_due(player_id)
+                    turn = engine.advance_turn()
+                    # Desde acá el turno YA avanzó: los awaits que siguen son
+                    # solo persistencia/notificación, no pueden "deshacer"
+                    # el salteo aunque el jugador reconecte mientras corren.
+                    await self._save_engine(game_id)
+                    if wager_result is not None:
+                        await self.emit(
+                            game_id, EventType.WAGER_RESOLVED, actor_id=player_id,
+                            payload=wager_result,
+                        )
+                    if card is not None:
+                        await self.emit(
+                            game_id, EventType.CARD_AWARDED, actor_id=player_id,
+                            payload={"player_id": player_id},
+                        )
+                        await self._emit_hand(game_id, engine, player_id)
+                    await self.emit(
+                        game_id, EventType.TURN_ENDED, actor_id=player_id, payload={},
+                    )
                 # El evento se emite DESPUÉS de confirmar que el turno avanzó
                 # de verdad: si algo arriba hubiera fallado o vuelto antes,
                 # no queda un turn.skipped mintiendo en el historial.

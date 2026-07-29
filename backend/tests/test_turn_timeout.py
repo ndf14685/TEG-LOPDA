@@ -8,7 +8,9 @@ from fastapi.testclient import TestClient
 
 from conftest import ADMIN, complete_placement, confirm_join, create_game, invite, recv_until
 from teg_backend.config import Settings
+from teg_backend.domain.engine import GameEngine
 from teg_backend.main import create_app
+from teg_backend.realtime.manager import Room
 
 
 @pytest.fixture()
@@ -300,3 +302,150 @@ def test_no_se_saltea_si_reconecta_justo_antes_de_cerrar_el_turno(client_turno_c
             assert "turn.skipped" not in vistos, (
                 "se salteo pese a reconectar durante la ventana critica"
             )
+
+
+def test_la_mutacion_del_turno_ocurre_antes_de_cualquier_await_posterior_al_chequeo(
+    client_turno_corto, monkeypatch,
+):
+    """CRITICO, ventana RESIDUAL (segunda vuelta de review).
+
+    El test anterior (`..._justo_antes_de_cerrar_el_turno`) inyecta la demora
+    en `get_game_or_404`, que corre ANTES del chequeo de sockets -- no cubre
+    la ventana que quedaba DESPUES: `_cerrar_y_avanzar_turno` hacia varios
+    `await self.emit(...)` (incluido uno incondicional para `turn.ended`,
+    con su propia escritura a SQLite) ANTES de llamar a la mutacion real
+    `engine.advance_turn()`. Esa es la ventana que este test cubre.
+
+    El arreglo mueve las tres mutaciones sincronicas del motor
+    (`resolve_wager`, `award_card_if_due`, `advance_turn`) a correr
+    INMEDIATAMENTE despues del chequeo de sockets, sin ningun `await` en el
+    medio -- los `emit(...)` (incluido `turn.ended`) se movieron a DESPUES.
+    Como consecuencia, un test que solo mire "¿aparecio turn.skipped?" ya no
+    alcanza para distinguir la version vieja de la arreglada: en ambas
+    aparece igual, tarde o temprano, una vez que el timeout decide saltear
+    (ninguna de las dos versiones "deshace" una mutacion ya hecha). Lo que
+    SI cambia entre versiones es el ORDEN relativo entre la reconexion
+    (`Room.add`, sincronico, sin tomar el lock de la partida) y la mutacion
+    real (`GameEngine.advance_turn`, instrumentada aca).
+
+    - Version vieja (con el `await emit(turn.ended)` antes de
+      `advance_turn`): si la reconexion ocurre durante esa demora, queda
+      registrada ANTES que `advance_turn` en el orden -- pero `advance_turn`
+      se llama de todos modos (nadie vuelve a chequear), o sea: el jugador
+      ya estaba de vuelta y el turno se le salteo igual. Bug.
+    - Version arreglada: `advance_turn` ya corrio (sincronicamente, pegado
+      al chequeo de sockets) ANTES de llegar al primer `await` posterior
+      (el emit de `turn.ended`, entre otros); la reconexion, si ocurre
+      durante esa demora, queda registrada DESPUES de `advance_turn` --
+      llego demasiado tarde para importar, que es la unica ventana
+      aceptable.
+
+    Se instrumenta con monkeypatch en vez de inferir por temporizacion pura:
+    el orden se lee de una lista poblada desde el hilo unico del loop del
+    server (sin condiciones de carrera de escritura), asi que la aserción es
+    determinista una vez que la reconexion efectivamente ocurre durante la
+    demora (lo cual sí se fuerza con tiempos generosos, no ajustados al
+    milisegundo).
+    """
+    client = client_turno_corto
+    game, inv1, inv2 = _arrancar(client)
+    p1, p2 = inv1["player"]["id"], inv2["player"]["id"]
+    service = client.app.state.service
+
+    orden: list[str] = []
+    # sin este flag, la PRIMERA conexion de "Dos" (al arrancar el test, mucho
+    # antes de que se desconecte) tambien quedaria registrada como
+    # "reconexion" y contaminaria la comparacion; solo nos interesa la
+    # reconexion deliberada de mas abajo, y el advance_turn del salteo (no
+    # el de un eventual turn.end de traspaso previo)
+    activo = {"valor": False}
+
+    original_advance_turn = GameEngine.advance_turn
+
+    def advance_turn_instrumentado(self):
+        if activo["valor"]:
+            orden.append("advance_turn")
+        return original_advance_turn(self)
+
+    monkeypatch.setattr(GameEngine, "advance_turn", advance_turn_instrumentado)
+
+    original_room_add = Room.add
+
+    def add_instrumentado(self, player_id, ws):
+        if activo["valor"] and player_id == p2:
+            orden.append("reconexion")
+        return original_room_add(self, player_id, ws)
+
+    monkeypatch.setattr(Room, "add", add_instrumentado)
+
+    original_emit = service.emit
+    demora_hecha = {"valor": False}
+
+    async def emit_lento(game_id_arg, event_type, **kwargs):
+        # demora especificamente el emit de turn.ended: en la version vieja
+        # corria ANTES de advance_turn; en la arreglada corre DESPUES. Es
+        # incondicional (siempre se emite al cerrar un turno), a diferencia
+        # de wager.resolved/card.awarded que dependen del estado de la
+        # partida.
+        if (
+            game_id_arg == game["id"]
+            and event_type == "turn.ended"
+            and not demora_hecha["valor"]
+        ):
+            demora_hecha["valor"] = True
+            await asyncio.sleep(1.0)
+        return await original_emit(game_id_arg, event_type, **kwargs)
+
+    with client.websocket_connect(f"/ws/{game['code']}?token={inv1['token']}") as ws1:
+        recv_until(ws1, "game.snapshot")
+        ws1.send_json({"type": "ready.set", "payload": {"ready": True}})
+        recv_until(ws1, "player.ready")
+        with client.websocket_connect(f"/ws/{game['code']}?token={inv2['token']}") as ws2:
+            recv_until(ws2, "game.snapshot")
+            ws2.send_json({"type": "ready.set", "payload": {"ready": True}})
+            recv_until(ws1, "player.ready")
+            recv_until(ws2, "player.ready")
+            client.post(f"/api/admin/games/{game['id']}/start", headers=ADMIN)
+            started = recv_until(ws1, "game.started")["payload"]
+            recv_until(ws2, "game.started")
+            complete_placement({p1: ws1, p2: ws2}, started)
+            vistos1 = _barrera(ws1)
+            vistos2 = _barrera(ws2)
+            turn_ev = next(
+                m for m in vistos1 + vistos2 if m.get("event_type") == "turn.started"
+            )
+        # ws2 cerrado: "Dos" queda ausente
+
+        _esperar_desconexion(ws1, p2)
+
+        if turn_ev["actor_id"] == p1:
+            ws1.send_json({"type": "turn.end", "payload": {}})
+            recv_until(ws1, "turn.started")  # ahora le toca a "Dos", ausente
+
+        # activar el registro de orden y el parche de demora recien aca: nada
+        # mas en el test dispara un turn.ended ni reconecta a "Dos" hasta
+        # este punto, asi que lo unico que se registra de aca en mas es el
+        # advance_turn del propio salteo y la reconexion deliberada
+        activo["valor"] = True
+        monkeypatch.setattr(service, "emit", emit_lento)
+
+        # dejar pasar el timeout (1 s): el _vencer() del server se despierta,
+        # pasa el chequeo de sockets (todavia ausente), muta el turno, y
+        # recien ahi queda parado ~1s en la demora artificial del emit de
+        # turn.ended
+        time.sleep(1.15)
+
+        # reconectar mientras el emit de turn.ended esta demorado
+        with client.websocket_connect(f"/ws/{game['code']}?token={inv2['token']}") as ws2b:
+            recv_until(ws2b, "game.snapshot")
+
+            # esperar a que la demora artificial termine y todo se asiente
+            time.sleep(1.5)
+            _ping_y_drenar(ws1)
+
+        assert "advance_turn" in orden, "el timeout no llego a saltear el turno"
+        assert "reconexion" in orden, "la reconexion nunca se registro"
+        assert orden.index("advance_turn") < orden.index("reconexion"), (
+            "la mutacion del turno ocurrio DESPUES de que la reconexion ya "
+            f"estaba registrada -- ventana critica reabierta: {orden}"
+        )
