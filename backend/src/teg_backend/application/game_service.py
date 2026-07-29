@@ -78,6 +78,9 @@ class GameService:
         # frenaba a los otros siete.
         self._send_queues: dict[str, asyncio.Queue] = {}
         self._send_workers: dict[str, asyncio.Task] = {}
+        # una vez apagado el servicio no se reviven workers: si no, un emit
+        # tardio recrearia una tarea justo cuando estamos cerrando la base
+        self._envios_detenidos = False
         self._ai_provider = build_ai_player("random")
         self._ai_tasks: dict[str, asyncio.Task] = {}
         self.counters: dict[str, int] = {"games_created": 0, "events_emitted": 0}
@@ -137,33 +140,66 @@ class GameService:
                 if visibility == Visibility.PUBLIC:
                     event.public_sequence = await repo.next_public_sequence(self.db, game_id)
                 await repo.append_event(self.db, event.model_dump(mode="json"))
+                # Encolar adentro del lock de secuencia: asi el orden de envio
+                # es por construccion el mismo que el de sequence_number. Si se
+                # encola afuera, dos emit concurrentes pueden interleavarse en
+                # cualquier await intermedio y salir al reves de como se
+                # numeraron.
+                self._encolar_envio(game_id, event)
+        else:
+            self._encolar_envio(game_id, event)
         self.counters["events_emitted"] += 1
-        roles = await self._roles_map(game_id)
-        self._encolar_envio(game_id, event, roles)
         if persisted:
             await self._after_emit(game_id, event)
         return event
 
-    def _encolar_envio(self, game_id: str, event: GameEvent, roles: dict[str, str]) -> None:
+    def _encolar_envio(self, game_id: str, event: GameEvent) -> None:
+        if self._envios_detenidos:
+            return
         cola = self._send_queues.setdefault(game_id, asyncio.Queue())
-        cola.put_nowait((event, roles))
+        cola.put_nowait(event)
         worker = self._send_workers.get(game_id)
         if worker is None or worker.done():
             self._send_workers[game_id] = asyncio.create_task(self._drenar_envios(game_id))
 
     async def _drenar_envios(self, game_id: str) -> None:
+        """Un worker por partida, vivo mientras viva el proceso.
+
+        No se apaga por inactividad a proposito: cuando lo hacia, entre que la
+        tarea recibia la cancelacion del timeout y quedaba en done() pasaban
+        ticks del loop en los que un emit veia "worker vivo", no creaba uno
+        nuevo, y el evento quedaba encolado sin nadie que lo consumiera.
+        """
         cola = self._send_queues[game_id]
         while True:
+            event = await cola.get()
             try:
-                event, roles = await asyncio.wait_for(cola.get(), timeout=30.0)
-            except TimeoutError:
-                return  # partida inactiva: el worker se apaga y se recrea si hace falta
-            try:
+                # los roles se resuelven aca y no en emit: saca una consulta del
+                # camino caliente y evita un await entre numerar y encolar
+                roles = await self._roles_map(game_id)
                 await self.manager.broadcast(game_id, event, roles)
             except Exception:
+                # CancelledError es BaseException: no cae aca, se propaga y
+                # apaga el worker (solo la manda detener_envios)
                 log.warning("fallo en broadcast diferido", exc_info=True)
             finally:
                 cola.task_done()
+
+    async def detener_envios(self) -> None:
+        """Cancela los workers de envio y los espera.
+
+        Se llama en el apagado ANTES de cerrar las bases: los workers consultan
+        la DB para resolver roles, y dejarlos sueltos compitiendo contra el
+        cierre de SQLite es como se ensucian los WAL.
+        """
+        self._envios_detenidos = True
+        workers = [w for w in self._send_workers.values() if not w.done()]
+        for worker in workers:
+            worker.cancel()
+        if workers:
+            await asyncio.gather(*workers, return_exceptions=True)
+        self._send_workers.clear()
+        self._send_queues.clear()
 
     async def _after_emit(self, game_id: str, event: GameEvent) -> None:
         """Efectos secundarios que nunca deben voltear la acción principal."""

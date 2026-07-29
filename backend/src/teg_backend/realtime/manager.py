@@ -96,7 +96,7 @@ class ConnectionManager:
                 # suspendida) colgaba el broadcast entero y con él la partida.
                 async with asyncio.timeout(self.send_timeout_seconds):
                     await ws.send_json(payload)
-            except (TimeoutError, asyncio.CancelledError):
+            except TimeoutError:
                 log.info(
                     "socket lento: se cierra para no frenar la partida",
                     extra={"ctx": {"game_id": game_id, "player_id": player_id}},
@@ -104,6 +104,13 @@ class ConnectionManager:
                 # el endpoint WS hace la limpieza real en su finally
                 with contextlib.suppress(Exception):
                     await ws.close(code=1011)
+            except asyncio.CancelledError:
+                # Nos cancelaron desde afuera (apagado del worker de envios).
+                # No es un socket lento: asyncio.timeout convierte su propia
+                # cancelacion interna en TimeoutError, asi que llegar aca solo
+                # puede venir de arriba. Se propaga para que el apagado no
+                # dependa de la semantica de Task.cancelling().
+                raise
             except Exception:
                 # la desconexión real la maneja el endpoint WS
                 log.debug("fallo enviando a un socket", exc_info=True)
