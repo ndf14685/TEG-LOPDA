@@ -327,20 +327,47 @@ class GameService:
                     event.event_type, event.event_id,
                 )
             if event.event_type == EventType.GAME_STARTED:
-                # Un saludo por jugador, no uno por PAR: el doble bucle daba 56
-                # emisiones con 8 jugadores (O(n^2)), cada una con su INSERT y su
-                # fan-out, y todo dentro del lock de start_game.
-                seated = [p for p in players if p["role"] in PLAYING_ROLES and p.get("profile_id")]
-                for owner in seated:
-                    rival = next((p for p in seated if p["id"] != owner["id"]), None)
-                    if rival is None:
-                        continue
-                    await self._fire_taunt(
-                        game_id, players, owner["id"], rival["id"],
-                        EventType.GAME_STARTED, event.event_id,
-                    )
+                # En tarea aparte: _after_emit se awaitea dentro de emit(), y el
+                # emit de GAME_STARTED corre dentro del `async with
+                # self.lock(game_id)` de start_game. Bajar de 56 a 8 saludos no
+                # alcanzaba: esas 8 emisiones, con su INSERT y su fan-out cada
+                # una, seguian reteniendo el lock de la partida justo cuando los
+                # ocho clientes estan renderizando el mapa.
+                self._crear_tarea_de_fondo(
+                    self._saludos_de_bienvenida(game_id, players, event.event_id)
+                )
         except Exception:
             log.warning("fallo en efectos post-evento", exc_info=True)
+
+    async def _saludos_de_bienvenida(
+        self, game_id: str, players: list[dict], source_event_id: str
+    ) -> None:
+        """Un saludo por jugador, no uno por PAR: el doble bucle original daba
+        56 emisiones con 8 jugadores (O(n^2)).
+
+        Cada uno saluda a un rival DISTINTO: la version anterior elegia
+        siempre "el primer jugador sentado", asi que con 8 jugadores seis de
+        ocho nunca disparaban su saludo real contra su rival y la grabacion
+        quedaba muda. Con el corrimiento circular cada asiento saluda al
+        siguiente y ningun par se repite.
+        """
+        try:
+            seated = [
+                p for p in players
+                if p["role"] in PLAYING_ROLES and p.get("profile_id")
+            ]
+            if len(seated) < 2:
+                return
+            for i, owner in enumerate(seated):
+                rival = seated[(i + 1) % len(seated)]
+                await self._fire_taunt(
+                    game_id, players, owner["id"], rival["id"],
+                    EventType.GAME_STARTED, source_event_id,
+                )
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            log.warning("fallo el fan-out de saludos", exc_info=True)
 
     async def _fire_taunt(
         self,
